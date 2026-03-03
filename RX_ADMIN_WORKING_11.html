@@ -618,7 +618,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#141e30;color:#e8e8e8;mi
         <h2 id="sc-class-name">Email Schedule</h2>
         <div class="sc-subtitle" id="sc-class-meta"></div>
       </div>
-      <button class="sc-close" onclick="closeSchedule()">✕</button>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button onclick="downloadScheduleXlsx()" style="background:#1a6b3a;color:#fff;border:2px solid #27ae60;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:0.78rem;font-weight:700">⬇ Download Schedule</button>
+        <button class="sc-close" onclick="closeSchedule()">✕</button>
+      </div>
     </div>
     <div class="sc-body">
       <div class="sc-top-bar">
@@ -1574,8 +1577,28 @@ async function sendTestEmail(templateId) {
 }
 async function sendTestFromEditModal() {
   var id = document.getElementById("ep-id").value;
-  if (!id) { toast("Save the template first, then send a test."); return; }
-  await sendTestEmail(parseInt(id));
+  var subject = document.getElementById("ep-subject").value.trim();
+  if (!subject) { toast("Add a subject line first."); return; }
+
+  // Get current HTML from editor (not from DB — so embedded logos are included)
+  var inWysiwyg = document.getElementById('wysiwyg-editor-wrap').style.display !== 'none';
+  var inHtmlSource = document.getElementById('html-source-editor').style.display !== 'none';
+  var html_body;
+  if (inWysiwyg || inHtmlSource) {
+    html_body = inWysiwyg ? getWysiwygHtml() : document.getElementById('html-source-editor').value;
+  } else {
+    // Neither editor visible (e.g. preview open) — use hidden source textarea
+    html_body = document.getElementById('html-source-editor').value;
+  }
+  if (!html_body || html_body.length < 20) { toast("No email content to send."); return; }
+
+  var to = prompt("Send test email to:", localStorage.getItem("testEmailAddr") || "dryan@graymattersgroup.com");
+  if (!to) return;
+  localStorage.setItem("testEmailAddr", to);
+  toast("📧 Sending test email…");
+  var res = await apiCall("POST", "/email-templates/test-send", { to_email: to, subject: subject, html_body: html_body, first_name: "Dave" });
+  if (res && res.success) toast("✅ Test email sent to " + to);
+  else toast("❌ " + (res && res.error ? res.error : "Send failed — check backend logs"));
 }
 var _prevTemplateId = null;
 async function previewTemplate(id){
@@ -1669,6 +1692,49 @@ async function openSchedule(classId,className,durationDays){
 }
 function closeSchedule(){document.getElementById("scheduleModal").classList.remove("open");_scClassId=null;}
 document.getElementById("scheduleModal").addEventListener("click",function(e){if(e.target===this)closeSchedule();});
+
+async function downloadScheduleXlsx() {
+  // Fetch schedule data for current class
+  var data = await apiCall("GET", "/classes/" + _scClassId + "/schedule");
+  if (!data || !data.success) { toast("❌ Could not load schedule data"); return; }
+
+  var slots = data.slots || [];
+  if (!slots.length) { toast("No scheduled emails to download yet."); return; }
+
+  var className = document.getElementById("sc-class-name").textContent.replace("Schedule — ", "").trim();
+  var startDate = data.start_date ? new Date(data.start_date) : null;
+
+  // Build rows
+  var rows = [["Class", "Send Day", "Send Date", "Week", "Email Template", "Subject Line"]];
+  slots.forEach(function(s) {
+    var dayNum = s.day_override ? s.day_override : ((s.week_number - 1) * 7 + 1);
+    var sendDate = "";
+    if (startDate) {
+      var d = new Date(startDate);
+      d.setDate(d.getDate() + dayNum - 1);
+      sendDate = d.toLocaleDateString("en-US", { year:"numeric", month:"short", day:"numeric" });
+    }
+    var subject = s.subject_override || s.template_subject || "";
+    rows.push([className, "Day " + dayNum, sendDate, "Week " + (s.week_number || ""), s.template_name || "", subject]);
+  });
+
+  // Build worksheet
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+
+  // Column widths
+  ws["!cols"] = [
+    {wch: 28}, {wch: 10}, {wch: 18}, {wch: 8}, {wch: 40}, {wch: 50}
+  ];
+
+  // Style header row (bold via sheetjs-style isn't in free version — use cell format trick)
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Email Schedule");
+
+  // Generate and trigger download
+  var safeName = className.replace(/[^a-z0-9]/gi, "_").toLowerCase();
+  XLSX.writeFile(wb, "Schedule_" + safeName + "_" + new Date().toISOString().slice(0,10) + ".xlsx");
+  toast("✅ Schedule downloaded!");
+}
 
 async function loadSchedule(){
   var data=await apiCall("GET","/classes/"+_scClassId+"/schedule");
@@ -2329,12 +2395,6 @@ async function saveEmailTemplate() {
       msgEl.textContent = '❌ ' + ((res && res.error) ? res.error : 'Save failed');
     }
   });
-}
-
-async function sendTestFromEditModal() {
-  var id = document.getElementById('ep-id').value;
-  if (!id) { toast('Save the template first, then send a test.'); return; }
-  await sendTestEmail(parseInt(id));
 }
 
 </script>
