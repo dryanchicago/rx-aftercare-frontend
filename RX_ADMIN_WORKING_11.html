@@ -1573,7 +1573,11 @@ async function sendTestEmail(templateId) {
   toast("📧 Sending test email…");
   var res = await apiCall("POST", "/email-templates/test-send", { to_email: to, subject: t.subject, html_body: t.html_body, first_name: "Dave" });
   if (res && res.success) toast("✅ Test email sent to " + to);
-  else toast("❌ " + (res && res.error ? res.error : "Send failed — check backend logs"));
+  else {
+    var errMsg = res ? (res.error || res.message || JSON.stringify(res)) : 'No response';
+    toast("❌ Send failed: " + errMsg);
+    console.error("Test send failed:", res);
+  }
 }
 async function sendTestFromEditModal() {
   var id = document.getElementById("ep-id").value;
@@ -2042,11 +2046,12 @@ function closeEmailEdit() {
 function getWysiwygHtml() {
   var editor = tinymce.get('wysiwyg-editor');
   if (!editor) return document.getElementById('html-source-editor').value;
-  var bodyContent = editor.getContent();
+  // Bypass TinyMCE's serializer (which strips table attrs) — read raw iframe DOM instead
+  var iframe = document.querySelector('#wysiwyg-editor_ifr');
+  var bodyContent = iframe ? iframe.contentDocument.body.innerHTML : editor.getContent();
   // Re-wrap with original full HTML shell stored in hidden textarea
   var fullHtml = document.getElementById('html-source-editor').value;
   if (!fullHtml) return bodyContent;
-  // Replace body content in original HTML
   var updated = fullHtml.replace(/(<body[^>]*>)([\s\S]*)(<\/body>)/i, function(m, open, body, close) {
     return open + bodyContent + close;
   });
@@ -2308,7 +2313,9 @@ async function saveEmailTemplate() {
       await loadEmailLibrary();
     } else {
       msgEl.style.color = '#f07070';
-      msgEl.textContent = '❌ ' + ((res && res.error) ? res.error : 'Save failed');
+      var errDetail = res ? (res.error || res.message || JSON.stringify(res)) : 'No response from server';
+      msgEl.textContent = '❌ ' + errDetail;
+      console.error('Save failed:', res);
     }
     return;
   }
@@ -2347,7 +2354,9 @@ async function saveEmailTemplate() {
       await loadEmailLibrary();
     } else {
       msgEl.style.color = '#f07070';
-      msgEl.textContent = '❌ ' + ((res && res.error) ? res.error : 'Save failed');
+      var errDetail2 = res ? (res.error || res.message || JSON.stringify(res)) : 'No response from server';
+      msgEl.textContent = '❌ ' + errDetail2;
+      console.error('Save failed (unlayer):', res);
     }
   });
 }
