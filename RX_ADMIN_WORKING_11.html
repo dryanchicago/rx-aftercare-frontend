@@ -2030,6 +2030,16 @@ function openEmailEdit(template) {
           editor.on('init', function() {
             editor.setContent(bodyContent);
           });
+          // Sync edits back to html-source-editor using raw DOM (bypasses serializer)
+          editor.on('change keyup', function() {
+            var sourceEl = document.getElementById('html-source-editor');
+            var fullHtml = sourceEl.value;
+            if (!fullHtml) return;
+            var rawBody = editor.getBody().innerHTML;
+            sourceEl.value = fullHtml.replace(/(<body[^>]*>)([\s\S]*)(<\/body>)/i, function(m, open, body, close) {
+              return open + rawBody + close;
+            });
+          });
         }
       });
     } else {
@@ -2042,20 +2052,11 @@ function closeEmailEdit() {
   document.getElementById('emailEditModal').classList.remove('open');
 }
 
-// ── WYSIWYG helper: get full HTML by re-wrapping body content ────────────────
+// ── WYSIWYG helper: get full HTML — html-source-editor is always kept in sync ──
 function getWysiwygHtml() {
-  var editor = tinymce.get('wysiwyg-editor');
-  if (!editor) return document.getElementById('html-source-editor').value;
-  // Bypass TinyMCE's serializer (which strips table attrs) — read raw iframe DOM instead
-  var iframe = document.querySelector('#wysiwyg-editor_ifr');
-  var bodyContent = iframe ? iframe.contentDocument.body.innerHTML : editor.getContent();
-  // Re-wrap with original full HTML shell stored in hidden textarea
-  var fullHtml = document.getElementById('html-source-editor').value;
-  if (!fullHtml) return bodyContent;
-  var updated = fullHtml.replace(/(<body[^>]*>)([\s\S]*)(<\/body>)/i, function(m, open, body, close) {
-    return open + bodyContent + close;
-  });
-  return updated;
+  // html-source-editor is synced on every keystroke via TinyMCE onChange handler
+  // Always use it directly — avoids TinyMCE serializer mangling table attributes
+  return document.getElementById('html-source-editor').value;
 }
 
 function isWysiwygMode() {
