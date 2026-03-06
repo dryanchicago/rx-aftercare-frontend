@@ -1662,7 +1662,7 @@ async function executeFindReplace(){
 }
 
 
-var _scClassId=null, _scClassName="";
+var _scClassId=null, _scClassName="", _scStartDate=null;
 
 async function openSchedule(classId,className,durationDays){
   _scClassId=classId; _scClassName=className;
@@ -1686,20 +1686,23 @@ async function downloadScheduleXlsx() {
   if (!slots.length) { toast("No scheduled emails to download yet."); return; }
 
   var className = document.getElementById("sc-class-name").textContent.replace("Schedule — ", "").trim();
-  var startDate = data.start_date ? new Date(data.start_date) : null;
+  // Parse as LOCAL date to avoid UTC off-by-one timezone shift
+  var startDate = data.start_date ? parseLocalDate(data.start_date) : null;
 
-  // Build rows
-  var rows = [["Class", "Send Day", "Send Date", "Week", "Email Template", "Subject Line"]];
+  // Build rows — Class | System Set Week | Send Day | Send Date | Email Template | Subject Line
+  var rows = [["Class", "System Set Week", "Send Day", "Send Date", "Email Template", "Subject Line"]];
   slots.forEach(function(s) {
     var dayNum = s.day_override ? s.day_override : ((s.week_number - 1) * 7 + 1);
+    var weekLabel = s.day_override ? ("Day " + s.day_override) : ("Week " + s.week_number);
+    var sendLabel = s.day_override ? ("Day " + s.day_override) : ((s.week_number - 1) + " Week");
     var sendDate = "";
     if (startDate) {
-      var d = new Date(startDate);
+      var d = new Date(startDate.getTime());
       d.setDate(d.getDate() + dayNum - 1);
       sendDate = d.toLocaleDateString("en-US", { year:"numeric", month:"short", day:"numeric" });
     }
     var subject = s.subject_override || s.template_subject || "";
-    rows.push([className, "Day " + dayNum, sendDate, "Week " + (s.week_number || ""), s.template_name || "", subject]);
+    rows.push([className, weekLabel, sendLabel, sendDate, s.template_name || "", subject]);
   });
 
   // Build worksheet
@@ -1724,15 +1727,23 @@ async function loadSchedule(){
   var data=await apiCall("GET","/classes/"+_scClassId+"/schedule");
   if(!data||!data.success){document.getElementById("sc-slot-list").innerHTML='<p style="color:#f07070">Could not load schedule.</p>';return;}
   document.getElementById("sc-start-input").value=data.start_date?data.start_date.slice(0,10):"";
-  renderSlotList(data.slots||[]);
+  _scStartDate=data.start_date||null;
+  renderSlotList(data.slots||[], data.start_date);
 }
 
-function renderSlotList(slots){
+function renderSlotList(slots, startDateStr){
   var list=document.getElementById("sc-slot-list"); if(!list) return;
   if(!slots.length){list.innerHTML='<div class="sc-empty">No emails scheduled yet. Add your first one below.</div>';return;}
+  var startDate = startDateStr ? parseLocalDate(startDateStr) : null;
   list.innerHTML=slots.map(function(s){
     var dayLabel=s.day_override?"Day "+s.day_override:"Week "+s.week_number;
-    var dayNote=s.day_override?"day override":"day "+((s.week_number-1)*7+1);
+    var dayNum=s.day_override?s.day_override:((s.week_number-1)*7+1);
+    var sendDateStr="";
+    if(startDate){
+      var d=new Date(startDate.getTime()); d.setDate(d.getDate()+dayNum-1);
+      sendDateStr=d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+    }
+    var dayNote=sendDateStr?sendDateStr:(s.day_override?"day override":"day "+dayNum);
     var subject=s.subject_override||s.template_subject;
     return '<div class="sc-slot" id="sc-slot-'+s.id+'"><div class="sc-slot-row">'
       +'<div class="sc-slot-day"><strong>'+dayLabel+'</strong><span>'+dayNote+'</span></div>'
@@ -1743,6 +1754,7 @@ function renderSlotList(slots){
       +'<div class="sc-slot-stat"><strong>'+(s.clicks_total||0)+'</strong><span>Clicks</span></div>'
       +'</div>'
       +'<div class="sc-slot-actions">'
+      +'<button class="sc-btn-icon" title="Edit slot" onclick="openEditSlot('+s.id+','+JSON.stringify(s).replace(/'/g,"&#39;")+')">✏️</button>'
       +'<button class="sc-btn-icon" title="View student detail" onclick="loadSlotStats('+s.id+')">📊</button>'
       +'<button class="sc-btn-icon del" title="Remove" onclick="deleteSlot('+s.id+')">✕</button>'
       +'</div></div></div>';
@@ -1794,11 +1806,61 @@ async function addScheduleSlot(){
   }
 }
 
+// Parse a YYYY-MM-DD string as LOCAL midnight (avoids UTC timezone shift)
+function parseLocalDate(str) {
+  if (!str) return null;
+  var parts = str.slice(0,10).split("-");
+  return new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]));
+}
+
 async function deleteSlot(slotId){
   if(!confirm("Remove this email from the schedule?")) return;
   var res=await apiCall("DELETE","/classes/"+_scClassId+"/schedule/"+slotId);
   if(res&&res.success) await loadSchedule();
   else alert("Could not delete slot.");
+}
+
+// ── Edit slot ────────────────────────────────────────────────────────────
+function openEditSlot(slotId, slot) {
+  document.getElementById("sc-edit-slot-id").value = slotId;
+  document.getElementById("sc-edit-week").value = slot.week_number || "";
+  document.getElementById("sc-edit-day").value = slot.day_override || "";
+  document.getElementById("sc-edit-subject").value = slot.subject_override || "";
+  // populate template dropdown then set current value
+  var sel = document.getElementById("sc-edit-template");
+  sel.innerHTML = document.getElementById("sc-add-template").innerHTML;
+  sel.value = slot.template_id || "";
+  document.getElementById("sc-edit-modal").style.display = "flex";
+  document.getElementById("sc-edit-msg").textContent = "";
+}
+
+function closeEditSlot() {
+  document.getElementById("sc-edit-modal").style.display = "none";
+}
+
+async function saveEditSlot() {
+  var slotId = document.getElementById("sc-edit-slot-id").value;
+  var templateId = parseInt(document.getElementById("sc-edit-template").value) || null;
+  var week = parseInt(document.getElementById("sc-edit-week").value) || null;
+  var day = parseInt(document.getElementById("sc-edit-day").value) || null;
+  var subject = document.getElementById("sc-edit-subject").value.trim() || null;
+  var msgEl = document.getElementById("sc-edit-msg");
+
+  if (!templateId) { msgEl.textContent="Please select a template."; msgEl.style.color="#f07070"; return; }
+  if (!week && !day) { msgEl.textContent="Please enter a week or day number."; msgEl.style.color="#f07070"; return; }
+
+  var payload = { template_id: templateId, subject_override: subject };
+  if (day) { payload.day_override = day; payload.week_number = null; }
+  else { payload.week_number = week; payload.day_override = null; }
+
+  var res = await apiCall("PUT", "/classes/" + _scClassId + "/schedule/" + slotId, payload);
+  if (res && res.success) {
+    msgEl.textContent = "✅ Saved!"; msgEl.style.color = "#7fd67f";
+    setTimeout(function(){ closeEditSlot(); loadSchedule(); }, 800);
+  } else {
+    msgEl.textContent = "❌ " + (res && res.error ? res.error : "Save failed");
+    msgEl.style.color = "#f07070";
+  }
 }
 
 async function duplicateSchedule(){
@@ -2377,5 +2439,41 @@ async function saveEmailTemplate() {
 }
 
 </script>
+<!-- EDIT SCHEDULE SLOT MODAL -->
+<div id="sc-edit-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
+  <div style="background:#1a2a45;border:1px solid #2a4a7f;border-radius:12px;padding:28px 32px;width:100%;max-width:520px;box-shadow:0 24px 60px rgba(0,0,0,0.5);">
+    <h3 style="color:#fff;font-size:1.1rem;margin:0 0 20px;font-weight:700;">✏️ Edit Scheduled Email</h3>
+    <input type="hidden" id="sc-edit-slot-id">
+    <div style="display:grid;gap:14px;">
+      <div>
+        <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Email Template</label>
+        <select id="sc-edit-template" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;"></select>
+      </div>
+      <div>
+        <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Subject Override (optional)</label>
+        <input type="text" id="sc-edit-subject" placeholder="Leave blank to use template default" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Week #</label>
+          <input type="number" id="sc-edit-week" min="1" placeholder="e.g. 2" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
+        </div>
+        <div>
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Or Day # Override</label>
+          <input type="number" id="sc-edit-day" min="1" placeholder="e.g. 14" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
+        </div>
+      </div>
+      <div style="font-size:0.78rem;color:#8a9bb8;background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.2);border-radius:6px;padding:8px 12px;">
+        💡 Enter <strong>Week #</strong> for weekly cadence (Week 2 = Day 8, Week 3 = Day 15…) or <strong>Day #</strong> for a specific day override. Clear both to unset.
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:22px;">
+      <span id="sc-edit-msg" style="font-size:0.82rem;font-weight:700;flex:1;"></span>
+      <button onclick="closeEditSlot()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#aaa;padding:9px 18px;border-radius:6px;cursor:pointer;font-size:0.85rem;">Cancel</button>
+      <button onclick="saveEditSlot()" style="background:#c9a227;color:#0f1e3c;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:0.85rem;font-weight:700;">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
