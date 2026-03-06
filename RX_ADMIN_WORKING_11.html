@@ -1765,8 +1765,10 @@ async function saveScheduleStartDate(){
   var val=document.getElementById("sc-start-input").value;
   if(!val){alert("Please pick a start date.");return;}
   var res=await apiCall("PUT","/classes/"+_scClassId+"/start-date",{start_date:val});
-  if(res&&res.success) toast("✅ Start date saved — "+val);
-  else toast("❌ Could not save start date");
+  if(res&&res.success){
+    toast("✅ Start date saved — "+val);
+    await loadSchedule(); // re-render slots with updated dates
+  } else toast("❌ Could not save start date");
 }
 
 async function populateTemplateDropdown(){
