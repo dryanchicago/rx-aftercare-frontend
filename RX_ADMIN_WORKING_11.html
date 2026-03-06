@@ -1699,7 +1699,7 @@ async function downloadScheduleXlsx() {
     if (startDate) {
       var d = new Date(startDate.getTime());
       d.setDate(d.getDate() + dayNum - 1);
-      sendDate = d.toLocaleDateString("en-US", { year:"numeric", month:"short", day:"numeric" });
+      sendDate = d.toLocaleDateString("en-US", { weekday:"short", year:"numeric", month:"short", day:"numeric" });
     }
     var subject = s.subject_override || s.template_subject || "";
     rows.push([className, weekLabel, sendLabel, sendDate, s.template_name || "", subject]);
@@ -1741,7 +1741,7 @@ function renderSlotList(slots, startDateStr){
     var sendDateStr="";
     if(startDate){
       var d=new Date(startDate.getTime()); d.setDate(d.getDate()+dayNum-1);
-      sendDateStr=d.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+      sendDateStr=d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
     }
     var dayNote=sendDateStr?sendDateStr:(s.day_override?"day override":"day "+dayNum);
     var subject=s.subject_override||s.template_subject;
