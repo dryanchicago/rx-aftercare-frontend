@@ -1692,7 +1692,7 @@ async function downloadScheduleXlsx() {
   // Build rows — Class | System Set Week | Send Day | Send Date | Email Template | Subject Line
   var rows = [["Class", "System Set Week", "Send Day", "Send Date", "Email Template", "Subject Line"]];
   slots.forEach(function(s) {
-    var dayNum = s.day_override ? s.day_override : ((s.week_number - 1) * 7 + 1);
+    var dayNum = s.day_override ? s.day_override : (s.week_number * 7 + 1);
     var weekLabel = s.day_override ? ("Day " + s.day_override) : ("Week " + s.week_number);
     var sendLabel = s.day_override ? ("Day " + s.day_override) : ((s.week_number - 1) + " Week");
     var sendDate = "";
@@ -1737,7 +1737,7 @@ function renderSlotList(slots, startDateStr){
   var startDate = startDateStr ? parseLocalDate(startDateStr) : null;
   list.innerHTML=slots.map(function(s){
     var dayLabel=s.day_override?"Day "+s.day_override:"Week "+s.week_number;
-    var dayNum=s.day_override?s.day_override:((s.week_number-1)*7+1);
+    var dayNum=s.day_override?s.day_override:(s.week_number*7+1);
     var sendDateStr="";
     if(startDate){
       var d=new Date(startDate.getTime()); d.setDate(d.getDate()+dayNum-1);
