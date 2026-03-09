@@ -1747,7 +1747,7 @@ function renderSlotList(slots, startDateStr){
     var subject=s.subject_override||s.template_subject;
     return '<div class="sc-slot" id="sc-slot-'+s.id+'"><div class="sc-slot-row">'
       +'<div class="sc-slot-day"><strong>'+dayLabel+'</strong><span>'+dayNote+'</span></div>'
-      +'<div class="sc-slot-info"><div class="sc-slot-name">'+esc(s.template_name)+'</div><div class="sc-slot-subject">'+esc(subject||"")+'</div></div>'
+      +'<div class="sc-slot-info"><div class="sc-slot-name">'+esc(s.template_name)+(s.html_body_override?'<span title="Custom content for this class" style="font-size:0.65rem;font-weight:700;background:rgba(201,162,39,0.2);border:1px solid rgba(201,162,39,0.5);color:#c9a227;border-radius:4px;padding:2px 6px;margin-left:6px;">CUSTOM</span>':'')+'</div><div class="sc-slot-subject">'+esc(subject||"")+'</div></div>'
       +'<div class="sc-slot-stats">'
       +'<div class="sc-slot-stat"><strong>'+(s.sends_total||0)+'</strong><span>Sent</span></div>'
       +'<div class="sc-slot-stat"><strong>'+(s.opens_total||0)+'</strong><span>Opens</span></div>'
@@ -1823,42 +1823,151 @@ async function deleteSlot(slotId){
 }
 
 // ── Edit slot ────────────────────────────────────────────────────────────
+// ── Edit slot modal state ─────────────────────────────────────────────────────
+var _editSlotData        = null;   // full slot object currently being edited
+var _editContentLoaded   = false;  // whether Edit Content tab was opened this session
+var _editContentCleared  = false;  // user explicitly clicked Clear Override
+
 function openEditSlot(slotId, slot) {
+  _editSlotData       = slot;
+  _editContentLoaded  = false;
+  _editContentCleared = false;
+
   document.getElementById("sc-edit-slot-id").value = slotId;
-  document.getElementById("sc-edit-week").value = slot.week_number || "";
-  document.getElementById("sc-edit-day").value = slot.day_override || "";
+  document.getElementById("sc-edit-week").value    = slot.week_number || "";
+  document.getElementById("sc-edit-day").value     = slot.day_override || "";
   document.getElementById("sc-edit-subject").value = slot.subject_override || "";
-  // populate template dropdown then set current value
+
+  // Populate template dropdown
   var sel = document.getElementById("sc-edit-template");
   sel.innerHTML = document.getElementById("sc-add-template").innerHTML;
   sel.value = slot.template_id || "";
+
+  // Reset to Settings tab
+  switchEditTab("settings");
+
+  // Show override badge if one exists
+  var clearBtn = document.getElementById("sc-clear-override-btn");
+  if (clearBtn) clearBtn.style.display = slot.html_body_override ? "inline-block" : "none";
+
   document.getElementById("sc-edit-modal").style.display = "flex";
   document.getElementById("sc-edit-msg").textContent = "";
 }
 
+function switchEditTab(tab) {
+  var isSettings = tab === "settings";
+  document.getElementById("sc-tab-settings-panel").style.display = isSettings ? "block" : "none";
+  document.getElementById("sc-tab-content-panel").style.display  = isSettings ? "none"  : "block";
+
+  var btnS = document.getElementById("sc-tab-btn-settings");
+  var btnC = document.getElementById("sc-tab-btn-content");
+  btnS.style.background = isSettings ? "#c9a227" : "rgba(255,255,255,0.07)";
+  btnS.style.color      = isSettings ? "#0f1e3c" : "#8a9bb8";
+  btnC.style.background = isSettings ? "rgba(255,255,255,0.07)" : "#c9a227";
+  btnC.style.color      = isSettings ? "#8a9bb8" : "#0f1e3c";
+
+  if (!isSettings && !_editContentLoaded) {
+    loadEditContentEditor();
+  }
+}
+
+async function loadEditContentEditor() {
+  _editContentLoaded = true;
+
+  var loadingEl  = document.getElementById("sc-content-loading");
+  var wrapEl     = document.getElementById("sc-content-editor-wrap");
+  var clearBtn   = document.getElementById("sc-clear-override-btn");
+
+  loadingEl.style.display = "block";
+  wrapEl.style.display    = "none";
+
+  // Destroy any existing instance for this editor
+  if (tinymce.get("sc-edit-content")) { tinymce.get("sc-edit-content").remove(); }
+
+  // Prefer the class-level override; fall back to the global template body
+  var html = "";
+  if (_editSlotData && _editSlotData.html_body_override) {
+    html = _editSlotData.html_body_override;
+  } else {
+    // Fetch global template HTML from the API
+    var templateId = parseInt(document.getElementById("sc-edit-template").value) || (_editSlotData && _editSlotData.template_id);
+    if (templateId) {
+      var data = await apiCall("GET", "/email-templates/" + templateId);
+      if (data && data.success && data.template) {
+        html = data.template.html_body || "";
+      }
+    }
+  }
+
+  loadingEl.style.display = "none";
+  wrapEl.style.display    = "block";
+  if (clearBtn) clearBtn.style.display = (_editSlotData && _editSlotData.html_body_override) ? "inline-block" : "none";
+
+  // Strip to body content if full HTML document
+  var bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  var editorContent = bodyMatch ? bodyMatch[1] : html;
+
+  tinymce.init({
+    selector:    "#sc-edit-content",
+    height:      420,
+    menubar:     false,
+    branding:    false,
+    skin:        "oxide-dark",
+    content_css: "dark",
+    toolbar: "bold italic underline | forecolor | fontselect fontsizeselect | bullist numlist | link unlink | removeformat",
+    plugins: "lists link",
+    setup: function(ed) {
+      ed.on("init", function() { ed.setContent(editorContent); });
+    }
+  });
+}
+
+function clearContentOverride() {
+  if (!confirm("Remove the content override for this slot? Students will receive the global template going forward.")) return;
+  _editContentCleared = true;
+  _editSlotData.html_body_override = null;
+  if (tinymce.get("sc-edit-content")) { tinymce.get("sc-edit-content").setContent(""); }
+  var clearBtn = document.getElementById("sc-clear-override-btn");
+  if (clearBtn) clearBtn.style.display = "none";
+  document.getElementById("sc-edit-msg").textContent = "Override will be cleared on Save.";
+  document.getElementById("sc-edit-msg").style.color = "#c9a227";
+}
+
 function closeEditSlot() {
+  if (tinymce.get("sc-edit-content")) { tinymce.get("sc-edit-content").remove(); }
+  _editSlotData      = null;
+  _editContentLoaded = false;
   document.getElementById("sc-edit-modal").style.display = "none";
 }
 
 async function saveEditSlot() {
-  var slotId = document.getElementById("sc-edit-slot-id").value;
+  var slotId     = document.getElementById("sc-edit-slot-id").value;
   var templateId = parseInt(document.getElementById("sc-edit-template").value) || null;
-  var week = parseInt(document.getElementById("sc-edit-week").value) || null;
-  var day = parseInt(document.getElementById("sc-edit-day").value) || null;
-  var subject = document.getElementById("sc-edit-subject").value.trim() || null;
-  var msgEl = document.getElementById("sc-edit-msg");
+  var week       = parseInt(document.getElementById("sc-edit-week").value) || null;
+  var day        = parseInt(document.getElementById("sc-edit-day").value) || null;
+  var subject    = document.getElementById("sc-edit-subject").value.trim() || null;
+  var msgEl      = document.getElementById("sc-edit-msg");
 
-  if (!templateId) { msgEl.textContent="Please select a template."; msgEl.style.color="#f07070"; return; }
-  if (!week && !day) { msgEl.textContent="Please enter a week or day number."; msgEl.style.color="#f07070"; return; }
+  if (!templateId) { msgEl.textContent = "Please select a template."; msgEl.style.color = "#f07070"; return; }
+  if (!week && !day) { msgEl.textContent = "Please enter a week or day number."; msgEl.style.color = "#f07070"; return; }
 
   var payload = { template_id: templateId, subject_override: subject };
   if (day) { payload.day_override = day; payload.week_number = null; }
-  else { payload.week_number = week; payload.day_override = null; }
+  else     { payload.week_number  = week; payload.day_override = null; }
+
+  // Only include html_body_override in payload if the content tab was touched
+  if (_editContentCleared) {
+    payload.html_body_override = null;
+  } else if (_editContentLoaded) {
+    var ed = tinymce.get("sc-edit-content");
+    payload.html_body_override = ed ? ed.getContent() : null;
+  }
+  // If neither: html_body_override key is absent → backend leaves existing value untouched
 
   var res = await apiCall("PUT", "/classes/" + _scClassId + "/schedule/" + slotId, payload);
   if (res && res.success) {
     msgEl.textContent = "✅ Saved!"; msgEl.style.color = "#7fd67f";
-    setTimeout(function(){ closeEditSlot(); loadSchedule(); }, 800);
+    setTimeout(function() { closeEditSlot(); loadSchedule(); }, 800);
   } else {
     msgEl.textContent = "❌ " + (res && res.error ? res.error : "Save failed");
     msgEl.style.color = "#f07070";
@@ -2442,34 +2551,60 @@ async function saveEmailTemplate() {
 
 </script>
 <!-- EDIT SCHEDULE SLOT MODAL -->
-<div id="sc-edit-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;">
-  <div style="background:#1a2a45;border:1px solid #2a4a7f;border-radius:12px;padding:28px 32px;width:100%;max-width:520px;box-shadow:0 24px 60px rgba(0,0,0,0.5);">
-    <h3 style="color:#fff;font-size:1.1rem;margin:0 0 20px;font-weight:700;">✏️ Edit Scheduled Email</h3>
+<div id="sc-edit-modal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.65);align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;">
+  <div style="background:#1a2a45;border:1px solid #2a4a7f;border-radius:12px;padding:28px 32px;width:100%;max-width:720px;box-shadow:0 24px 60px rgba(0,0,0,0.5);margin:auto;">
+    <h3 style="color:#fff;font-size:1.1rem;margin:0 0 18px;font-weight:700;">✏️ Edit Scheduled Email</h3>
     <input type="hidden" id="sc-edit-slot-id">
-    <div style="display:grid;gap:14px;">
-      <div>
-        <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Email Template</label>
-        <select id="sc-edit-template" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;"></select>
-      </div>
-      <div>
-        <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Subject Override (optional)</label>
-        <input type="text" id="sc-edit-subject" placeholder="Leave blank to use template default" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+
+    <!-- Tab nav -->
+    <div style="display:flex;border-bottom:2px solid #2a4a7f;margin-bottom:22px;gap:4px;">
+      <button id="sc-tab-btn-settings" onclick="switchEditTab('settings')" style="background:#c9a227;color:#0f1e3c;border:none;padding:8px 20px;border-radius:6px 6px 0 0;cursor:pointer;font-size:0.85rem;font-weight:700;">⚙️ Settings</button>
+      <button id="sc-tab-btn-content" onclick="switchEditTab('content')" style="background:rgba(255,255,255,0.07);color:#8a9bb8;border:none;padding:8px 20px;border-radius:6px 6px 0 0;cursor:pointer;font-size:0.85rem;font-weight:600;">📝 Edit Content</button>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="sc-tab-settings-panel">
+      <div style="display:grid;gap:14px;">
         <div>
-          <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Week #</label>
-          <input type="number" id="sc-edit-week" min="1" placeholder="e.g. 2" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Email Template</label>
+          <select id="sc-edit-template" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;"></select>
         </div>
         <div>
-          <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Or Day # Override</label>
-          <input type="number" id="sc-edit-day" min="1" placeholder="e.g. 14" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
+          <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Subject Override (optional)</label>
+          <input type="text" id="sc-edit-subject" placeholder="Leave blank to use template default" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
         </div>
-      </div>
-      <div style="font-size:0.78rem;color:#8a9bb8;background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.2);border-radius:6px;padding:8px 12px;">
-        💡 Enter <strong>Week #</strong> for weekly cadence (Week 2 = Day 8, Week 3 = Day 15…) or <strong>Day #</strong> for a specific day override. Clear both to unset.
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Week #</label>
+            <input type="number" id="sc-edit-week" min="1" placeholder="e.g. 2" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
+          </div>
+          <div>
+            <label style="display:block;font-size:0.75rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;">Or Day # Override</label>
+            <input type="number" id="sc-edit-day" min="1" placeholder="e.g. 14" style="width:100%;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.88rem;">
+          </div>
+        </div>
+        <div style="font-size:0.78rem;color:#8a9bb8;background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.2);border-radius:6px;padding:8px 12px;">
+          💡 Enter <strong>Week #</strong> for weekly cadence (Week 2 = Day 8, Week 3 = Day 15…) or <strong>Day #</strong> for a specific day override. Clear both to unset.
+        </div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:22px;">
+
+    <!-- EDIT CONTENT TAB -->
+    <div id="sc-tab-content-panel" style="display:none;">
+      <div id="sc-content-loading" style="color:#8a9bb8;font-size:0.88rem;padding:16px 0;">Loading template content…</div>
+      <div id="sc-content-editor-wrap" style="display:none;">
+        <textarea id="sc-edit-content"></textarea>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:0.78rem;color:#8a9bb8;background:rgba(201,162,39,0.08);border:1px solid rgba(201,162,39,0.2);border-radius:6px;padding:8px 12px;flex:1;">
+            📌 Changes here apply to <strong>this class only</strong>. The global template is unchanged. Students receive the overridden content.
+          </div>
+          <button id="sc-clear-override-btn" onclick="clearContentOverride()" style="background:rgba(240,112,112,0.15);border:1px solid rgba(240,112,112,0.4);color:#f07070;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:0.8rem;white-space:nowrap;">🗑 Clear Override</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:22px;border-top:1px solid #2a4a7f;padding-top:18px;">
       <span id="sc-edit-msg" style="font-size:0.82rem;font-weight:700;flex:1;"></span>
       <button onclick="closeEditSlot()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);color:#aaa;padding:9px 18px;border-radius:6px;cursor:pointer;font-size:0.85rem;">Cancel</button>
       <button onclick="saveEditSlot()" style="background:#c9a227;color:#0f1e3c;border:none;padding:9px 22px;border-radius:6px;cursor:pointer;font-size:0.85rem;font-weight:700;">Save Changes</button>
