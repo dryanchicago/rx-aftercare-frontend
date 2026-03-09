@@ -1663,6 +1663,7 @@ async function executeFindReplace(){
 
 
 var _scClassId=null, _scClassName="", _scStartDate=null;
+var _scSlotMap={}; // keyed by slot id — avoids JSON.stringify in onclick
 
 async function openSchedule(classId,className,durationDays){
   _scClassId=classId; _scClassName=className;
@@ -1733,6 +1734,9 @@ async function loadSchedule(){
 
 function renderSlotList(slots, startDateStr){
   var list=document.getElementById("sc-slot-list"); if(!list) return;
+  // Store all slot data in a map so onclick only needs the id
+  _scSlotMap={};
+  slots.forEach(function(s){ _scSlotMap[s.id]=s; });
   if(!slots.length){list.innerHTML='<div class="sc-empty">No emails scheduled yet. Add your first one below.</div>';return;}
   var startDate = startDateStr ? parseLocalDate(startDateStr) : null;
   list.innerHTML=slots.map(function(s){
@@ -1754,7 +1758,7 @@ function renderSlotList(slots, startDateStr){
       +'<div class="sc-slot-stat"><strong>'+(s.clicks_total||0)+'</strong><span>Clicks</span></div>'
       +'</div>'
       +'<div class="sc-slot-actions">'
-      +'<button class="sc-btn-icon" title="Edit slot" onclick="openEditSlot('+s.id+','+JSON.stringify(s).replace(/'/g,"&#39;")+')">✏️</button>'
+      +'<button class="sc-btn-icon" title="Edit slot" onclick="openEditSlot('+s.id+')">✏️</button>'
       +'<button class="sc-btn-icon" title="View student detail" onclick="loadSlotStats('+s.id+')">📊</button>'
       +'<button class="sc-btn-icon del" title="Remove" onclick="deleteSlot('+s.id+')">✕</button>'
       +'</div></div></div>';
@@ -1828,7 +1832,9 @@ var _editSlotData        = null;   // full slot object currently being edited
 var _editContentLoaded   = false;  // whether Edit Content tab was opened this session
 var _editContentCleared  = false;  // user explicitly clicked Clear Override
 
-function openEditSlot(slotId, slot) {
+function openEditSlot(slotId) {
+  var slot = _scSlotMap[slotId];
+  if (!slot) { console.error('openEditSlot: slot not found for id', slotId); return; }
   _editSlotData       = slot;
   _editContentLoaded  = false;
   _editContentCleared = false;
