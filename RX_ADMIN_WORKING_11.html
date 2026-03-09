@@ -1914,16 +1914,27 @@ async function loadEditContentEditor() {
   var editorContent = bodyMatch ? bodyMatch[1] : html;
 
   tinymce.init({
-    selector:    "#sc-edit-content",
-    height:      420,
-    menubar:     false,
-    branding:    false,
-    skin:        "oxide-dark",
-    content_css: "dark",
-    toolbar: "bold italic underline | forecolor | fontselect fontsizeselect | bullist numlist | link unlink | removeformat",
-    plugins: "lists link",
+    selector:             "#sc-edit-content",
+    height:               420,
+    menubar:              false,
+    branding:             false,
+    skin:                 "oxide-dark",
+    content_css:          "dark",
+    toolbar:              "bold italic underline | forecolor | fontselect fontsizeselect | bullist numlist | link unlink | removeformat",
+    plugins:              "lists link",
+    link_context_toolbar: true,
+    link_assume_external_targets: true,
+    default_link_target:  "_blank",
     setup: function(ed) {
       ed.on("init", function() { ed.setContent(editorContent); });
+      // Prevent link clicks from navigating — select the link instead
+      ed.on("click", function(e) {
+        var target = e.target;
+        if (target.nodeName === "A") {
+          e.preventDefault();
+          ed.selection.select(target);
+        }
+      });
     }
   });
 }
