@@ -1942,12 +1942,13 @@ async function loadEditContentEditor() {
           var current = target.getAttribute("href") || "";
           var newUrl = window.prompt("Edit link URL:", current);
           if (newUrl !== null) {
-            // null = cancelled; empty string = remove href
             if (newUrl.trim() === "") {
               ed.execCommand("unlink");
             } else {
-              target.setAttribute("href", newUrl.trim());
-              target.setAttribute("target", "_blank");
+              // Use TinyMCE's own DOM API so the internal model stays in sync
+              ed.dom.setAttrib(target, "href", newUrl.trim());
+              ed.dom.setAttrib(target, "target", "_blank");
+              ed.nodeChanged(); // tell TinyMCE the content changed
             }
           }
         }
@@ -1967,8 +1968,9 @@ async function loadEditContentEditor() {
               ed.execCommand("unlink");
             } else {
               if (anchor) {
-                anchor.setAttribute("href", newUrl.trim());
-                anchor.setAttribute("target", "_blank");
+                ed.dom.setAttrib(anchor, "href", newUrl.trim());
+                ed.dom.setAttrib(anchor, "target", "_blank");
+                ed.nodeChanged();
               } else {
                 ed.execCommand("mceInsertLink", false, { href: newUrl.trim(), target: "_blank" });
               }
