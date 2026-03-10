@@ -631,6 +631,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#141e30;color:#e8e8e8;mi
         <div class="sc-divider"></div>
         <label>Copy from:</label>
         <select id="sc-copy-source"></select>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;color:#8a9bb8;cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="sc-copy-overrides" style="accent-color:#c9a227;width:14px;height:14px;cursor:pointer;">
+          Copy content overrides
+        </label>
         <button class="sc-btn-sm gold" onclick="duplicateSchedule()">Copy Schedule</button>
       </div>
       <div class="sc-slot-list" id="sc-slot-list">
@@ -1993,9 +1997,13 @@ async function saveEditSlot() {
 
 async function duplicateSchedule(){
   var sourceId=parseInt(document.getElementById("sc-copy-source").value);
+  var copyOverrides=document.getElementById("sc-copy-overrides").checked;
   if(!sourceId){alert("Please select a source class.");return;}
-  if(!confirm("This will REPLACE the current schedule with the selected class's schedule. Continue?")) return;
-  var res=await apiCall("POST","/classes/"+_scClassId+"/schedule/duplicate-from/"+sourceId);
+  var confirmMsg="This will REPLACE the current schedule with the selected class\'s schedule."
+    +(copyOverrides?" Content overrides will also be copied.":" Content overrides will NOT be copied — each slot will use the global template.")
+    +"\n\nContinue?";
+  if(!confirm(confirmMsg)) return;
+  var res=await apiCall("POST","/classes/"+_scClassId+"/schedule/duplicate-from/"+sourceId,{copy_overrides:copyOverrides});
   if(res&&res.success){toast("✅ Schedule copied — "+res.slots_copied+" slots");await loadSchedule();}
   else alert(res&&res.error?res.error:"Copy failed.");
 }
