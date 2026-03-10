@@ -1591,6 +1591,59 @@ async function sendTestFromEditModal() {
   if (!id) { toast("Save the template first, then send a test."); return; }
   await sendTestEmail(parseInt(id));
 }
+
+async function sendTestSlotEmail(slotId) {
+  var slot = _scSlotMap[slotId];
+  if (!slot) { toast("❌ Slot not found"); return; }
+
+  var to = prompt("Send test email to:", localStorage.getItem("testEmailAddr") || "dryan@graymattersgroup.com");
+  if (!to) return;
+  localStorage.setItem("testEmailAddr", to);
+
+  toast("📧 Loading email content…");
+
+  var html_body, subject;
+
+  if (slot.html_body_override) {
+    // Use the per-slot override content
+    html_body = slot.html_body_override;
+    subject   = slot.subject_override || null;
+    // If no subject override, pull from template
+    if (!subject && slot.template_id) {
+      var tData = await apiCall("GET", "/email-templates/" + slot.template_id);
+      subject = (tData && tData.template) ? tData.template.subject : "Test Email";
+    }
+  } else if (slot.template_id) {
+    // Use the global template
+    var tData = await apiCall("GET", "/email-templates/" + slot.template_id);
+    if (!tData || !tData.template) { toast("❌ Could not load template"); return; }
+    html_body = tData.template.html_body;
+    subject   = tData.template.subject;
+  } else {
+    toast("❌ This slot has no template assigned");
+    return;
+  }
+
+  // Apply subject override if set on the slot
+  if (slot.subject_override) subject = slot.subject_override;
+
+  toast("📧 Sending test email…");
+  var res = await apiCall("POST", "/email-templates/test-send", {
+    to_email:   to,
+    subject:    subject || "Test Email",
+    html_body:  html_body,
+    first_name: "Dave"
+  });
+
+  if (res && res.success) {
+    toast("✅ Test email sent to " + to);
+  } else {
+    var errMsg = res ? (res.error || res.message || JSON.stringify(res)) : "No response";
+    toast("❌ Send failed: " + errMsg);
+    console.error("Slot test send failed:", res);
+  }
+}
+
 var _prevTemplateId = null;
 async function previewTemplate(id){
   _prevTemplateId = id;
@@ -1766,6 +1819,7 @@ function renderSlotList(slots, startDateStr){
       +'</div>'
       +'<div class="sc-slot-actions">'
       +'<button class="sc-btn-icon" title="Edit slot" onclick="openEditSlot('+s.id+')">✏️</button>'
+      +'<button class="sc-btn-icon" title="Send test email" onclick="sendTestSlotEmail('+s.id+')">📧</button>'
       +'<button class="sc-btn-icon" title="View student detail" onclick="loadSlotStats('+s.id+')">📊</button>'
       +'<button class="sc-btn-icon del" title="Remove" onclick="deleteSlot('+s.id+')">✕</button>'
       +'</div></div></div>';
@@ -1927,7 +1981,7 @@ async function loadEditContentEditor() {
     branding:             false,
     skin:                 "oxide-dark",
     content_css:          "dark",
-    toolbar:              "bold italic underline | forecolor | fontselect fontsizeselect | bullist numlist | editlink unlink | removeformat",
+    toolbar:              "bold italic underline | forecolor | fontselect fontsizeselect | bullist numlist | editlink testlink unlink | removeformat",
     plugins:              "lists link",
     link_context_toolbar: false,
     setup: function(ed) {
@@ -1954,7 +2008,21 @@ async function loadEditContentEditor() {
         }
       });
 
-      // Custom editlink toolbar button — works on selected text too
+      // Test link — opens current link href in new tab
+      ed.ui.registry.addButton("testlink", {
+        icon:    "new-tab",
+        tooltip: "Test Link (open in new tab)",
+        onAction: function() {
+          var node   = ed.selection.getNode();
+          var anchor = node.nodeName === "A" ? node : ed.dom.getParent(node, "a");
+          var href   = anchor ? anchor.getAttribute("href") : null;
+          if (href) {
+            window.open(href, "_blank");
+          } else {
+            alert("Click on a link first, then press Test Link.");
+          }
+        }
+      });
       ed.ui.registry.addButton("editlink", {
         icon:    "link",
         tooltip: "Insert / Edit Link",
