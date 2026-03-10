@@ -1040,9 +1040,13 @@ async function saveClass(){
 // ============================================================
 async function deleteClass(classId){
   var c=CLASSES.find(function(x){return x.id===classId;}); if(!c) return;
-  if(!confirm("Delete class: \""+c.name+"\"?")) return;
+  var msg="This will permanently delete the class and ALL its schedule slots." +
+    "\n\nType the exact class name to confirm deletion:\n\n" + c.name;
+  var entered=window.prompt(msg);
+  if(entered===null) return;
+  if(entered.trim()!==c.name.trim()){ alert("Class name did not match. Deletion cancelled."); return; }
   var result=await apiCall("DELETE","/classes/"+classId);
-  if(result!==null){toast("✅ Class deleted.");if(editingClassId===classId)cancelEdit();await refreshClasses();}
+  if(result!==null){toast("Class deleted.");if(editingClassId===classId)cancelEdit();await refreshClasses();}
 }
 async function duplicateClass(classId){
   var result=await apiCall("POST","/classes/"+classId+"/duplicate");
