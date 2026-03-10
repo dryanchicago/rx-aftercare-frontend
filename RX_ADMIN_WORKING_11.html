@@ -1984,7 +1984,12 @@ async function saveEditSlot() {
     payload.html_body_override = null;
   } else if (_editContentLoaded) {
     var ed = tinymce.get("sc-edit-content");
-    payload.html_body_override = ed ? ed.getContent() : null;
+    if (ed) {
+      ed.save(); // flush any pending link/content changes to the textarea
+      payload.html_body_override = ed.getContent();
+    } else {
+      payload.html_body_override = null;
+    }
   }
   // If neither: html_body_override key is absent → backend leaves existing value untouched
 
