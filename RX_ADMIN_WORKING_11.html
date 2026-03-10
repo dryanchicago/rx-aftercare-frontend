@@ -1927,19 +1927,53 @@ async function loadEditContentEditor() {
     branding:             false,
     skin:                 "oxide-dark",
     content_css:          "dark",
-    toolbar:              "bold italic underline | forecolor | fontselect fontsizeselect | bullist numlist | link unlink | removeformat",
+    toolbar:              "bold italic underline | forecolor | fontselect fontsizeselect | bullist numlist | editlink unlink | removeformat",
     plugins:              "lists link",
-    link_context_toolbar: true,
-    link_assume_external_targets: true,
-    default_link_target:  "_blank",
+    link_context_toolbar: false,
     setup: function(ed) {
       ed.on("init", function() { ed.setContent(editorContent); });
-      // Prevent link clicks from navigating — select the link instead
+
+      // Clicking a link selects it and prompts for new URL inline
       ed.on("click", function(e) {
-        var target = e.target;
-        if (target.nodeName === "A") {
+        var target = e.target.closest ? e.target.closest("a") : (e.target.nodeName === "A" ? e.target : null);
+        if (target) {
           e.preventDefault();
           ed.selection.select(target);
+          var current = target.getAttribute("href") || "";
+          var newUrl = window.prompt("Edit link URL:", current);
+          if (newUrl !== null) {
+            // null = cancelled; empty string = remove href
+            if (newUrl.trim() === "") {
+              ed.execCommand("unlink");
+            } else {
+              target.setAttribute("href", newUrl.trim());
+              target.setAttribute("target", "_blank");
+            }
+          }
+        }
+      });
+
+      // Custom editlink toolbar button — works on selected text too
+      ed.ui.registry.addButton("editlink", {
+        icon:    "link",
+        tooltip: "Insert / Edit Link",
+        onAction: function() {
+          var node   = ed.selection.getNode();
+          var anchor = node.nodeName === "A" ? node : ed.dom.getParent(node, "a");
+          var current = anchor ? (anchor.getAttribute("href") || "") : "";
+          var newUrl  = window.prompt("Enter link URL:", current);
+          if (newUrl !== null) {
+            if (newUrl.trim() === "") {
+              ed.execCommand("unlink");
+            } else {
+              if (anchor) {
+                anchor.setAttribute("href", newUrl.trim());
+                anchor.setAttribute("target", "_blank");
+              } else {
+                ed.execCommand("mceInsertLink", false, { href: newUrl.trim(), target: "_blank" });
+              }
+            }
+          }
         }
       });
     }
