@@ -2,787 +2,445 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rx Aftercare — Sponsor Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#0d1f3c;color:#cdd9e8;min-height:100vh}
 
-  :root {
-    --navy:    #0F1E3C;
-    --navy-lt: #162847;
-    --navy-md: #1C3358;
-    --gold:    #C9A227;
-    --gold-lt: #E8C84A;
-    --blue:    #2A5298;
-    --white:   #FFFFFF;
-    --off:     #F4F6FA;
-    --muted:   #8A9BB8;
-    --border:  rgba(255,255,255,0.08);
-    --success: #27AE60;
-    --warn:    #E67E22;
-  }
+/* ── LOGIN PAGE ─────────────────────────────────────── */
+#loginPage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-card{background:#111827;border:1px solid #1e3a5f;border-radius:12px;padding:40px;width:100%;max-width:420px;text-align:center}
+.login-logo{font-size:2rem;font-weight:800;color:#c9a227;letter-spacing:2px;margin-bottom:6px}
+.login-sub{color:#8a9bb8;font-size:0.85rem;margin-bottom:30px}
+.login-card label{display:block;text-align:left;font-size:0.8rem;font-weight:700;color:#8a9bb8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;margin-top:16px}
+.login-card input{width:100%;background:#0d1f3c;border:1px solid #2a4a6e;border-radius:6px;padding:10px 14px;color:#cdd9e8;font-size:0.95rem;outline:none}
+.login-card input:focus{border-color:#c9a227}
+#loginError{color:#f07070;font-size:0.83rem;margin-top:10px;min-height:18px}
+.btn-login{width:100%;margin-top:20px;background:#c9a227;color:#0d1f3c;border:none;border-radius:6px;padding:12px;font-size:1rem;font-weight:700;cursor:pointer;transition:background .15s}
+.btn-login:hover{background:#e0b82e}
+.btn-login:disabled{background:#555;cursor:not-allowed}
 
-  html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--off); color: var(--navy); }
+/* ── APP SHELL ──────────────────────────────────────── */
+#app{display:none;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;background:#111827;border-bottom:1px solid #1e3a5f;padding:0 24px;height:56px}
+.topbar-brand{font-size:1.1rem;font-weight:800;color:#c9a227;letter-spacing:1px}
+.topbar-user{display:flex;align-items:center;gap:12px;font-size:0.85rem;color:#8a9bb8}
+.btn-logout{background:none;border:1px solid #2a4a6e;color:#8a9bb8;border-radius:5px;padding:5px 12px;cursor:pointer;font-size:0.8rem;transition:border-color .15s,color .15s}
+.btn-logout:hover{border-color:#c9a227;color:#c9a227}
+.main{padding:28px 24px;max-width:1100px;margin:0 auto}
 
-  /* ── Top bar ── */
-  .topbar {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-    height: 64px;
-    background: var(--navy);
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 32px;
-    border-bottom: 1px solid rgba(255,255,255,0.07);
-    box-shadow: 0 2px 20px rgba(0,0,0,0.3);
-  }
-  .topbar-left { display: flex; align-items: center; gap: 14px; }
-  .rx-badge {
-    width: 36px; height: 36px;
-    background: var(--gold);
-    border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'DM Serif Display', serif;
-    font-size: 16px;
-    color: var(--navy);
-    font-weight: 700;
-  }
-  .topbar-title {
-    font-size: 15px; font-weight: 600; color: var(--white);
-  }
-  .topbar-sub {
-    font-size: 12px; color: var(--muted); margin-top: 1px;
-  }
-  .topbar-right { display: flex; align-items: center; gap: 20px; }
-  .sponsor-name {
-    text-align: right;
-  }
-  .sponsor-name .name {
-    font-size: 14px; font-weight: 600; color: var(--white);
-  }
-  .sponsor-name .role {
-    font-size: 11px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.07em;
-  }
-  .btn-signout {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
-    color: var(--muted);
-    padding: 7px 14px;
-    border-radius: 7px;
-    font-size: 12px;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-signout:hover { background: rgba(255,255,255,0.1); color: var(--white); }
+/* ── BACK BUTTON ──────────────────────────────────────── */
+.btn-back{background:none;border:none;color:#8a9bb8;cursor:pointer;font-size:0.85rem;padding:0;margin-bottom:18px;display:inline-flex;align-items:center;gap:6px;transition:color .15s}
+.btn-back:hover{color:#c9a227}
 
-  /* ── Main layout ── */
-  .main {
-    margin-top: 64px;
-    min-height: calc(100vh - 64px);
-    display: flex;
-  }
+/* ── SECTION TITLES ─────────────────────────────────── */
+.page-title{font-size:1.35rem;font-weight:700;color:#e8eef5;margin-bottom:6px}
+.page-sub{font-size:0.85rem;color:#8a9bb8;margin-bottom:24px}
 
-  /* ── Sidebar ── */
-  .sidebar {
-    width: 240px;
-    flex-shrink: 0;
-    background: var(--navy);
-    border-right: 1px solid rgba(255,255,255,0.06);
-    padding: 24px 0;
-    position: fixed;
-    top: 64px; left: 0; bottom: 0;
-    overflow-y: auto;
-  }
-  .sidebar-section {
-    padding: 0 16px;
-    margin-bottom: 8px;
-  }
-  .sidebar-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(138,155,184,0.5);
-    padding: 16px 8px 8px;
-  }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 12px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.15s;
-    color: var(--muted);
-    font-size: 14px;
-    font-weight: 500;
-    margin-bottom: 2px;
-  }
-  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--white); }
-  .nav-item.active {
-    background: rgba(201,162,39,0.12);
-    color: var(--gold);
-    border: 1px solid rgba(201,162,39,0.2);
-  }
-  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+/* ── CLASS CARDS ─────────────────────────────────────── */
+#classGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.class-card{background:#111827;border:1px solid #1e3a5f;border-radius:10px;padding:20px;cursor:pointer;transition:border-color .15s,transform .1s}
+.class-card:hover{border-color:#c9a227;transform:translateY(-2px)}
+.class-card-name{font-size:1rem;font-weight:700;color:#e8eef5;margin-bottom:4px}
+.class-card-client{font-size:0.82rem;color:#8a9bb8;margin-bottom:14px}
+.class-stats-row{display:flex;gap:14px;flex-wrap:wrap}
+.stat-pill{background:#0d1f3c;border-radius:6px;padding:7px 12px;text-align:center;flex:1;min-width:70px}
+.stat-pill .stat-val{font-size:1.15rem;font-weight:800;color:#c9a227}
+.stat-pill .stat-lbl{font-size:0.68rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.3px;margin-top:2px}
 
-  /* Class selector in sidebar */
-  .class-selector { padding: 0 16px; margin-bottom: 8px; }
-  .class-selector select {
-    width: 100%;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
-    color: var(--white);
-    padding: 9px 12px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-family: 'DM Sans', sans-serif;
-    cursor: pointer;
-    outline: none;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238A9BB8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 10px center;
-  }
-  .class-selector select:focus { border-color: var(--gold); }
-  .class-selector select option { background: var(--navy-lt); }
+/* ── PROGRESS BAR ───────────────────────────────────── */
+.pbar-wrap{width:100%;background:#1a2e4a;border-radius:20px;height:7px;overflow:hidden;margin-top:14px}
+.pbar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,#c9a227,#e0b82e);transition:width .4s}
+.pbar-fill.low{background:linear-gradient(90deg,#e05c5c,#f07070)}
+.pbar-fill.mid{background:linear-gradient(90deg,#e08a27,#e0b82e)}
 
-  /* ── Content area ── */
-  .content {
-    margin-left: 240px;
-    flex: 1;
-    padding: 32px;
-    min-height: calc(100vh - 64px);
-  }
+/* ── DETAIL VIEW ─────────────────────────────────────── */
+.detail-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px}
+.summary-pills{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.summary-pill{background:#111827;border:1px solid #1e3a5f;border-radius:8px;padding:12px 18px;text-align:center;min-width:120px}
+.summary-pill .val{font-size:1.5rem;font-weight:800;color:#c9a227}
+.summary-pill .lbl{font-size:0.72rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.4px;margin-top:4px}
 
-  /* ── Page header ── */
-  .page-header {
-    margin-bottom: 32px;
-    animation: fadeIn 0.4s ease both;
-  }
-  .page-header h2 {
-    font-family: 'DM Serif Display', serif;
-    font-size: 28px;
-    font-weight: 400;
-    color: var(--navy);
-    margin-bottom: 4px;
-  }
-  .page-header p { font-size: 14px; color: #666; }
+/* ── STUDENT TABLE ──────────────────────────────────── */
+.table-wrap{background:#111827;border:1px solid #1e3a5f;border-radius:10px;overflow:hidden;margin-bottom:24px}
+.student-table{width:100%;border-collapse:collapse}
+.student-table th{background:#1f3358;color:#8a9bb8;font-size:0.72rem;padding:10px 14px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.student-table td{padding:10px 14px;border-bottom:1px solid #1a2e4a;font-size:0.85rem;vertical-align:middle}
+.student-table tr:last-child td{border-bottom:none}
+.student-table tr:hover td{background:rgba(201,162,39,.05)}
+.student-name{font-weight:600;color:#e8eef5}
+.student-email{font-size:0.77rem;color:#8a9bb8}
+.pct-badge{display:inline-block;font-size:0.78rem;font-weight:700;padding:3px 8px;border-radius:12px;min-width:44px;text-align:center}
+.pct-high{background:rgba(39,174,96,.15);color:#5dbd7d}
+.pct-mid{background:rgba(201,162,39,.15);color:#c9a227}
+.pct-low{background:rgba(224,92,92,.15);color:#f07070}
+.mini-bar-wrap{width:80px;background:#1a2e4a;border-radius:10px;height:5px;display:inline-block;vertical-align:middle;margin-left:6px}
+.mini-bar-fill{height:100%;border-radius:10px;background:#c9a227}
 
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+/* ── NUDGE ──────────────────────────────────────────── */
+.nudge-card{background:#111827;border:1px solid #1e3a5f;border-radius:10px;padding:22px;margin-bottom:24px}
+.nudge-card h3{font-size:0.95rem;font-weight:700;color:#e8eef5;margin-bottom:14px}
+.nudge-card label{display:block;font-size:0.78rem;color:#8a9bb8;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;margin-top:12px}
+.nudge-card input,.nudge-card textarea{width:100%;background:#0d1f3c;border:1px solid #2a4a6e;border-radius:6px;padding:9px 12px;color:#cdd9e8;font-size:0.9rem;outline:none;font-family:inherit}
+.nudge-card input:focus,.nudge-card textarea:focus{border-color:#c9a227}
+.nudge-card textarea{resize:vertical;min-height:90px}
+.btn-nudge{background:#c9a227;color:#0d1f3c;border:none;border-radius:6px;padding:10px 22px;font-size:0.9rem;font-weight:700;cursor:pointer;margin-top:14px;transition:background .15s}
+.btn-nudge:hover{background:#e0b82e}
+.btn-nudge:disabled{background:#555;color:#888;cursor:not-allowed}
+#nudgeStatus{margin-top:10px;font-size:0.83rem;min-height:18px}
+.nudge-ok{color:#5dbd7d}.nudge-err{color:#f07070}
 
-  /* ── Stat cards ── */
-  .stat-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    margin-bottom: 32px;
-  }
-  .stat-card {
-    background: var(--white);
-    border-radius: 14px;
-    padding: 24px;
-    border: 1px solid #E8ECF2;
-    box-shadow: 0 2px 8px rgba(15,30,60,0.05);
-    transition: box-shadow 0.2s, transform 0.2s;
-    animation: fadeIn 0.4s ease both;
-  }
-  .stat-card:hover { box-shadow: 0 6px 20px rgba(15,30,60,0.10); transform: translateY(-2px); }
-  .stat-card:nth-child(2) { animation-delay: 0.05s; }
-  .stat-card:nth-child(3) { animation-delay: 0.10s; }
-  .stat-card:nth-child(4) { animation-delay: 0.15s; }
-  .stat-icon {
-    width: 40px; height: 40px;
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-    margin-bottom: 16px;
-  }
-  .stat-icon.blue  { background: rgba(42,82,152,0.10); }
-  .stat-icon.gold  { background: rgba(201,162,39,0.12); }
-  .stat-icon.green { background: rgba(39,174,96,0.10); }
-  .stat-icon.warn  { background: rgba(230,126,34,0.10); }
-  .stat-label { font-size: 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #999; margin-bottom: 6px; }
-  .stat-value { font-family: 'DM Serif Display', serif; font-size: 36px; color: var(--navy); line-height: 1; }
-  .stat-sub   { font-size: 12px; color: #999; margin-top: 4px; }
-  .stat-value.skeleton, .stat-sub.skeleton {
-    background: #E8ECF2; border-radius: 4px; color: transparent;
-    animation: shimmer 1.4s infinite;
-  }
-  .stat-value.skeleton { width: 60px; height: 36px; display: block; }
-  .stat-sub.skeleton { width: 80px; height: 14px; display: block; margin-top: 8px; }
+/* ── EMPTY / LOADING ─────────────────────────────────── */
+.empty-msg{color:#8a9bb8;font-size:0.87rem;padding:24px 0;text-align:center}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid #2a4a6e;border-top-color:#c9a227;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-  @keyframes shimmer {
-    0%   { opacity: 1; }
-    50%  { opacity: 0.4; }
-    100% { opacity: 1; }
-  }
-
-  /* ── Content panels ── */
-  .panel {
-    background: var(--white);
-    border-radius: 14px;
-    border: 1px solid #E8ECF2;
-    box-shadow: 0 2px 8px rgba(15,30,60,0.05);
-    margin-bottom: 24px;
-    animation: fadeIn 0.5s ease both;
-    animation-delay: 0.2s;
-  }
-  .panel-header {
-    padding: 20px 24px 16px;
-    border-bottom: 1px solid #F0F3F8;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .panel-title {
-    font-size: 15px; font-weight: 700; color: var(--navy);
-  }
-  .panel-sub { font-size: 12px; color: #999; margin-top: 2px; }
-  .panel-body { padding: 24px; }
-
-  /* ── Empty / loading states ── */
-  .empty-state {
-    text-align: center; padding: 48px 24px; color: #999;
-  }
-  .empty-state .icon { font-size: 36px; margin-bottom: 12px; }
-  .empty-state p { font-size: 14px; }
-
-  /* ── Class list (for overview) ── */
-  .class-list { display: flex; flex-direction: column; gap: 12px; }
-  .class-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 20px;
-    background: var(--off);
-    border-radius: 10px;
-    border: 1px solid #E8ECF2;
-    transition: all 0.2s;
-    cursor: pointer;
-  }
-  .class-row:hover { background: #EAF0FB; border-color: #BFD0EE; }
-  .class-row-left {}
-  .class-row-name { font-size: 14px; font-weight: 600; color: var(--navy); }
-  .class-row-meta { font-size: 12px; color: #888; margin-top: 3px; }
-  .class-row-right { display: flex; align-items: center; gap: 16px; }
-  .class-badge {
-    font-size: 12px; font-weight: 600;
-    padding: 4px 12px; border-radius: 20px;
-  }
-  .class-badge.active { background: rgba(39,174,96,0.1); color: #1E8449; }
-  .class-badge.upcoming { background: rgba(42,82,152,0.1); color: var(--blue); }
-  .class-badge.ended { background: #F0F0F0; color: #888; }
-
-  /* ── Progress bar ── */
-  .prog-wrap { width: 120px; }
-  .prog-label { font-size: 11px; color: #888; margin-bottom: 4px; text-align: right; }
-  .prog-bar { height: 6px; background: #E8ECF2; border-radius: 3px; overflow: hidden; }
-  .prog-fill { height: 100%; border-radius: 3px; background: var(--gold); transition: width 0.6s ease; }
-
-  /* ── Section view visibility ── */
-  .view { display: none; }
-  .view.active { display: block; }
-
-  /* ── No classes state ── */
-  .no-classes {
-    text-align: center; padding: 80px 40px;
-    background: var(--white); border-radius: 14px; border: 1px solid #E8ECF2;
-  }
-  .no-classes .big-icon { font-size: 48px; margin-bottom: 16px; }
-  .no-classes h3 { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--navy); margin-bottom: 8px; }
-  .no-classes p { font-size: 14px; color: #888; }
-
-  /* ── Password modal ── */
-  .modal-overlay {
-    display: none; position: fixed; inset: 0; z-index: 200;
-    background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
-    align-items: center; justify-content: center;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--white); border-radius: 16px; padding: 36px;
-    width: 100%; max-width: 420px; box-shadow: 0 24px 60px rgba(0,0,0,0.3);
-    animation: fadeIn 0.2s ease both;
-  }
-  .modal h3 { font-size: 18px; font-weight: 700; color: var(--navy); margin-bottom: 20px; }
-  .modal-field { margin-bottom: 16px; }
-  .modal-field label { display: block; font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
-  .modal-field input { width: 100%; border: 1px solid #DDE3EE; border-radius: 8px; padding: 11px 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; outline: none; }
-  .modal-field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(42,82,152,0.1); }
-  .modal-actions { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
-  .btn-cancel { background: #F0F3F8; border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; color: #666; }
-  .btn-cancel:hover { background: #E0E6F0; }
-  .btn-save { background: var(--navy); color: var(--white); border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-family: 'DM Sans', sans-serif; cursor: pointer; font-weight: 600; }
-  .btn-save:hover { background: var(--blue); }
-  .modal-msg { font-size: 13px; text-align: center; margin-top: 12px; min-height: 20px; }
-  .modal-msg.error { color: #C0392B; }
-  .modal-msg.success { color: var(--success); }
-
-  /* ── Toast ── */
-  .toast {
-    position: fixed; bottom: 24px; right: 24px; z-index: 300;
-    background: var(--navy); color: var(--white);
-    padding: 12px 20px; border-radius: 10px;
-    font-size: 14px; font-weight: 500;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
-    transform: translateY(80px); opacity: 0;
-    transition: all 0.3s ease;
-    pointer-events: none;
-  }
-  .toast.show { transform: translateY(0); opacity: 1; }
-  .toast.gold { border-left: 4px solid var(--gold); }
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1f3358;color:#cdd9e8;padding:10px 22px;border-radius:8px;font-size:0.88rem;box-shadow:0 4px 18px rgba(0,0,0,.4);z-index:9999;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
 </style>
 </head>
 <body>
 
-<!-- ── Top bar ── -->
-<div class="topbar">
-  <div class="topbar-left">
-    <div class="rx-badge">Rx</div>
-    <div>
-      <div class="topbar-title">Rx Aftercare</div>
-      <div class="topbar-sub">Sponsor Dashboard</div>
-    </div>
-  </div>
-  <div class="topbar-right">
-    <div class="sponsor-name">
-      <div class="name" id="topSponsorName">Loading…</div>
-      <div class="role">Executive Sponsor</div>
-    </div>
-    <button class="btn-signout" onclick="signOut()">Sign Out</button>
+<!-- ── LOGIN ─────────────────────────────────────────────────────────── -->
+<div id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">RX</div>
+    <div class="login-sub">Sponsor Dashboard — Rx Aftercare</div>
+    <label>Email Address</label>
+    <input type="email" id="loginEmail" placeholder="you@company.com" autocomplete="username">
+    <label>Password</label>
+    <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    <div id="loginError"></div>
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">Sign In</button>
   </div>
 </div>
 
-<!-- ── Main ── -->
-<div class="main">
-
-  <!-- ── Sidebar ── -->
-  <div class="sidebar">
-    <div class="sidebar-label" style="padding: 12px 24px 8px;">Your Program</div>
-    <div class="class-selector">
-      <select id="classSelect" onchange="onClassChange()">
-        <option value="">Loading classes…</option>
-      </select>
-    </div>
-
-    <div style="margin-top: 16px;">
-      <div class="sidebar-section">
-        <div class="nav-item active" id="nav-overview" onclick="showView('overview')">
-          <span class="nav-icon">📊</span> Overview
-        </div>
-        <div class="nav-item" id="nav-students" onclick="showView('students')">
-          <span class="nav-icon">👥</span> Students
-        </div>
-        <div class="nav-item" id="nav-emails" onclick="showView('emails')">
-          <span class="nav-icon">📧</span> Email Schedule
-        </div>
-        <div class="nav-item" id="nav-nudge" onclick="showView('nudge')">
-          <span class="nav-icon">✉️</span> Send Nudge
-        </div>
-      </div>
-
-      <div style="border-top: 1px solid rgba(255,255,255,0.06); margin: 16px 16px;"></div>
-
-      <div class="sidebar-section">
-        <div class="nav-item" onclick="openPasswordModal()">
-          <span class="nav-icon">🔑</span> Change Password
-        </div>
-      </div>
-    </div>
-
-    <!-- Sponsor info at bottom of sidebar -->
-    <div style="position: absolute; bottom: 24px; left: 16px; right: 16px;">
-      <div style="background: rgba(201,162,39,0.08); border: 1px solid rgba(201,162,39,0.15); border-radius: 10px; padding: 12px 14px;">
-        <div style="font-size: 11px; color: var(--gold); font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px;">Sponsor</div>
-        <div id="sidebarSponsorName" style="font-size: 13px; color: #fff; font-weight: 500;">—</div>
-        <div id="sidebarSponsorClient" style="font-size: 12px; color: var(--muted); margin-top: 2px;">—</div>
-      </div>
+<!-- ── APP ───────────────────────────────────────────────────────────── -->
+<div id="app">
+  <div class="topbar">
+    <div class="topbar-brand">RX AFTERCARE</div>
+    <div class="topbar-user">
+      <span id="topbarName"></span>
+      <button class="btn-logout" onclick="doLogout()">Sign Out</button>
     </div>
   </div>
 
-  <!-- ── Content ── -->
-  <div class="content" id="mainContent">
+  <div class="main">
 
-    <!-- Loading state -->
-    <div id="loadingState" style="text-align:center; padding: 80px 40px; color: #888;">
-      <div style="font-size: 32px; margin-bottom: 16px;">⏳</div>
-      <p style="font-size: 14px;">Loading your dashboard…</p>
+    <!-- CLASS LIST VIEW -->
+    <div id="viewClasses">
+      <div class="page-title">Your Classes</div>
+      <div class="page-sub">Click a class to view student progress and engagement.</div>
+      <div id="classGrid"><p class="empty-msg"><span class="spinner"></span>Loading classes…</p></div>
     </div>
 
-    <!-- No classes assigned -->
-    <div id="noClassesState" class="no-classes" style="display:none;">
-      <div class="big-icon">📋</div>
-      <h3>No classes assigned yet</h3>
-      <p>Your GMG program manager will assign you to a class once it's set up.<br>Check back soon or reach out to <strong>rxsupport@graymattersgroup.com</strong>.</p>
-    </div>
-
-    <!-- ── Overview view ── -->
-    <div class="view active" id="view-overview">
-      <div class="page-header">
-        <h2 id="overviewTitle">Program Overview</h2>
-        <p id="overviewSub">Loading class data…</p>
-      </div>
-
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-icon blue">👥</div>
-          <div class="stat-label">Enrolled Students</div>
-          <div class="stat-value skeleton" id="stat-students">—</div>
-          <div class="stat-sub skeleton" id="stat-students-sub"> </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon gold">📅</div>
-          <div class="stat-label">Program Day</div>
-          <div class="stat-value skeleton" id="stat-day">—</div>
-          <div class="stat-sub skeleton" id="stat-day-sub"> </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon green">✅</div>
-          <div class="stat-label">Emails Sent</div>
-          <div class="stat-value skeleton" id="stat-emails">—</div>
-          <div class="stat-sub skeleton" id="stat-emails-sub"> </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon warn">⏰</div>
-          <div class="stat-label">Days Remaining</div>
-          <div class="stat-value skeleton" id="stat-remaining">—</div>
-          <div class="stat-sub skeleton" id="stat-remaining-sub"> </div>
+    <!-- CLASS DETAIL VIEW -->
+    <div id="viewDetail" style="display:none">
+      <button class="btn-back" onclick="showClasses()">← Back to Classes</button>
+      <div class="detail-header">
+        <div>
+          <div class="page-title" id="detailClassName"></div>
+          <div class="page-sub" id="detailClassSub"></div>
         </div>
       </div>
 
-      <!-- Class info panel -->
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Class Information</div>
-            <div class="panel-sub">Details for the selected program cohort</div>
-          </div>
-        </div>
-        <div class="panel-body" id="classInfoBody">
-          <div class="empty-state"><div class="icon">📋</div><p>Select a class to view details</p></div>
-        </div>
+      <!-- Summary pills -->
+      <div class="summary-pills">
+        <div class="summary-pill"><div class="val" id="sumStudents">–</div><div class="lbl">Students</div></div>
+        <div class="summary-pill"><div class="val" id="sumCompletion">–</div><div class="lbl">Avg Completion</div></div>
+        <div class="summary-pill"><div class="val" id="sumOpenRate">–</div><div class="lbl">Avg Open Rate</div></div>
+        <div class="summary-pill"><div class="val" id="sumScheduled">–</div><div class="lbl">Emails Scheduled</div></div>
       </div>
 
-      <!-- Coming soon panels -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">Student Progress</div>
-              <div class="panel-sub">Activity completion by student</div>
-            </div>
-            <span style="font-size: 11px; background: rgba(42,82,152,0.1); color: var(--blue); padding: 4px 10px; border-radius: 20px; font-weight: 600;">Phase 2</span>
-          </div>
-          <div class="panel-body">
-            <div class="empty-state"><div class="icon">📈</div><p>Coming in Phase 2</p></div>
-          </div>
-        </div>
-        <div class="panel">
-          <div class="panel-header">
-            <div>
-              <div class="panel-title">Email Engagement</div>
-              <div class="panel-sub">Open & click rates</div>
-            </div>
-            <span style="font-size: 11px; background: rgba(42,82,152,0.1); color: var(--blue); padding: 4px 10px; border-radius: 20px; font-weight: 600;">Phase 2</span>
-          </div>
-          <div class="panel-body">
-            <div class="empty-state"><div class="icon">📬</div><p>Coming in Phase 2</p></div>
-          </div>
-        </div>
+      <!-- Student table -->
+      <div class="table-wrap">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Emails Received</th>
+              <th>Program Progress</th>
+              <th>Opens</th>
+              <th>Open Rate</th>
+              <th>Clicks</th>
+              <th>Last Email</th>
+            </tr>
+          </thead>
+          <tbody id="studentTableBody">
+            <tr><td colspan="7" class="empty-msg"><span class="spinner"></span>Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
-    </div>
 
-    <!-- ── Students view ── -->
-    <div class="view" id="view-students">
-      <div class="page-header">
-        <h2>Students</h2>
-        <p>Enrolled participants in this class</p>
-      </div>
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title" id="studentsTitle">Student List</div>
-          <span style="font-size: 11px; background: rgba(42,82,152,0.1); color: var(--blue); padding: 4px 10px; border-radius: 20px; font-weight: 600;">Phase 2</span>
-        </div>
-        <div class="panel-body">
-          <div class="empty-state"><div class="icon">👥</div><p>Individual student progress and activity counts coming in Phase 2.</p></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Email schedule view ── -->
-    <div class="view" id="view-emails">
-      <div class="page-header">
-        <h2>Email Schedule</h2>
-        <p>Automated emails for this program</p>
-      </div>
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Scheduled Emails</div>
-          <span style="font-size: 11px; background: rgba(42,82,152,0.1); color: var(--blue); padding: 4px 10px; border-radius: 20px; font-weight: 600;">Phase 2</span>
-        </div>
-        <div class="panel-body">
-          <div class="empty-state"><div class="icon">📧</div><p>Email schedule history coming in Phase 2.</p></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Nudge view ── -->
-    <div class="view" id="view-nudge">
-      <div class="page-header">
-        <h2>Send a Nudge</h2>
-        <p>Send a custom email to all students in this class</p>
-      </div>
-      <div class="panel">
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Compose Message</div>
-            <div class="panel-sub" id="nudgeRecipientSub">Select a class to send a nudge</div>
-          </div>
-        </div>
-        <div class="panel-body">
-          <div class="empty-state"><div class="icon">✉️</div><p>Nudge / custom email send coming in Phase 2.</p></div>
-        </div>
+      <!-- Nudge panel -->
+      <div class="nudge-card">
+        <h3>✉️ Send a Message to All Students</h3>
+        <label>Subject</label>
+        <input type="text" id="nudgeSubject" placeholder="e.g. Keep up the great work!">
+        <label>Message</label>
+        <textarea id="nudgeMessage" placeholder="Write your message here. Students will receive it by email…"></textarea>
+        <button class="btn-nudge" id="nudgeBtn" onclick="sendNudge()">📤 Send to All Students</button>
+        <div id="nudgeStatus"></div>
       </div>
     </div>
 
   </div>
 </div>
 
-<!-- ── Password Modal ── -->
-<div class="modal-overlay" id="passwordModal">
-  <div class="modal">
-    <h3>🔑 Change Password</h3>
-    <div class="modal-field">
-      <label>Current Password</label>
-      <input type="password" id="pwCurrent" placeholder="••••••••">
-    </div>
-    <div class="modal-field">
-      <label>New Password</label>
-      <input type="password" id="pwNew" placeholder="Minimum 8 characters">
-    </div>
-    <div class="modal-field">
-      <label>Confirm New Password</label>
-      <input type="password" id="pwConfirm" placeholder="Repeat new password">
-    </div>
-    <div class="modal-msg" id="pwMsg"></div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closePasswordModal()">Cancel</button>
-      <button class="btn-save" onclick="changePassword()">Update Password</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Toast ── -->
-<div class="toast gold" id="toast"></div>
+<div class="toast" id="toast"></div>
 
 <script>
-  const API = 'https://rx-aftercare-backend-production.up.railway.app';
+var API = 'https://rx-aftercare-backend-production.up.railway.app/api';
+var sponsorToken = null;
+var sponsorInfo  = null;
+var currentClassId = null;
 
-  let _token    = null;
-  let _sponsor  = null;
-  let _classes  = [];
-  let _activeClassId = null;
-  let _currentView = 'overview';
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+function getSavedToken() {
+  try { return sessionStorage.getItem('sponsorToken'); } catch(e) { return null; }
+}
+function saveToken(t) {
+  try { sessionStorage.setItem('sponsorToken', t); } catch(e) {}
+}
+function clearToken() {
+  try { sessionStorage.removeItem('sponsorToken'); } catch(e) {}
+}
 
-  // ── Auth guard ──────────────────────────────────────────────────────────
-  function init() {
-    _token = localStorage.getItem('sponsor_token');
-    if (!_token) { window.location.href = 'sponsor-login.html'; return; }
-    try {
-      const payload = JSON.parse(atob(_token.split('.')[1]));
-      if (payload.exp * 1000 < Date.now()) { signOut(); return; }
-    } catch(e) { signOut(); return; }
-
-    const stored = localStorage.getItem('sponsor_data');
-    if (stored) {
-      _sponsor = JSON.parse(stored);
-      renderSponsorInfo();
-    }
-    loadClasses();
-  }
-
-  function renderSponsorInfo() {
-    document.getElementById('topSponsorName').textContent = _sponsor.name || _sponsor.email;
-    document.getElementById('sidebarSponsorName').textContent = _sponsor.name || '—';
-    document.getElementById('sidebarSponsorClient').textContent = _sponsor.client || _sponsor.title || '—';
-  }
-
-  function signOut() {
-    localStorage.removeItem('sponsor_token');
-    localStorage.removeItem('sponsor_data');
-    window.location.href = 'sponsor-login.html';
-  }
-
-  // ── API helper ───────────────────────────────────────────────────────────
-  async function api(path, opts = {}) {
-    const res = await fetch(`${API}${path}`, {
-      ...opts,
-      headers: { 'Authorization': `Bearer ${_token}`, 'Content-Type': 'application/json', ...(opts.headers || {}) }
+async function doLogin() {
+  var email = (document.getElementById('loginEmail').value||'').trim();
+  var pass  = (document.getElementById('loginPassword').value||'').trim();
+  var errEl = document.getElementById('loginError');
+  var btn   = document.getElementById('loginBtn');
+  errEl.textContent = '';
+  if (!email || !pass) { errEl.textContent = 'Email and password are required.'; return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    var r = await fetch(API + '/sponsors/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
     });
-    if (res.status === 401) { signOut(); return null; }
-    return res.json();
+    var data = await r.json();
+    if (!r.ok || !data.token) {
+      errEl.textContent = data.error || 'Invalid email or password.';
+      btn.disabled = false; btn.textContent = 'Sign In';
+      return;
+    }
+    sponsorToken = data.token;
+    sponsorInfo  = data.sponsor;
+    saveToken(sponsorToken);
+    showApp();
+  } catch(e) {
+    errEl.textContent = 'Connection error. Please try again.';
+    btn.disabled = false; btn.textContent = 'Sign In';
   }
+}
 
-  // ── Load classes ─────────────────────────────────────────────────────────
-  async function loadClasses() {
-    const data = await api('/api/sponsors/classes');
-    if (!data) return;
+function doLogout() {
+  sponsorToken = null; sponsorInfo = null;
+  clearToken();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginPage').style.display = 'flex';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').textContent = '';
+  document.getElementById('loginBtn').disabled = false;
+  document.getElementById('loginBtn').textContent = 'Sign In';
+}
 
-    _classes = data.classes || [];
-    document.getElementById('loadingState').style.display = 'none';
+// ── APP INIT ─────────────────────────────────────────────────────────────────
+async function showApp() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('topbarName').textContent =
+    (sponsorInfo.name || sponsorInfo.email) + ' (' + (sponsorInfo.client || 'Sponsor') + ')';
+  showClasses();
+}
 
-    const sel = document.getElementById('classSelect');
+function showClasses() {
+  document.getElementById('viewClasses').style.display = 'block';
+  document.getElementById('viewDetail').style.display = 'none';
+  loadClasses();
+}
 
-    if (!_classes.length) {
-      document.getElementById('noClassesState').style.display = 'block';
-      document.getElementById('view-overview').style.display  = 'none';
-      sel.innerHTML = '<option value="">No classes assigned</option>';
+// ── CLASSES ──────────────────────────────────────────────────────────────────
+async function loadClasses() {
+  var grid = document.getElementById('classGrid');
+  grid.innerHTML = '<p class="empty-msg"><span class="spinner"></span>Loading classes…</p>';
+  try {
+    var r = await apiFetch('GET', '/sponsors/classes');
+    var classes = r.classes || [];
+    if (!classes.length) {
+      grid.innerHTML = '<p class="empty-msg">No classes assigned to your account yet.</p>';
+      return;
+    }
+    grid.innerHTML = classes.map(function(c) {
+      var startLabel = c.start_date
+        ? 'Started ' + new Date(c.start_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+        : 'Start date not set';
+      return '<div class="class-card" onclick="openClass(' + c.id + ')">'
+        + '<div class="class-card-name">' + esc(c.name) + '</div>'
+        + '<div class="class-card-client">' + esc(c.client || 'No client') + ' &bull; ' + startLabel + '</div>'
+        + '<div class="class-stats-row">'
+        + '<div class="stat-pill"><div class="stat-val">' + (c.student_count||0) + '</div><div class="stat-lbl">Students</div></div>'
+        + '<div class="stat-pill"><div class="stat-val">' + (c.duration_days||90) + '</div><div class="stat-lbl">Days</div></div>'
+        + '</div>'
+        + '</div>';
+    }).join('');
+  } catch(e) {
+    grid.innerHTML = '<p class="empty-msg">Failed to load classes. Please refresh.</p>';
+  }
+}
+
+// ── CLASS DETAIL ─────────────────────────────────────────────────────────────
+async function openClass(classId) {
+  currentClassId = classId;
+  document.getElementById('viewClasses').style.display = 'none';
+  document.getElementById('viewDetail').style.display = 'block';
+  document.getElementById('detailClassName').textContent = 'Loading…';
+  document.getElementById('detailClassSub').textContent = '';
+  document.getElementById('studentTableBody').innerHTML =
+    '<tr><td colspan="7" class="empty-msg"><span class="spinner"></span>Loading students…</td></tr>';
+  document.getElementById('nudgeStatus').textContent = '';
+
+  try {
+    var r = await apiFetch('GET', '/sponsors/classes/' + classId + '/detail');
+
+    // Header
+    document.getElementById('detailClassName').textContent = r.class.name;
+    var startLabel = r.class.start_date
+      ? 'Started ' + new Date(r.class.start_date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      : 'Start date not set';
+    document.getElementById('detailClassSub').textContent =
+      (r.class.client || '') + (r.class.client ? ' · ' : '') + startLabel + ' · ' + (r.class.duration_days||90) + '-day program';
+
+    // Summary pills
+    document.getElementById('sumStudents').textContent   = r.total_students;
+    document.getElementById('sumCompletion').textContent = r.avg_completion + '%';
+    document.getElementById('sumOpenRate').textContent   = r.avg_open_rate + '%';
+    document.getElementById('sumScheduled').textContent  = r.total_scheduled;
+
+    // Student rows
+    if (!r.students || !r.students.length) {
+      document.getElementById('studentTableBody').innerHTML =
+        '<tr><td colspan="7" class="empty-msg">No students enrolled yet.</td></tr>';
       return;
     }
 
-    sel.innerHTML = _classes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-    _activeClassId = _classes[0].id;
-    loadClassOverview(_activeClassId);
+    document.getElementById('studentTableBody').innerHTML = r.students.map(function(s) {
+      var pctClass = s.completion_pct >= 75 ? 'pct-high' : s.completion_pct >= 40 ? 'pct-mid' : 'pct-low';
+      var orClass  = s.open_rate_pct  >= 50 ? 'pct-high' : s.open_rate_pct  >= 25 ? 'pct-mid' : 'pct-low';
+      var lastEmail = s.last_email_at
+        ? new Date(s.last_email_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})
+        : '—';
+      var barFill = s.completion_pct >= 75 ? '' : s.completion_pct >= 40 ? 'mid' : 'low';
+      return '<tr>'
+        + '<td><div class="student-name">' + esc(s.first_name + ' ' + s.last_name) + '</div>'
+        + '<div class="student-email">' + esc(s.email) + '</div></td>'
+        + '<td>' + s.emails_received + ' / ' + r.total_scheduled + '</td>'
+        + '<td>'
+        +   '<span class="pct-badge ' + pctClass + '">' + s.completion_pct + '%</span>'
+        +   '<span class="mini-bar-wrap"><span class="mini-bar-fill ' + barFill + '" style="width:' + s.completion_pct + '%"></span></span>'
+        + '</td>'
+        + '<td>' + s.emails_opened + '</td>'
+        + '<td><span class="pct-badge ' + orClass + '">' + s.open_rate_pct + '%</span></td>'
+        + '<td>' + s.emails_clicked + '</td>'
+        + '<td>' + lastEmail + '</td>'
+        + '</tr>';
+    }).join('');
+
+  } catch(e) {
+    document.getElementById('detailClassName').textContent = 'Error loading class';
+    document.getElementById('studentTableBody').innerHTML =
+      '<tr><td colspan="7" class="empty-msg">Could not load data. Please try again.</td></tr>';
   }
+}
 
-  function onClassChange() {
-    const sel = document.getElementById('classSelect');
-    _activeClassId = parseInt(sel.value);
-    loadClassOverview(_activeClassId);
+// ── NUDGE ─────────────────────────────────────────────────────────────────────
+async function sendNudge() {
+  var subject = (document.getElementById('nudgeSubject').value||'').trim();
+  var message = (document.getElementById('nudgeMessage').value||'').trim();
+  var status  = document.getElementById('nudgeStatus');
+  var btn     = document.getElementById('nudgeBtn');
+
+  if (!subject || !message) {
+    status.textContent = '⚠️ Subject and message are both required.';
+    status.className = 'nudge-err';
+    return;
   }
+  if (!currentClassId) return;
+  if (!confirm('Send this message to ALL students in this class?')) return;
 
-  // ── Class overview ───────────────────────────────────────────────────────
-  function loadClassOverview(classId) {
-    const cls = _classes.find(c => c.id === classId);
-    if (!cls) return;
+  btn.disabled = true;
+  status.textContent = 'Sending…';
+  status.className = '';
 
-    // Reset skeletons
-    ['stat-students','stat-day','stat-emails','stat-remaining'].forEach(id => {
-      document.getElementById(id).classList.add('skeleton');
-    });
-
-    // Populate what we have from the classes list
-    document.getElementById('overviewTitle').textContent = cls.name;
-    document.getElementById('overviewSub').textContent   = `${cls.client || ''}${cls.start_date ? '  •  Started ' + formatDate(cls.start_date) : ''}`;
-
-    // Student count
-    const studentCount = parseInt(cls.student_count) || 0;
-    setStatCard('stat-students', studentCount, studentCount === 1 ? '1 participant enrolled' : `${studentCount} participants enrolled`);
-
-    // Program day
-    if (cls.start_date) {
-      const start = new Date(cls.start_date);
-      const today = new Date();
-      const dayNum = Math.max(1, Math.floor((today - start) / 86400000) + 1);
-      const duration = cls.duration_days || 90;
-      setStatCard('stat-day', `Day ${dayNum}`, `of ${duration}-day program`);
-      const remaining = Math.max(0, duration - dayNum + 1);
-      setStatCard('stat-remaining', remaining, remaining === 0 ? 'Program complete' : `days left in program`);
+  try {
+    var r = await apiFetch('POST', '/sponsors/classes/' + currentClassId + '/nudge', {subject, message});
+    if (r.success) {
+      status.textContent = '✅ Sent to ' + r.sent + ' student' + (r.sent !== 1 ? 's' : '')
+        + (r.failed > 0 ? ' (' + r.failed + ' failed)' : '') + '.';
+      status.className = 'nudge-ok';
+      document.getElementById('nudgeSubject').value = '';
+      document.getElementById('nudgeMessage').value = '';
     } else {
-      setStatCard('stat-day', '—', 'Start date not set');
-      setStatCard('stat-remaining', '—', 'Start date not set');
+      status.textContent = '❌ ' + (r.error || 'Send failed.');
+      status.className = 'nudge-err';
     }
-
-    // Emails sent — placeholder until Phase 2 backend data route
-    setStatCard('stat-emails', '—', 'Data available in Phase 2');
-
-    // Class info panel
-    document.getElementById('classInfoBody').innerHTML = `
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        ${infoRow('Class Name', cls.name)}
-        ${infoRow('Client', cls.client || '—')}
-        ${infoRow('Start Date', cls.start_date ? formatDate(cls.start_date) : 'Not set')}
-        ${infoRow('Duration', cls.duration_days ? cls.duration_days + ' days' : '—')}
-        ${infoRow('Students Enrolled', studentCount)}
-        ${infoRow('Status', getStatus(cls))}
-      </div>
-    `;
-
-    // Update nudge sub
-    document.getElementById('nudgeRecipientSub').textContent =
-      `Will send to all ${studentCount} students in ${cls.name}`;
+  } catch(e) {
+    status.textContent = '❌ Connection error.';
+    status.className = 'nudge-err';
+  } finally {
+    btn.disabled = false;
   }
+}
 
-  function infoRow(label, value) {
-    return `<div style="background:#F8FAFD; border-radius:8px; padding:14px 16px; border:1px solid #E8ECF2;">
-      <div style="font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:#999; margin-bottom:4px;">${label}</div>
-      <div style="font-size:15px; font-weight:600; color:var(--navy);">${value}</div>
-    </div>`;
+// ── API HELPER ───────────────────────────────────────────────────────────────
+async function apiFetch(method, path, body) {
+  var opts = {
+    method: method,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + sponsorToken
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  var r = await fetch(API + path, opts);
+  if (r.status === 401) { doLogout(); throw new Error('Session expired'); }
+  var data = await r.json();
+  if (!r.ok) throw new Error(data.error || 'API error');
+  return data;
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2800);
+}
+
+// ── AUTO-LOGIN FROM SESSION ───────────────────────────────────────────────────
+(async function init() {
+  var saved = getSavedToken();
+  if (!saved) return;
+  sponsorToken = saved;
+  try {
+    var r = await apiFetch('GET', '/sponsors/me');
+    sponsorInfo = r.sponsor;
+    showApp();
+  } catch(e) {
+    clearToken();
   }
+})();
 
-  function setStatCard(id, value, sub) {
-    const el = document.getElementById(id);
-    el.textContent = value;
-    el.classList.remove('skeleton');
-    const subEl = document.getElementById(id + '-sub');
-    if (subEl) { subEl.textContent = sub; subEl.classList.remove('skeleton'); }
+// Allow Enter key to submit login
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.getElementById('loginPage').style.display !== 'none') {
+    doLogin();
   }
-
-  function getStatus(cls) {
-    if (!cls.start_date) return '<span style="color:#888;">Not started</span>';
-    const start = new Date(cls.start_date);
-    const end   = new Date(start.getTime() + (cls.duration_days || 90) * 86400000);
-    const now   = new Date();
-    if (now < start) return '<span style="color:var(--blue); font-weight:700;">Upcoming</span>';
-    if (now > end)   return '<span style="color:#888; font-weight:700;">Completed</span>';
-    return '<span style="color:#1E8449; font-weight:700;">Active</span>';
-  }
-
-  function formatDate(d) {
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  // ── Navigation ───────────────────────────────────────────────────────────
-  function showView(name) {
-    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('view-' + name).classList.add('active');
-    document.getElementById('nav-' + name).classList.add('active');
-    _currentView = name;
-  }
-
-  // ── Password modal ───────────────────────────────────────────────────────
-  function openPasswordModal() {
-    document.getElementById('passwordModal').classList.add('open');
-    document.getElementById('pwCurrent').value = '';
-    document.getElementById('pwNew').value = '';
-    document.getElementById('pwConfirm').value = '';
-    document.getElementById('pwMsg').textContent = '';
-    document.getElementById('pwMsg').className = 'modal-msg';
-  }
-  function closePasswordModal() {
-    document.getElementById('passwordModal').classList.remove('open');
-  }
-
-  async function changePassword() {
-    const current = document.getElementById('pwCurrent').value;
-    const newPw   = document.getElementById('pwNew').value;
-    const confirm = document.getElementById('pwConfirm').value;
-    const msgEl   = document.getElementById('pwMsg');
-
-    msgEl.className = 'modal-msg';
-    if (!current || !newPw || !confirm) { msgEl.className = 'modal-msg error'; msgEl.textContent = 'All fields are required.'; return; }
-    if (newPw !== confirm) { msgEl.className = 'modal-msg error'; msgEl.textContent = 'New passwords do not match.'; return; }
-    if (newPw.length < 8) { msgEl.className = 'modal-msg error'; msgEl.textContent = 'New password must be at least 8 characters.'; return; }
-
-    const data = await api('/api/sponsors/change-password', {
-      method: 'POST',
-      body: JSON.stringify({ current_password: current, new_password: newPw })
-    });
-    if (!data) return;
-    if (data.error) { msgEl.className = 'modal-msg error'; msgEl.textContent = data.error; return; }
-
-    msgEl.className = 'modal-msg success';
-    msgEl.textContent = '✓ Password updated successfully.';
-    setTimeout(closePasswordModal, 1500);
-    showToast('Password updated ✓');
-  }
-
-  // ── Toast ────────────────────────────────────────────────────────────────
-  function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 3000);
-  }
-
-  // ── Boot ─────────────────────────────────────────────────────────────────
-  init();
+});
 </script>
 </body>
 </html>
