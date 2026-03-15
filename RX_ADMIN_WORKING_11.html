@@ -376,6 +376,16 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#141e30;color:#e8e8e8;mi
         <input type="email" id="classCoach" placeholder="e.g. coach@example.com">
       </div>
       <div class="form-row">
+        <label>Welcome Email</label>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+          <label class="toggle-wrap" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;text-transform:none;font-size:0.9rem;color:#cdd9e8">
+            <input type="checkbox" id="classSendWelcome" checked style="width:18px;height:18px;accent-color:#c9a227;cursor:pointer">
+            Send welcome email to new students
+          </label>
+        </div>
+        <div style="font-size:0.75rem;color:#8a9bb8;margin-top:5px">Turn off for mid-stream imports where students don't need a welcome email.</div>
+      </div>
+      <div class="form-row">
         <label>Client Logo <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#8a9bb8">(optional — appears in generated student dashboard)</span></label>
         <div class="logo-upload-wrap">
           <input type="file" id="logoFile" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
@@ -936,7 +946,7 @@ async function refreshGoals() {
 // ============================================================
 function normalizeClasses(apiClasses) {
   var list=Array.isArray(apiClasses)?apiClasses:(apiClasses&&(apiClasses.classes||apiClasses.data))||[];
-  return list.map(function(c){return{id:c.id,name:c.name||"",client:c.client||"",duration_days:c.duration_days||90,goal_ids:c.goal_ids||[],goal_count:c.goal_count!=null?c.goal_count:(c.goal_ids?c.goal_ids.length:0),coach_email:c.coach_email||""};});
+  return list.map(function(c){return{id:c.id,name:c.name||"",client:c.client||"",duration_days:c.duration_days||90,goal_ids:c.goal_ids||[],goal_count:c.goal_count!=null?c.goal_count:(c.goal_ids?c.goal_ids.length:0),coach_email:c.coach_email||"",send_welcome_email:c.send_welcome_email!==false};});
 }
 function renderClasses() {
   var loading=document.getElementById("classesLoading"); if(loading) loading.style.display="none";
@@ -946,7 +956,7 @@ function renderClasses() {
     var safeName=esc(c.name).replace(/'/g,"&#39;");
     return '<div class="class-card"><div class="class-card-inner"><div>'
       +'<div class="class-name">'+esc(c.name)+'</div>'
-      +'<div class="class-meta"><span>📍 '+esc(c.client||"No client")+'</span><span>🎯 '+c.goal_count+' goal'+(c.goal_count!==1?'s':'')+'</span><span>📅 '+c.duration_days+' days</span>'+(c.coach_email?'<span title="Coach BCC">🎓 '+esc(c.coach_email)+'</span>':'')+'</div>'
+      +'<div class="class-meta"><span>📍 '+esc(c.client||"No client")+'</span><span>🎯 '+c.goal_count+' goal'+(c.goal_count!==1?'s':'')+'</span><span>📅 '+c.duration_days+' days</span>'+(c.coach_email?'<span title="Coach BCC">🎓 '+esc(c.coach_email)+'</span>':'')+(c.send_welcome_email===false?'<span title="Welcome email disabled" style="color:#f07070">✉️ No welcome email</span>':'')+'</div>'
       +'</div><div class="class-actions">'
       +'<button class="btn-sm btn-edit" onclick="editClass('+c.id+')">✏️ Edit</button>'
       +'<button class="btn-sm btn-outline" onclick="duplicateClass('+c.id+')">⧉ Duplicate</button>'
@@ -1009,10 +1019,11 @@ async function saveClass(){
   var client=(document.getElementById("classClient").value||"").trim();
   var duration=parseInt(document.getElementById("classDuration").value)||90;
   var coach_email=(document.getElementById("classCoach").value||"").trim()||null;
+  var send_welcome_email=document.getElementById("classSendWelcome").checked;
   var goal_ids=getCheckedGoalIds();
   if(!name){toast("⚠️ Please enter a class name.");return;}
   if(!goal_ids.length){toast("⚠️ Please select at least one goal.");return;}
-  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,coach_email:coach_email};
+  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,coach_email:coach_email,send_welcome_email:send_welcome_email};
   var result;
   if(editingClassId){
     result=await apiCall("PUT","/classes/"+editingClassId,payload);
@@ -1066,6 +1077,7 @@ async function editClass(classId){
   document.getElementById("classClient").value=cls.client||"";
   document.getElementById("classDuration").value=cls.duration_days||90;
   document.getElementById("classCoach").value=cls.coach_email||"";
+  document.getElementById("classSendWelcome").checked=cls.send_welcome_email!==false;
   document.getElementById("createTitle").textContent="Editing: "+cls.name;
   document.getElementById("saveBtn").textContent="💾 Update Class";
   document.getElementById("cancelBtn").style.display="inline-block";
@@ -1089,6 +1101,7 @@ function cancelEdit(){
   document.getElementById("classClient").value="";
   document.getElementById("classDuration").value="90";
   document.getElementById("classCoach").value="";
+  document.getElementById("classSendWelcome").checked=true;
   document.getElementById("createTitle").textContent="Create New Class";
   document.getElementById("saveBtn").textContent="💾 Save Class";
   document.getElementById("cancelBtn").style.display="none";
