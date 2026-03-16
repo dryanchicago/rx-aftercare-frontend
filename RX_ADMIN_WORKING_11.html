@@ -372,8 +372,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#141e30;color:#e8e8e8;mi
         <input type="number" id="classDuration" value="90" min="1" max="365" style="max-width:100px">
       </div>
       <div class="form-row">
-        <label>Coach Email <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#8a9bb8">(optional — coach will be BCC'd on all student emails for this class)</span></label>
-        <input type="email" id="classCoach" placeholder="e.g. coach@example.com">
+        <label>BCC Recipients <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#8a9bb8">(optional — comma-separated emails for coach, sponsors, or anyone who should receive a copy of student emails)</span></label>
+        <input type="text" id="classCoach" placeholder="e.g. coach@example.com, sponsor@client.com">
       </div>
       <div class="form-row">
         <label>Welcome Email</label>
@@ -946,7 +946,7 @@ async function refreshGoals() {
 // ============================================================
 function normalizeClasses(apiClasses) {
   var list=Array.isArray(apiClasses)?apiClasses:(apiClasses&&(apiClasses.classes||apiClasses.data))||[];
-  return list.map(function(c){return{id:c.id,name:c.name||"",client:c.client||"",duration_days:c.duration_days||90,goal_ids:c.goal_ids||[],goal_count:c.goal_count!=null?c.goal_count:(c.goal_ids?c.goal_ids.length:0),coach_email:c.coach_email||"",send_welcome_email:c.send_welcome_email!==false};});
+  return list.map(function(c){return{id:c.id,name:c.name||"",client:c.client||"",duration_days:c.duration_days||90,goal_ids:c.goal_ids||[],goal_count:c.goal_count!=null?c.goal_count:(c.goal_ids?c.goal_ids.length:0),bcc_emails:c.bcc_emails||"",send_welcome_email:c.send_welcome_email!==false};});
 }
 function renderClasses() {
   var loading=document.getElementById("classesLoading"); if(loading) loading.style.display="none";
@@ -956,7 +956,7 @@ function renderClasses() {
     var safeName=esc(c.name).replace(/'/g,"&#39;");
     return '<div class="class-card"><div class="class-card-inner"><div>'
       +'<div class="class-name">'+esc(c.name)+'</div>'
-      +'<div class="class-meta"><span>📍 '+esc(c.client||"No client")+'</span><span>🎯 '+c.goal_count+' goal'+(c.goal_count!==1?'s':'')+'</span><span>📅 '+c.duration_days+' days</span>'+(c.coach_email?'<span title="Coach BCC">🎓 '+esc(c.coach_email)+'</span>':'')+(c.send_welcome_email===false?'<span title="Welcome email disabled" style="color:#f07070">✉️ No welcome email</span>':'')+'</div>'
+      +'<div class="class-meta"><span>📍 '+esc(c.client||"No client")+'</span><span>🎯 '+c.goal_count+' goal'+(c.goal_count!==1?'s':'')+'</span><span>📅 '+c.duration_days+' days</span>'+(c.bcc_emails?'<span title="BCC Recipients">📧 '+esc(c.bcc_emails)+'</span>':'')+(c.send_welcome_email===false?'<span title="Welcome email disabled" style="color:#f07070">✉️ No welcome email</span>':'')+'</div>'
       +'</div><div class="class-actions">'
       +'<button class="btn-sm btn-edit" onclick="editClass('+c.id+')">✏️ Edit</button>'
       +'<button class="btn-sm btn-outline" onclick="duplicateClass('+c.id+')">⧉ Duplicate</button>'
@@ -1018,12 +1018,12 @@ async function saveClass(){
   var name=(document.getElementById("className").value||"").trim();
   var client=(document.getElementById("classClient").value||"").trim();
   var duration=parseInt(document.getElementById("classDuration").value)||90;
-  var coach_email=(document.getElementById("classCoach").value||"").trim()||null;
+  var bcc_emails=(document.getElementById("classCoach").value||"").trim()||null;
   var send_welcome_email=document.getElementById("classSendWelcome").checked;
   var goal_ids=getCheckedGoalIds();
   if(!name){toast("⚠️ Please enter a class name.");return;}
   if(!goal_ids.length){toast("⚠️ Please select at least one goal.");return;}
-  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,coach_email:coach_email,send_welcome_email:send_welcome_email};
+  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,bcc_emails:bcc_emails,send_welcome_email:send_welcome_email};
   var result;
   if(editingClassId){
     result=await apiCall("PUT","/classes/"+editingClassId,payload);
@@ -1076,7 +1076,7 @@ async function editClass(classId){
   document.getElementById("className").value=cls.name||"";
   document.getElementById("classClient").value=cls.client||"";
   document.getElementById("classDuration").value=cls.duration_days||90;
-  document.getElementById("classCoach").value=cls.coach_email||"";
+  document.getElementById("classCoach").value=cls.bcc_emails||"";
   document.getElementById("classSendWelcome").checked=cls.send_welcome_email!==false;
   document.getElementById("createTitle").textContent="Editing: "+cls.name;
   document.getElementById("saveBtn").textContent="💾 Update Class";
