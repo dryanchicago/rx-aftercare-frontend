@@ -1656,7 +1656,8 @@ async function sendTestSlotEmail(slotId) {
     to_email:   to,
     subject:    subject || "Test Email",
     html_body:  html_body,
-    first_name: "Dave"
+    first_name: "Dave",
+    class_id:   _scClassId
   });
 
   if (res && res.success) {
