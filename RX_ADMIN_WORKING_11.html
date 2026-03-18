@@ -962,7 +962,7 @@ function renderClasses() {
       +'<button class="btn-sm btn-outline" onclick="duplicateClass('+c.id+')">⧉ Duplicate</button>'
       +'<button class="btn-sm btn-primary" onclick="generateDashboard('+c.id+')">📄 Generate Dashboard</button>'
       +'<button class="btn-sm btn-outline" onclick="viewClassStudents('+c.id+')">👥 Students</button>'
-      +'<button class="btn-schedule" onclick="openSchedule('+c.id+',\''+safeName+'\','+c.duration_days+')">📅 Schedule</button>'
+      +'<button class="btn-schedule" onclick="openSchedule('+c.id+')">📅 Schedule</button>'
       +'<button class="btn-sm btn-del" onclick="deleteClass('+c.id+')">🗑</button>'
       +'</div></div></div>';
   }).join("");
@@ -1750,7 +1750,10 @@ async function executeFindReplace(){
 var _scClassId=null, _scClassName="", _scStartDate=null;
 var _scSlotMap={}; // keyed by slot id — avoids JSON.stringify in onclick
 
-async function openSchedule(classId,className,durationDays){
+async function openSchedule(classId){
+  var cls=CLASSES.find(function(c){return c.id===classId;});
+  var className=cls?cls.name:"";
+  var durationDays=cls?cls.duration_days:null;
   _scClassId=classId; _scClassName=className;
   document.getElementById("sc-class-name").textContent="Schedule — "+className;
   document.getElementById("sc-class-meta").textContent=durationDays?durationDays+"-day program":"";
