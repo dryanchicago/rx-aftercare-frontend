@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coach Management — Rx Aftercare Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #f0f2f8;
+      color: #222;
+      min-height: 100vh;
+    }
+    button { font-family: inherit; cursor: pointer; }
+    .hidden { display: none !important; }
+
+    /* ── Top nav ── */
+    .top-nav {
+      background-color: #1a2744;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      color: #fff;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 62px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-left { display: flex; align-items: center; gap: 14px; }
+    .nav-logo  { height: 36px; width: auto; }
+    .nav-divider { width: 1px; height: 28px; background: rgba(255,255,255,0.15); }
+    .nav-title   { font-size: 14px; font-weight: 700; color: #c9a227; }
+    .nav-subtitle{ font-size: 11px; color: #6a7fa8; margin-top: 1px; }
+    .nav-right   { display: flex; align-items: center; gap: 12px; }
+    .nav-back {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .nav-back:hover { background: rgba(255,255,255,0.2); }
+    .nav-logout {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #8899bb;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .nav-logout:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+
+    /* ── Page ── */
+    .page { max-width: 1000px; margin: 0 auto; padding: 32px 24px; }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      gap: 16px;
+    }
+    .page-header h1 { font-size: 22px; font-weight: 800; color: #1a2744; }
+    .page-header p  { font-size: 14px; color: #888; margin-top: 4px; }
+
+    .btn-primary {
+      background: #c9a227;
+      color: #fff;
+      border: none;
+      padding: 11px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .btn-primary:hover { background: #b8943e; }
+    .btn-secondary {
+      background: transparent;
+      color: #1a2744;
+      border: 1.5px solid #1a2744;
+      padding: 11px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .btn-secondary:hover { background: #1a2744; color: #fff; }
+
+    /* ── Coach table ── */
+    .table-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(26,39,68,0.08);
+      overflow: hidden;
+    }
+    .table-card table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .table-card th {
+      background: #1a2744;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    .table-card td {
+      padding: 13px 16px;
+      border-bottom: 1px solid #f0f2f8;
+      vertical-align: middle;
+    }
+    .table-card tr:last-child td { border-bottom: none; }
+    .table-card tr:hover td { background: #f8f9fc; }
+
+    .coach-name  { font-weight: 700; color: #1a2744; }
+    .coach-email { font-size: 12px; color: #666; margin-top: 2px; }
+    .coach-meta  { font-size: 11px; color: #aaa; margin-top: 1px; }
+
+    .pill-list { display: flex; flex-wrap: wrap; gap: 5px; }
+    .pill {
+      background: #e8f0fe;
+      color: #1a4daa;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .pill-none { font-size: 12px; color: #bbb; font-style: italic; }
+
+    .row-actions { display: flex; gap: 6px; }
+    .btn-edit {
+      background: #1a2744; color: #fff; border: none;
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 12px; font-weight: 700;
+    }
+    .btn-edit:hover { background: #253660; }
+    .btn-students {
+      background: #c9a227; color: #fff; border: none;
+      padding: 6px 14px; border-radius: 6px;
+      font-size: 12px; font-weight: 700;
+    }
+    .btn-students:hover { background: #b8943e; }
+    .btn-delete {
+      background: none; color: #c0392b;
+      border: 1px solid #c0392b;
+      padding: 6px 12px; border-radius: 6px;
+      font-size: 12px;
+    }
+    .btn-delete:hover { background: #fef0ee; }
+
+    .table-empty {
+      text-align: center;
+      padding: 52px;
+      color: #aaa;
+    }
+    .table-empty strong { display: block; font-size: 16px; color: #1a2744; margin-bottom: 6px; }
+
+    /* ── Shared modal base ── */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(12,22,48,0.6);
+      z-index: 500;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-y: auto;
+      padding: 48px 16px;
+    }
+    .modal.open { display: flex; }
+    .modal-panel {
+      background: #fff;
+      border-radius: 12px;
+      width: 100%;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.3);
+    }
+    .modal-header {
+      background: #1a2744;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      padding: 20px 28px;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .modal-header h2   { font-size: 17px; font-weight: 700; color: #fff; margin: 0; }
+    .modal-header .sub { font-size: 12px; color: #8899bb; margin-top: 3px; }
+    .modal-close {
+      background: none; border: none; color: #fff;
+      font-size: 22px; cursor: pointer;
+      padding: 2px 8px; border-radius: 4px; line-height: 1;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.15); }
+    .modal-body   { padding: 24px 28px; }
+    .modal-footer {
+      padding: 16px 28px 24px;
+      display: flex; gap: 10px; align-items: center;
+    }
+
+    /* ── Form fields ── */
+    .field { margin-bottom: 16px; }
+    .field label {
+      display: block;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      color: #555; margin-bottom: 6px;
+    }
+    .field input {
+      width: 100%;
+      border: 1.5px solid #e2e5ee;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #222;
+      background: #f5f6fa;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: #1a2744;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(26,39,68,0.09);
+    }
+    .field-hint { font-size: 11px; color: #aaa; margin-top: 4px; }
+    .field-row  { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .btn-save {
+      background: #1a2744; color: #fff; border: none;
+      padding: 11px 26px; border-radius: 8px;
+      font-size: 14px; font-weight: 700;
+    }
+    .btn-save:hover { background: #253660; }
+    .btn-cancel {
+      background: none; color: #666;
+      border: 1.5px solid #d8dce8;
+      padding: 11px 18px; border-radius: 8px; font-size: 14px;
+    }
+    .form-msg { font-size: 13px; font-weight: 600; }
+    .form-msg.ok  { color: #1a6e34; }
+    .form-msg.err { color: #c0392b; }
+
+    /* ── Student assignment modal ── */
+    #studentModal .modal-panel { max-width: 520px; }
+    .class-group { margin-bottom: 14px; }
+    .class-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #1a2744;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 7px 7px 0 0;
+      font-size: 13px;
+      font-weight: 700;
+    }
+    .btn-select-all {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-select-all:hover { background: rgba(255,255,255,0.25); }
+    .student-check-list {
+      border: 1px solid #e0e4ed;
+      border-top: none;
+      border-radius: 0 0 7px 7px;
+      overflow: hidden;
+    }
+    .student-check-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0f2f8;
+      cursor: pointer;
+    }
+    .student-check-item:last-child { border-bottom: none; }
+    .student-check-item:hover { background: #f8f9fc; }
+    .student-check-item input[type="checkbox"] {
+      width: 16px; height: 16px; flex-shrink: 0; cursor: pointer;
+    }
+    .student-check-item label { cursor: pointer; flex: 1; font-size: 14px; color: #222; }
+    .student-check-email { font-size: 11px; color: #aaa; display: block; margin-top: 1px; }
+    .student-scroll { max-height: 360px; overflow-y: auto; }
+    .no-students { text-align: center; padding: 24px; color: #aaa; font-size: 13px; }
+
+    .spinner { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
+
+    /* ── Auth gate ── */
+    #authGate {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #1a2744;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+    .auth-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 36px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.4);
+    }
+    .auth-card h2  { color: #1a2744; font-size: 18px; margin-bottom: 8px; }
+    .auth-card p   { color: #888; font-size: 14px; margin-bottom: 20px; }
+    .auth-card a {
+      display: inline-block;
+      background: #1a2744;
+      color: #fff;
+      padding: 11px 28px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .auth-card a:hover { background: #253660; }
+    .auth-field {
+      text-align: left;
+      margin-bottom: 14px;
+    }
+    .auth-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .auth-field input {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d0d5e0;
+      border-radius: 7px;
+      font-size: 14px;
+      color: #222;
+      background: #f7f8fa;
+      outline: none;
+    }
+    .auth-field input:focus { border-color: #1a2744; background: #fff; }
+    .auth-submit {
+      width: 100%;
+      background: #c9a227;
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+    }
+    .auth-submit:hover { background: #b8911e; }
+    .auth-error {
+      color: #c0392b;
+      font-size: 13px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Auth gate (shown if not logged in as admin) ── -->
+<div id="authGate" class="hidden">
+  <div class="auth-card">
+    <img src="https://raw.githubusercontent.com/dryanchicago/rx-aftercare-frontend/main/Rx_Logo_White_UltraSharp.png"
+         alt="Rx Aftercare" style="height:64px;margin-bottom:16px;" onerror="this.style.display='none'">
+    <h2>Admin Sign In</h2>
+    <p>Sign in with your admin credentials to manage coaches.</p>
+    <div class="auth-field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="admin@example.com" autocomplete="email">
+    </div>
+    <div class="auth-field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="auth-submit" onclick="doAdminLogin()">Sign In</button>
+    <div class="auth-error" id="loginError">Invalid email or password.</div>
+  </div>
+</div>
+
+<!-- ── App ── -->
+<div id="appWrap" class="hidden">
+
+  <nav class="top-nav">
+    <div class="nav-left">
+      <img class="nav-logo" src="Rx_Logo_White_UltraSharp.png" alt="Rx" onerror="this.style.display='none'">
+      <div class="nav-divider"></div>
+      <div>
+        <div class="nav-title">Coach Management</div>
+        <div class="nav-subtitle">Rx Aftercare Admin</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <a class="nav-back" href="RX_ADMIN_WORKING_11.html">← Admin Panel</a>
+      <button class="nav-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1>Coaches</h1>
+        <p>Create and manage coach accounts, then assign them to individual students.</p>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-secondary" onclick="openImportModal()">↑ Import CSV</button>
+        <button class="btn-primary" onclick="openCoachModal(null)">+ Add Coach</button>
+      </div>
+    </div>
+
+    <div class="table-card" id="coachTableWrap">
+      <div class="spinner">Loading coaches…</div>
+    </div>
+  </div>
+
+</div><!-- /appWrap -->
+
+
+<!-- ══════════════════════════════════════════════
+     COACH CREATE / EDIT MODAL
+══════════════════════════════════════════════ -->
+<div class="modal" id="coachModal">
+  <div class="modal-panel" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <h2 id="coachModalTitle">Add Coach</h2>
+      </div>
+      <button class="modal-close" onclick="closeCoachModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cm-id">
+      <div class="field-row">
+        <div class="field">
+          <label>Full Name *</label>
+          <input type="text" id="cm-name" placeholder="e.g. Jane Smith">
+        </div>
+        <div class="field">
+          <label>Email Address *</label>
+          <input type="email" id="cm-email" placeholder="coach@example.com">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Client / Company</label>
+          <input type="text" id="cm-client" placeholder="e.g. Acme Corp">
+        </div>
+        <div class="field">
+          <label>Title / Role</label>
+          <input type="text" id="cm-role" placeholder="e.g. Senior Coach">
+        </div>
+      </div>
+      <div class="field">
+        <label>Password <span id="cm-pw-required">*</span></label>
+        <input type="password" id="cm-password" placeholder="Minimum 8 characters">
+        <div class="field-hint" id="cm-pw-hint">Required for new accounts.</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-save" onclick="saveCoach()">Save Coach</button>
+      <button class="btn-cancel" onclick="closeCoachModal()">Cancel</button>
+      <span class="form-msg" id="cm-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     STUDENT ASSIGNMENT MODAL
+══════════════════════════════════════════════ -->
+<div class="modal" id="studentModal">
+  <div class="modal-panel" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <h2>Assign Students</h2>
+        <div class="sub" id="sm-coach-name"></div>
+      </div>
+      <button class="modal-close" onclick="closeStudentModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="student-scroll" id="sm-list">
+        <div class="spinner">Loading…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <input type="hidden" id="sm-coach-id">
+      <button class="btn-save" onclick="saveStudentAssignments()">Save Assignments</button>
+      <button class="btn-cancel" onclick="closeStudentModal()">Cancel</button>
+      <span class="form-msg" id="sm-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CSV IMPORT MODAL
+══════════════════════════════════════════════ -->
+<div class="modal" id="importModal">
+  <div class="modal-panel" style="max-width:680px">
+    <div class="modal-header">
+      <div>
+        <h2>Import Coaches from CSV</h2>
+        <div class="sub">Paste CSV data or upload a file. One coach per row.</div>
+      </div>
+      <button class="modal-close" onclick="closeImportModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Step 1: paste / upload -->
+      <div id="import-step1">
+        <div class="field" style="margin-bottom:10px">
+          <label>CSV FORMAT &nbsp;<span style="font-weight:400;color:#888">name, email, client, title, password</span></label>
+          <div style="font-size:12px;color:#aaa;margin-bottom:8px">Password is optional — one will be auto-generated if left blank. Header row is optional.</div>
+          <textarea id="import-csv" rows="10"
+            style="width:100%;font-family:monospace;font-size:13px;padding:10px;border:1px solid #d0d5e0;border-radius:7px;resize:vertical;background:#f7f8fa"
+            placeholder="Jane Smith, jane@acme.com, Acme Corp, Senior Coach, MyPass123&#10;Bob Jones, bob@acme.com, Acme Corp, Coach"></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
+          <label style="font-size:13px;color:#555;font-weight:600">Or upload a .csv file:</label>
+          <input type="file" id="import-file" accept=".csv,.txt" onchange="loadCsvFile()" style="font-size:13px">
+        </div>
+        <div class="form-msg" id="import-parse-msg" style="margin-top:8px"></div>
+        <div style="margin-top:16px">
+          <button class="btn-primary" onclick="previewImport()">Preview →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: preview table -->
+      <div id="import-step2" class="hidden">
+        <div id="import-preview-wrap" style="overflow-x:auto;max-height:320px;overflow-y:auto;border:1px solid #e0e4ee;border-radius:8px;margin-bottom:12px">
+          <table style="width:100%;border-collapse:collapse;font-size:13px" id="import-preview-table">
+            <thead style="background:#f0f2f8;position:sticky;top:0">
+              <tr>
+                <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">#</th>
+                <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Name</th>
+                <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Email</th>
+                <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Client</th>
+                <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Title</th>
+                <th style="padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Password</th>
+              </tr>
+            </thead>
+            <tbody id="import-preview-body"></tbody>
+          </table>
+        </div>
+        <div style="font-size:13px;color:#888;margin-bottom:12px" id="import-preview-count"></div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn-primary" onclick="runImport()" id="import-run-btn">Import All</button>
+          <button class="btn-cancel" onclick="showImportStep1()">← Back</button>
+          <span class="form-msg" id="import-run-msg"></span>
+        </div>
+      </div>
+
+      <!-- Step 3: results -->
+      <div id="import-step3" class="hidden">
+        <div id="import-results"></div>
+        <div style="margin-top:16px">
+          <button class="btn-primary" onclick="closeImportModal()">Done</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// CONFIG
+// ════════════════════════════════════════════════════════════════
+const API_BASE = (function() {
+  var m = document.querySelector('meta[name="api-base"]');
+  if (m) return m.content;
+  // When testing locally change this to http://localhost:3001/api
+  return 'https://rx-aftercare-backend-production.up.railway.app/api';
+})();
+
+var _token      = null;
+var _coaches    = [];
+var _allClasses = [];
+var _classStudents = {}; // classId -> [students]
+
+// ════════════════════════════════════════════════════════════════
+// INIT & AUTH
+// ════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function() {
+  _token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
+
+  if (!_token) {
+    show('authGate');
+    return;
+  }
+
+  show('appWrap');
+  loadCoaches();
+
+  // Close modals on overlay click
+  document.getElementById('coachModal').addEventListener('click', function(e) {
+    if (e.target === this) closeCoachModal();
+  });
+  document.getElementById('studentModal').addEventListener('click', function(e) {
+    if (e.target === this) closeStudentModal();
+  });
+  document.getElementById('importModal').addEventListener('click', function(e) {
+    if (e.target === this) closeImportModal();
+  });
+});
+
+async function doAdminLogin() {
+  var email    = document.getElementById('loginEmail').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  var errEl    = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if (!email || !password) { errEl.textContent = 'Email and password are required.'; errEl.style.display = 'block'; return; }
+  try {
+    var res  = await fetch(API_BASE + '/auth/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    var data = await res.json();
+    if (!res.ok || !data.token) {
+      errEl.textContent = data.error || 'Invalid email or password.';
+      errEl.style.display = 'block';
+      return;
+    }
+    localStorage.setItem('adminToken', data.token);
+    _token = data.token;
+    show('appWrap');
+    loadCoaches();
+    document.getElementById('coachModal').addEventListener('click', function(e) {
+      if (e.target === this) closeCoachModal();
+    });
+    document.getElementById('studentModal').addEventListener('click', function(e) {
+      if (e.target === this) closeStudentModal();
+    });
+    document.getElementById('importModal').addEventListener('click', function(e) {
+      if (e.target === this) closeImportModal();
+    });
+  } catch(e) {
+    errEl.textContent = 'Could not reach server. Is the local server running?';
+    errEl.style.display = 'block';
+  }
+}
+
+// Allow Enter key in login form (script runs at end of body, DOM is ready)
+['loginEmail','loginPassword'].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) el.addEventListener('keydown', function(e) { if (e.key === 'Enter') doAdminLogin(); });
+});
+
+function doLogout() {
+  sessionStorage.removeItem('adminToken');
+  localStorage.removeItem('adminToken');
+  location.reload();
+}
+
+// ════════════════════════════════════════════════════════════════
+// API
+// ════════════════════════════════════════════════════════════════
+async function apiCall(method, path, body) {
+  var opts = {
+    method: method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  try {
+    var res  = await fetch(API_BASE + path, opts);
+    var data = await res.json();
+    if (res.status === 401) { doLogout(); return null; }
+    return data;
+  } catch(e) { return null; }
+}
+
+// ════════════════════════════════════════════════════════════════
+// COACHES — list & render
+// ════════════════════════════════════════════════════════════════
+async function loadCoaches() {
+  document.getElementById('coachTableWrap').innerHTML = '<div class="spinner">Loading coaches…</div>';
+  var data = await apiCall('GET', '/coaches');
+  if (!data || !data.coaches) {
+    document.getElementById('coachTableWrap').innerHTML =
+      '<div class="spinner">Could not load coaches.</div>';
+    return;
+  }
+  _coaches = data.coaches;
+  renderCoachTable();
+}
+
+function renderCoachTable() {
+  var wrap = document.getElementById('coachTableWrap');
+
+  if (!_coaches.length) {
+    wrap.innerHTML =
+      '<div class="table-empty">' +
+        '<strong>No coaches yet</strong>' +
+        'Click <em>+ Add Coach</em> to create the first one.' +
+      '</div>';
+    return;
+  }
+
+  var rows = _coaches.map(function(c) {
+    var count = c.student_count || 0;
+    var studentCell = count
+      ? '<span class="pill">' + count + ' student' + (count !== 1 ? 's' : '') + '</span>'
+      : '<span class="pill-none">None assigned</span>';
+
+    var meta = [c.client, c.title].filter(Boolean).join(' · ');
+    var safeName = esc(c.name).replace(/'/g, "\\'");
+
+    return '<tr>' +
+      '<td>' +
+        '<div class="coach-name">' + esc(c.name) + '</div>' +
+        '<div class="coach-email">' + esc(c.email) + '</div>' +
+        (meta ? '<div class="coach-meta">' + esc(meta) + '</div>' : '') +
+      '</td>' +
+      '<td>' + studentCell + '</td>' +
+      '<td>' +
+        '<div class="row-actions">' +
+          '<button class="btn-edit"     onclick="openCoachModal(' + c.id + ')">Edit</button>' +
+          '<button class="btn-students" onclick="openStudentModal(' + c.id + ')">Students</button>' +
+          '<button class="btn-delete"   onclick="deleteCoach(' + c.id + ',\'' + safeName + '\')">Delete</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+
+  wrap.innerHTML =
+    '<table>' +
+      '<thead><tr>' +
+        '<th>Coach</th>' +
+        '<th>Assigned Students</th>' +
+        '<th style="width:220px">Actions</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
+}
+
+// ════════════════════════════════════════════════════════════════
+// COACH CREATE / EDIT
+// ════════════════════════════════════════════════════════════════
+function openCoachModal(coachId) {
+  // Reset
+  ['cm-id','cm-name','cm-email','cm-client','cm-role','cm-password'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('cm-msg').textContent = '';
+
+  if (coachId) {
+    var c = _coaches.find(function(x) { return x.id === coachId; });
+    if (c) {
+      document.getElementById('cm-id').value     = c.id;
+      document.getElementById('cm-name').value   = c.name   || '';
+      document.getElementById('cm-email').value  = c.email  || '';
+      document.getElementById('cm-client').value = c.client || '';
+      document.getElementById('cm-role').value   = c.title  || '';
+    }
+    document.getElementById('coachModalTitle').textContent = 'Edit Coach';
+    document.getElementById('cm-password').placeholder     = 'Leave blank to keep current password';
+    document.getElementById('cm-pw-required').textContent  = '';
+    document.getElementById('cm-pw-hint').textContent      = 'Optional — only fill in to change the password.';
+  } else {
+    document.getElementById('coachModalTitle').textContent = 'Add Coach';
+    document.getElementById('cm-password').placeholder     = 'Minimum 8 characters';
+    document.getElementById('cm-pw-required').textContent  = '*';
+    document.getElementById('cm-pw-hint').textContent      = 'Required for new accounts.';
+  }
+
+  document.getElementById('coachModal').classList.add('open');
+  setTimeout(function() { document.getElementById('cm-name').focus(); }, 100);
+}
+
+function closeCoachModal() {
+  document.getElementById('coachModal').classList.remove('open');
+}
+
+async function saveCoach() {
+  var id       = document.getElementById('cm-id').value;
+  var name     = document.getElementById('cm-name').value.trim();
+  var email    = document.getElementById('cm-email').value.trim();
+  var client   = document.getElementById('cm-client').value.trim();
+  var title    = document.getElementById('cm-role').value.trim();
+  var password = document.getElementById('cm-password').value;
+  var msgEl    = document.getElementById('cm-msg');
+
+  msgEl.textContent = '';
+
+  if (!name || !email) {
+    msgEl.textContent = 'Name and email are required.';
+    msgEl.className = 'form-msg err';
+    return;
+  }
+  if (!id && password.length < 8) {
+    msgEl.textContent = 'Password must be at least 8 characters.';
+    msgEl.className = 'form-msg err';
+    return;
+  }
+  if (id && password && password.length < 8) {
+    msgEl.textContent = 'New password must be at least 8 characters.';
+    msgEl.className = 'form-msg err';
+    return;
+  }
+
+  var payload = { name: name, email: email, client: client || null, title: title || null };
+  var res;
+
+  if (id) {
+    if (password) payload.password = password;
+    res = await apiCall('PUT', '/coaches/' + id, payload);
+  } else {
+    payload.password = password;
+    res = await apiCall('POST', '/coaches', payload);
+  }
+
+  if (res && (res.coach || res.success)) {
+    msgEl.textContent = '✓ Saved!';
+    msgEl.className = 'form-msg ok';
+    await loadCoaches();
+    setTimeout(closeCoachModal, 800);
+  } else {
+    msgEl.textContent = '✕ ' + (res && res.error ? res.error : 'Save failed.');
+    msgEl.className = 'form-msg err';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// DELETE COACH
+// ════════════════════════════════════════════════════════════════
+async function deleteCoach(coachId, name) {
+  if (!confirm('Delete coach "' + name + '"?\n\nThis removes their account and all student assignments.')) return;
+  var res = await apiCall('DELETE', '/coaches/' + coachId);
+  if (res && res.success) {
+    await loadCoaches();
+  } else {
+    alert('Could not delete: ' + (res && res.error ? res.error : 'Unknown error'));
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// STUDENT ASSIGNMENT
+// ════════════════════════════════════════════════════════════════
+async function openStudentModal(coachId) {
+  var coach = _coaches.find(function(c) { return c.id === coachId; });
+  if (!coach) return;
+
+  document.getElementById('sm-coach-id').value   = coachId;
+  document.getElementById('sm-coach-name').textContent = coach.name;
+  document.getElementById('sm-msg').textContent  = '';
+  document.getElementById('sm-list').innerHTML   = '<div class="spinner">Loading…</div>';
+  document.getElementById('studentModal').classList.add('open');
+
+  // Load all classes if not cached
+  if (!_allClasses.length) {
+    var cd = await apiCall('GET', '/classes');
+    _allClasses = (cd && cd.classes) ? cd.classes : [];
+  }
+
+  // Load students per class if not cached
+  for (var i = 0; i < _allClasses.length; i++) {
+    var cls = _allClasses[i];
+    if (!_classStudents[cls.id]) {
+      var sd = await apiCall('GET', '/students/class/' + cls.id);
+      _classStudents[cls.id] = (sd && sd.students) ? sd.students : [];
+    }
+  }
+
+  // Currently assigned student IDs
+  var assignedIds = (coach.students || []).map(function(s) { return s.id; });
+
+  renderStudentList(assignedIds);
+}
+
+function renderStudentList(assignedIds) {
+  var list = document.getElementById('sm-list');
+  var html = '';
+  var any  = false;
+
+  _allClasses.forEach(function(cls) {
+    var students = _classStudents[cls.id] || [];
+    if (!students.length) return;
+    any = true;
+
+    var allChecked = students.every(function(s) { return assignedIds.indexOf(s.id) !== -1; });
+
+    html += '<div class="class-group">' +
+      '<div class="class-group-header">' +
+        '<span>' + esc(cls.name) + '</span>' +
+        '<button class="btn-select-all" id="sa-btn-' + cls.id + '" ' +
+                'onclick="toggleAll(' + cls.id + ',' + (!allChecked) + ')">' +
+          (allChecked ? 'Deselect All' : 'Select All') +
+        '</button>' +
+      '</div>' +
+      '<div class="student-check-list">';
+
+    students.forEach(function(s) {
+      var checked = assignedIds.indexOf(s.id) !== -1;
+      html += '<div class="student-check-item" onclick="toggleOne(\'sc-' + s.id + '\',' + cls.id + ')">' +
+        '<input type="checkbox" id="sc-' + s.id + '" value="' + s.id + '"' +
+               ' data-cls="' + cls.id + '"' + (checked ? ' checked' : '') +
+               ' onclick="event.stopPropagation()">' +
+        '<label for="sc-' + s.id + '">' +
+          esc(s.first_name + ' ' + s.last_name) +
+          '<span class="student-check-email">' + esc(s.email) + '</span>' +
+        '</label>' +
+      '</div>';
+    });
+
+    html += '</div></div>';
+  });
+
+  list.innerHTML = any ? html : '<div class="no-students">No students found in any class.</div>';
+}
+
+function toggleOne(cbId, classId) {
+  var cb = document.getElementById(cbId);
+  if (cb) cb.checked = !cb.checked;
+  refreshSelectAllBtn(classId);
+}
+
+function toggleAll(classId, selectAll) {
+  document.querySelectorAll('#sm-list input[data-cls="' + classId + '"]').forEach(function(cb) {
+    cb.checked = selectAll;
+  });
+  refreshSelectAllBtn(classId);
+}
+
+function refreshSelectAllBtn(classId) {
+  var boxes  = document.querySelectorAll('#sm-list input[data-cls="' + classId + '"]');
+  var allOn  = Array.from(boxes).every(function(cb) { return cb.checked; });
+  var btn    = document.getElementById('sa-btn-' + classId);
+  if (btn) btn.textContent = allOn ? 'Deselect All' : 'Select All';
+}
+
+function closeStudentModal() {
+  document.getElementById('studentModal').classList.remove('open');
+}
+
+async function saveStudentAssignments() {
+  var coachId   = parseInt(document.getElementById('sm-coach-id').value);
+  var msgEl     = document.getElementById('sm-msg');
+  var studentIds = Array.from(
+    document.querySelectorAll('#sm-list input[type="checkbox"]:checked')
+  ).map(function(cb) { return parseInt(cb.value); });
+
+  msgEl.textContent = '';
+
+  var res = await apiCall('PUT', '/coaches/' + coachId + '/students', { student_ids: studentIds });
+  if (res && res.students !== undefined) {
+    msgEl.textContent = '✓ Saved!';
+    msgEl.className = 'form-msg ok';
+    // Update local cache
+    var coach = _coaches.find(function(c) { return c.id === coachId; });
+    if (coach) { coach.students = res.students; coach.student_count = res.students.length; }
+    renderCoachTable();
+    setTimeout(closeStudentModal, 800);
+  } else {
+    msgEl.textContent = '✕ ' + (res && res.error ? res.error : 'Save failed.');
+    msgEl.className = 'form-msg err';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════
+// CSV IMPORT
+// ════════════════════════════════════════════════════════════════
+var _importRows = [];
+
+function openImportModal() {
+  document.getElementById('import-csv').value = '';
+  document.getElementById('import-file').value = '';
+  document.getElementById('import-parse-msg').textContent = '';
+  document.getElementById('import-run-msg').textContent = '';
+  showImportStep1();
+  document.getElementById('importModal').classList.add('open');
+}
+
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('open');
+}
+
+function showImportStep1() {
+  document.getElementById('import-step1').classList.remove('hidden');
+  document.getElementById('import-step2').classList.add('hidden');
+  document.getElementById('import-step3').classList.add('hidden');
+}
+
+function loadCsvFile() {
+  var file = document.getElementById('import-file').files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) { document.getElementById('import-csv').value = e.target.result; };
+  reader.readAsText(file);
+}
+
+function parseCsv(text) {
+  var rows = [];
+  var lines = text.split(/\r?\n/).map(function(l) { return l.trim(); }).filter(Boolean);
+  for (var i = 0; i < lines.length; i++) {
+    // Simple CSV split: handle quoted fields
+    var cols = lines[i].split(',').map(function(c) { return c.trim().replace(/^"|"$/g, ''); });
+    var name  = cols[0] || '';
+    var email = cols[1] || '';
+    var client = cols[2] || '';
+    var title  = cols[3] || '';
+    var pw     = cols[4] || '';
+    // Skip header row detection
+    if (i === 0 && email.toLowerCase().indexOf('@') === -1 &&
+        (name.toLowerCase() === 'name' || email.toLowerCase() === 'email')) continue;
+    if (!name && !email) continue;
+    rows.push({ name: name, email: email, client: client, title: title, password: pw });
+  }
+  return rows;
+}
+
+function previewImport() {
+  var text = document.getElementById('import-csv').value.trim();
+  var msgEl = document.getElementById('import-parse-msg');
+  if (!text) { msgEl.textContent = 'Please paste CSV data or upload a file.'; msgEl.className = 'form-msg err'; return; }
+  _importRows = parseCsv(text);
+  if (!_importRows.length) { msgEl.textContent = 'No valid rows found. Check your CSV format.'; msgEl.className = 'form-msg err'; return; }
+
+  var tbody = document.getElementById('import-preview-body');
+  tbody.innerHTML = _importRows.map(function(r, i) {
+    var pwDisplay = r.password || '<em style="color:#aaa">auto-generate</em>';
+    var rowStyle  = (!r.name || !r.email) ? 'background:#fff5f5' : (i % 2 === 0 ? '' : 'background:#fafbfd');
+    return '<tr style="' + rowStyle + '">' +
+      '<td style="padding:7px 12px;color:#aaa">' + (i + 1) + '</td>' +
+      '<td style="padding:7px 12px">' + esc(r.name) + '</td>' +
+      '<td style="padding:7px 12px">' + esc(r.email) + '</td>' +
+      '<td style="padding:7px 12px;color:#666">' + esc(r.client) + '</td>' +
+      '<td style="padding:7px 12px;color:#666">' + esc(r.title) + '</td>' +
+      '<td style="padding:7px 12px;font-family:monospace;font-size:12px">' + pwDisplay + '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('import-preview-count').textContent = _importRows.length + ' row(s) ready to import.';
+  document.getElementById('import-step1').classList.add('hidden');
+  document.getElementById('import-step2').classList.remove('hidden');
+}
+
+async function runImport() {
+  var btn   = document.getElementById('import-run-btn');
+  var msgEl = document.getElementById('import-run-msg');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  msgEl.textContent = '';
+
+  var res = await apiCall('POST', '/coaches/import', { coaches: _importRows });
+  btn.disabled = false;
+  btn.textContent = 'Import All';
+
+  if (!res) { msgEl.textContent = 'Server error — try again.'; msgEl.className = 'form-msg err'; return; }
+
+  // Show results
+  var html = '';
+
+  if (res.created && res.created.length) {
+    html += '<div style="margin-bottom:16px">' +
+      '<div style="font-weight:700;color:#1a2744;margin-bottom:8px">✓ ' + res.created.length + ' coach(es) created</div>' +
+      '<div style="overflow-x:auto;border:1px solid #e0e4ee;border-radius:8px">' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+      '<thead style="background:#f0f2f8"><tr>' +
+        '<th style="padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Name</th>' +
+        '<th style="padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Email</th>' +
+        '<th style="padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;color:#555">Temp Password</th>' +
+      '</tr></thead><tbody>' +
+      res.created.map(function(c, i) {
+        return '<tr style="' + (i % 2 === 0 ? '' : 'background:#fafbfd') + '">' +
+          '<td style="padding:7px 10px">' + esc(c.name) + '</td>' +
+          '<td style="padding:7px 10px">' + esc(c.email) + '</td>' +
+          '<td style="padding:7px 10px;font-family:monospace;font-size:12px;color:#1a2744">' + esc(c.password) + '</td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody></table></div>' +
+      '<div style="font-size:12px;color:#888;margin-top:6px">Save these passwords — they cannot be retrieved later.</div>' +
+    '</div>';
+  }
+
+  if (res.skipped && res.skipped.length) {
+    html += '<div style="margin-bottom:12px">' +
+      '<div style="font-weight:700;color:#888;margin-bottom:6px">⊘ ' + res.skipped.length + ' skipped (email already exists)</div>' +
+      res.skipped.map(function(s) { return '<div style="font-size:13px;color:#aaa;padding:2px 0">' + esc(s.email) + '</div>'; }).join('') +
+    '</div>';
+  }
+
+  if (res.errors && res.errors.length) {
+    html += '<div style="margin-bottom:12px">' +
+      '<div style="font-weight:700;color:#c0392b;margin-bottom:6px">✗ ' + res.errors.length + ' error(s)</div>' +
+      res.errors.map(function(e) { return '<div style="font-size:13px;color:#c0392b;padding:2px 0">' + esc(e.email) + ': ' + esc(e.reason) + '</div>'; }).join('') +
+    '</div>';
+  }
+
+  document.getElementById('import-results').innerHTML = html || '<div style="color:#888">No rows were processed.</div>';
+  document.getElementById('import-step2').classList.add('hidden');
+  document.getElementById('import-step3').classList.remove('hidden');
+
+  // Refresh coach list
+  loadCoaches();
+}
+
+function show(id) {
+  ['authGate','appWrap'].forEach(function(x) {
+    document.getElementById(x).classList.toggle('hidden', x !== id);
+  });
+}
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+
+</body>
+</html>

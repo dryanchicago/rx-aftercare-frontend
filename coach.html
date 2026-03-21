@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coach Dashboard — Rx Aftercare</title>
+  <style>
+    /* ── Reset & base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      color: #222;
+      min-height: 100vh;
+    }
+    button { font-family: inherit; cursor: pointer; }
+
+    /* ── Utility ── */
+    .hidden { display: none !important; }
+
+    /* ══════════════════════════════════════════════════════
+       SHARED DARK BACKGROUND (login + post-login)
+    ══════════════════════════════════════════════════════ */
+    .navy-bg {
+      background-color: #1a2744;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+    }
+
+    /* ══════════════════════════════════════════════════════
+       LOGIN SCREEN
+    ══════════════════════════════════════════════════════ */
+    #loginScreen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+    }
+    .login-logo-wrap {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .login-logo-wrap img {
+      height: 80px;
+      width: auto;
+    }
+    .login-platform-label {
+      color: #8899bb;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+    }
+    .login-card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 40px 36px 36px;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 16px 56px rgba(0,0,0,0.45);
+    }
+    .login-card h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1a2744;
+      margin-bottom: 4px;
+    }
+    .login-card .login-org {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 28px;
+    }
+    .login-field { margin-bottom: 18px; }
+    .login-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 7px;
+    }
+    .login-field input {
+      width: 100%;
+      padding: 13px 16px;
+      border: 1.5px solid #e2e5ee;
+      border-radius: 9px;
+      font-size: 15px;
+      color: #222;
+      font-family: inherit;
+      background: #f5f6fa;
+    }
+    .login-field input:focus {
+      outline: none;
+      border-color: #1a2744;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(26,39,68,0.1);
+    }
+    .login-btn {
+      width: 100%;
+      background: #1a2744;
+      color: #fff;
+      border: none;
+      padding: 14px;
+      border-radius: 9px;
+      font-size: 15px;
+      font-weight: 700;
+      margin-top: 6px;
+      letter-spacing: 0.3px;
+    }
+    .login-btn:hover { background: #243360; }
+    .login-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid #eee;
+      font-size: 13px;
+      color: #666;
+    }
+    .status-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #ccc;
+      flex-shrink: 0;
+    }
+    .status-dot.ok  { background: #27ae60; }
+    .status-dot.err { background: #c0392b; }
+    .login-err {
+      color: #c0392b;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 12px;
+      text-align: center;
+    }
+    .login-footer {
+      color: #4e6090;
+      font-size: 12px;
+      margin-top: 28px;
+      text-align: center;
+    }
+
+    /* ══════════════════════════════════════════════════════
+       APP SHELL
+    ══════════════════════════════════════════════════════ */
+    #appShell {
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+      background: #f0f2f8;
+    }
+
+    /* ── Top nav ── */
+    .top-nav {
+      background-color: #1a2744;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      color: #fff;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 62px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+    }
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .nav-logo { height: 36px; width: auto; }
+    .nav-divider {
+      width: 1px;
+      height: 28px;
+      background: rgba(255,255,255,0.15);
+    }
+    .nav-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #c9a227;
+      letter-spacing: 0.3px;
+    }
+    .nav-subtitle {
+      font-size: 11px;
+      color: #6a7fa8;
+      margin-top: 1px;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-coach-name {
+      font-size: 13px;
+      color: #8899bb;
+    }
+    .nav-logout {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.18);
+      color: #fff;
+      padding: 7px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .nav-logout:hover { background: rgba(255,255,255,0.2); }
+
+    /* ── Page ── */
+    .page { padding: 28px 20px; max-width: 880px; margin: 0 auto; width: 100%; }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #8899bb;
+      margin-bottom: 10px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(26,39,68,0.08);
+    }
+    .card-header {
+      background: #1a2744;
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 12px 12px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-header h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    .card-header .card-meta {
+      font-size: 12px;
+      color: #8899bb;
+    }
+    .card-body { padding: 20px; }
+
+    /* ══════════════════════════════════════════════════════
+       ROSTER VIEW
+    ══════════════════════════════════════════════════════ */
+    .summary-bar {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px 20px;
+      box-shadow: 0 2px 8px rgba(26,39,68,0.08);
+      border-left: 4px solid #1a2744;
+    }
+    .stat-val {
+      font-size: 30px;
+      font-weight: 800;
+      color: #1a2744;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8899bb;
+      margin-top: 5px;
+    }
+
+    .roster-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .roster-toolbar h2 {
+      font-size: 18px;
+      font-weight: 800;
+      color: #1a2744;
+    }
+    .sort-select {
+      border: 1.5px solid #d8dce8;
+      border-radius: 7px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #444;
+      font-family: inherit;
+      background: #fff;
+    }
+
+    /* Student card */
+    .student-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 8px rgba(26,39,68,0.08);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 16px;
+      align-items: center;
+      border-left: 4px solid transparent;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .student-card:hover {
+      box-shadow: 0 4px 16px rgba(26,39,68,0.14);
+      border-left-color: #c9a227;
+    }
+    .sc-name {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a2744;
+    }
+    .sc-class {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8899bb;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-top: 2px;
+    }
+    .sc-progress-wrap { margin: 12px 0 8px; }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .progress-label strong { color: #1a2744; }
+    .progress-track {
+      background: #e8eaf0;
+      border-radius: 20px;
+      height: 7px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 20px;
+      transition: width 0.5s ease;
+    }
+    .progress-fill.low  { background: linear-gradient(90deg, #c0392b, #e74c3c); }
+    .progress-fill.mid  { background: linear-gradient(90deg, #d35400, #e67e22); }
+    .progress-fill.high { background: linear-gradient(90deg, #1a6e34, #27ae60); }
+    .sc-email-hint {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 6px;
+    }
+    .btn-view {
+      background: #1a2744;
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+    }
+    .btn-view:hover { background: #243360; }
+
+    .roster-empty {
+      text-align: center;
+      padding: 52px 20px;
+      color: #aaa;
+      font-size: 15px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(26,39,68,0.08);
+    }
+    .roster-empty strong { display: block; color: #1a2744; margin-bottom: 8px; font-size: 17px; }
+
+    /* ══════════════════════════════════════════════════════
+       DETAIL VIEW
+    ══════════════════════════════════════════════════════ */
+    .back-btn {
+      background: none;
+      border: none;
+      color: #1a2744;
+      font-size: 13px;
+      font-weight: 700;
+      padding: 0;
+      margin-bottom: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.2px;
+    }
+    .back-btn:hover { color: #c9a227; }
+
+    /* Student header card */
+    .detail-header-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 22px 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(26,39,68,0.08);
+      border-top: 4px solid #1a2744;
+    }
+    .detail-name {
+      font-size: 22px;
+      font-weight: 800;
+      color: #1a2744;
+    }
+    .detail-meta {
+      font-size: 13px;
+      color: #8899bb;
+      margin-top: 3px;
+    }
+    .detail-overall { margin-top: 16px; }
+
+    /* Two-column info cards */
+    .detail-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 580px) {
+      .detail-cols         { grid-template-columns: 1fr; }
+      .summary-bar         { grid-template-columns: 1fr 1fr; }
+      .summary-bar .stat-card:last-child { grid-column: 1 / -1; }
+      .student-card        { grid-template-columns: 1fr; }
+      .student-card .btn-view { width: 100%; }
+    }
+
+    /* Stat rows inside cards */
+    .three-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .mini-stat { text-align: center; }
+    .mini-stat .val {
+      font-size: 24px;
+      font-weight: 800;
+      color: #1a2744;
+    }
+    .mini-stat .lbl {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #8899bb;
+      margin-top: 2px;
+    }
+    .card-footnote {
+      font-size: 12px;
+      color: #aaa;
+      text-align: center;
+      padding-top: 12px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .nudge-divider { border: none; border-top: 1px solid #eee; margin: 14px 0; }
+    .btn-nudge-open {
+      width: 100%;
+      background: #c9a227;
+      color: #fff;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+    .btn-nudge-open:hover { background: #b8943e; }
+
+    /* ── Goals accordion ── */
+    .goals-card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(26,39,68,0.08);
+      margin-bottom: 28px;
+    }
+    .goals-card-header {
+      background: #1a2744;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 44px 44px;
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .goals-card-header h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #fff;
+    }
+    .goals-card-header .goals-summary {
+      font-size: 13px;
+      color: #8899bb;
+    }
+
+    .goal-item { border-bottom: 1px solid #f0f2f8; }
+    .goal-item:last-child { border-bottom: none; }
+
+    .goal-header {
+      display: grid;
+      grid-template-columns: 1fr 130px 32px;
+      gap: 14px;
+      align-items: center;
+      padding: 14px 22px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .goal-header:hover { background: #f8f9fc; }
+    .goal-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1a2744;
+    }
+    .goal-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: #8899bb;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-top: 2px;
+    }
+    .goal-mini-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .goal-mini-track {
+      flex: 1;
+      height: 6px;
+      background: #e8eaf0;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .goal-mini-fill {
+      height: 100%;
+      border-radius: 20px;
+    }
+    .goal-mini-fill.zero { background: #d8dce8; }
+    .goal-mini-fill.low  { background: #e74c3c; }
+    .goal-mini-fill.mid  { background: #e67e22; }
+    .goal-mini-fill.high { background: #27ae60; }
+    .goal-mini-fill.full { background: #1a6e34; }
+    .goal-pct {
+      font-size: 12px;
+      font-weight: 700;
+      color: #555;
+      min-width: 34px;
+      text-align: right;
+    }
+    .goal-chevron {
+      background: none;
+      border: none;
+      color: #c0c8d8;
+      font-size: 18px;
+      padding: 0;
+      line-height: 1;
+      transition: transform 0.2s;
+      text-align: center;
+    }
+    .goal-item.open .goal-chevron { transform: rotate(180deg); }
+
+    .goal-activities {
+      display: none;
+      padding: 4px 22px 16px 22px;
+      background: #f8f9fc;
+      border-top: 1px solid #eef0f6;
+    }
+    .goal-item.open .goal-activities { display: block; }
+
+    .activity-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 9px 0;
+      border-bottom: 1px solid #eef0f6;
+      font-size: 13px;
+    }
+    .activity-row:last-child { border-bottom: none; }
+    .activity-check {
+      flex-shrink: 0;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 2px solid #d0d4de;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .activity-check.done {
+      background: #1a6e34;
+      border-color: #1a6e34;
+      color: #fff;
+    }
+    .activity-body { flex: 1; }
+    .activity-text { color: #333; line-height: 1.45; }
+    .activity-date {
+      font-size: 11px;
+      font-weight: 600;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-top: 3px;
+    }
+
+    /* ══════════════════════════════════════════════════════
+       NUDGE MODAL
+    ══════════════════════════════════════════════════════ */
+    #nudgeModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(12,22,48,0.65);
+      z-index: 500;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    #nudgeModal.open { display: flex; }
+    @media (min-width: 540px) {
+      #nudgeModal { align-items: center; padding: 24px; }
+      #nudgePanel { border-radius: 14px !important; }
+    }
+    #nudgePanel {
+      background: #fff;
+      border-radius: 16px 16px 0 0;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 -8px 40px rgba(0,0,0,0.3);
+    }
+    .nudge-panel-header {
+      background: #1a2744;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 44px 44px;
+      border-radius: 16px 16px 0 0;
+      padding: 18px 22px;
+    }
+    .nudge-panel-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .nudge-panel-to {
+      font-size: 12px;
+      color: #8899bb;
+      margin-top: 3px;
+    }
+    .nudge-panel-body { padding: 20px 22px 28px; }
+    .nudge-field { margin-bottom: 14px; }
+    .nudge-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: #555;
+      margin-bottom: 6px;
+    }
+    .nudge-field input,
+    .nudge-field textarea {
+      width: 100%;
+      border: 1.5px solid #e2e5ee;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      color: #222;
+      background: #f5f6fa;
+    }
+    .nudge-field textarea { resize: vertical; min-height: 110px; }
+    .nudge-field input:focus,
+    .nudge-field textarea:focus {
+      outline: none;
+      border-color: #1a2744;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(26,39,68,0.09);
+    }
+    .nudge-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-top: 18px;
+    }
+    .btn-nudge-send {
+      background: #c9a227;
+      color: #fff;
+      border: none;
+      padding: 12px 26px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .btn-nudge-send:hover { background: #b8943e; }
+    .btn-nudge-cancel {
+      background: none;
+      color: #666;
+      border: 1.5px solid #d8dce8;
+      padding: 12px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    .nudge-status { font-size: 13px; font-weight: 600; margin-left: 4px; }
+    .nudge-status.ok  { color: #1a6e34; }
+    .nudge-status.err { color: #c0392b; }
+
+    .spinner {
+      text-align: center;
+      padding: 44px;
+      color: #aaa;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     LOGIN SCREEN
+════════════════════════════════════════ -->
+<div id="loginScreen" class="navy-bg">
+  <div class="login-logo-wrap">
+    <!--
+      Replace the src below with the path to your logo image.
+      Example: src="assets/rx-logo.png"
+      or use the same path your admin-login.html uses.
+    -->
+    <img src="https://raw.githubusercontent.com/dryanchicago/rx-aftercare-frontend/main/Rx_Logo_White_UltraSharp.png" alt="Rx Aftercare" onerror="this.style.display='none'">
+    <div class="login-platform-label">Professional Development Tracking Platform</div>
+  </div>
+
+  <div class="login-card">
+    <h1>Coach Sign In</h1>
+    <p class="login-org">Gray Matters Group</p>
+
+    <div class="login-field">
+      <label>Email Address</label>
+      <input type="email" id="loginEmail" autocomplete="email" placeholder="your@email.com">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPassword" autocomplete="current-password" placeholder="••••••••">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-err hidden" id="loginErr"></div>
+
+    <div class="login-status">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Checking connection…</span>
+    </div>
+  </div>
+
+  <div class="login-footer">Rx Aftercare &copy; Gray Matters Group</div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     APP SHELL
+════════════════════════════════════════ -->
+<div id="appShell">
+
+  <nav class="top-nav">
+    <div class="nav-left">
+      <img class="nav-logo" src="https://raw.githubusercontent.com/dryanchicago/rx-aftercare-frontend/main/Rx_Logo_White_UltraSharp.png" alt="Rx" onerror="this.style.display='none'">
+      <div class="nav-divider"></div>
+      <div>
+        <div class="nav-title">Rx Aftercare</div>
+        <div class="nav-subtitle">Coach Portal</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <span class="nav-coach-name" id="navCoachName"></span>
+      <button class="nav-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- ── ROSTER VIEW ── -->
+  <div id="rosterView" class="page hidden">
+
+    <div class="section-label">Overview</div>
+    <div class="summary-bar" id="summaryBar">
+      <div class="stat-card">
+        <div class="stat-val" id="statStudents">—</div>
+        <div class="stat-label">Students assigned</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="statProgress">—</div>
+        <div class="stat-label">Avg goal progress</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" id="statBehind">—</div>
+        <div class="stat-label">Below 25% progress</div>
+      </div>
+    </div>
+
+    <div class="roster-toolbar">
+      <h2>My Students</h2>
+      <select class="sort-select" id="sortSelect" onchange="renderRoster()">
+        <option value="progress-asc">Least progress first</option>
+        <option value="progress-desc">Most progress first</option>
+        <option value="name-asc">Name A–Z</option>
+      </select>
+    </div>
+
+    <div id="rosterList">
+      <div class="spinner">Loading students…</div>
+    </div>
+
+  </div><!-- /rosterView -->
+
+  <!-- ── DETAIL VIEW ── -->
+  <div id="detailView" class="page hidden">
+
+    <button class="back-btn" onclick="showRoster()">&#8592; Back to My Students</button>
+
+    <!-- Student header -->
+    <div class="detail-header-card">
+      <div class="detail-name" id="detailName">—</div>
+      <div class="detail-meta" id="detailMeta">—</div>
+      <div class="detail-overall">
+        <div class="progress-label" style="margin-top:14px;">
+          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:#8899bb;">Overall Goal Progress</span>
+          <span id="detailPct" style="font-size:13px;font-weight:700;color:#1a2744;">—</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="detailBar" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email + Goal summary cards -->
+    <div class="detail-cols">
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Email Engagement</h3>
+          <span class="card-meta" id="eLastEmail">—</span>
+        </div>
+        <div class="card-body">
+          <div class="three-stats">
+            <div class="mini-stat">
+              <div class="val" id="eSent">—</div>
+              <div class="lbl">Sent</div>
+            </div>
+            <div class="mini-stat">
+              <div class="val" id="eOpened">—</div>
+              <div class="lbl">Open rate</div>
+            </div>
+            <div class="mini-stat">
+              <div class="val" id="eClicked">—</div>
+              <div class="lbl">Clicked</div>
+            </div>
+          </div>
+          <hr class="nudge-divider">
+          <button class="btn-nudge-open" onclick="openNudge()">Send a Nudge</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3>Goal Summary</h3>
+          <span class="card-meta" id="gEnrolled">—</span>
+        </div>
+        <div class="card-body">
+          <div class="three-stats">
+            <div class="mini-stat">
+              <div class="val" id="gTotal">—</div>
+              <div class="lbl">Total</div>
+            </div>
+            <div class="mini-stat">
+              <div class="val" id="gDone">—</div>
+              <div class="lbl">Complete</div>
+            </div>
+            <div class="mini-stat">
+              <div class="val" id="gLeft">—</div>
+              <div class="lbl">Remaining</div>
+            </div>
+          </div>
+          <div class="card-footnote" id="gFootnote"></div>
+        </div>
+      </div>
+
+    </div><!-- /detail-cols -->
+
+    <!-- Goals accordion -->
+    <div class="goals-card">
+      <div class="goals-card-header">
+        <h3>Goal Progress</h3>
+        <span class="goals-summary" id="goalsOverallLabel"></span>
+      </div>
+      <div id="goalsList">
+        <div class="spinner">Loading goals…</div>
+      </div>
+    </div>
+
+  </div><!-- /detailView -->
+
+</div><!-- /appShell -->
+
+
+<!-- ════════════════════════════════════════
+     NUDGE MODAL
+════════════════════════════════════════ -->
+<div id="nudgeModal">
+  <div id="nudgePanel">
+    <div class="nudge-panel-header">
+      <div class="nudge-panel-title">Send a Nudge</div>
+      <div class="nudge-panel-to" id="nudgeTo">—</div>
+    </div>
+    <div class="nudge-panel-body">
+      <input type="hidden" id="nudgeStudentId">
+      <div class="nudge-field">
+        <label>Subject</label>
+        <input type="text" id="nudgeSubject" placeholder="Checking in on your progress">
+      </div>
+      <div class="nudge-field">
+        <label>Message</label>
+        <textarea id="nudgeMessage" placeholder="Hi [first name], I wanted to reach out…"></textarea>
+      </div>
+      <div class="nudge-actions">
+        <button class="btn-nudge-send" onclick="sendNudge()">Send Email</button>
+        <button class="btn-nudge-cancel" onclick="closeNudge()">Cancel</button>
+        <span class="nudge-status" id="nudgeStatus"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════════════════════
+// CONFIG — set to your Railway backend URL
+// or add <meta name="api-base" content="https://..."> to <head>
+// ════════════════════════════════════════════════════════════════
+const API_BASE = (function() {
+  var m = document.querySelector('meta[name="api-base"]');
+  return m ? m.content : 'https://rx-aftercare-backend-production.up.railway.app/api';
+})();
+
+var _token    = null;
+var _coach    = null;
+var _students = [];
+var _detail   = null;
+
+// ════════════════════════════════════════════════════════════════
+// API HELPER
+// ════════════════════════════════════════════════════════════════
+async function api(method, path, body) {
+  var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+  if (_token) opts.headers['Authorization'] = 'Bearer ' + _token;
+  if (body)   opts.body = JSON.stringify(body);
+  try {
+    var res  = await fetch(API_BASE + path, opts);
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+// ════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function() {
+  // Check backend connectivity
+  checkBackend();
+
+  // Restore session
+  var saved = sessionStorage.getItem('coachToken');
+  var coach = sessionStorage.getItem('coachData');
+  if (saved && coach) {
+    _token = saved;
+    _coach = JSON.parse(coach);
+    showApp();
+  }
+
+  document.getElementById('loginPassword').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('nudgeModal').addEventListener('click', function(e) {
+    if (e.target === this) closeNudge();
+  });
+});
+
+async function checkBackend() {
+  var dot  = document.getElementById('statusDot');
+  var text = document.getElementById('statusText');
+  try {
+    var res = await fetch(API_BASE + '/coaches/login', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: '', password: '' }) });
+    // Any response (even 400) means backend is up
+    dot.className  = 'status-dot ok';
+    text.textContent = 'Backend connected — ready to sign in';
+  } catch(e) {
+    dot.className  = 'status-dot err';
+    text.textContent = 'Cannot reach server — check your connection';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════════════
+async function doLogin() {
+  var email    = document.getElementById('loginEmail').value.trim();
+  var password = document.getElementById('loginPassword').value;
+  var errEl    = document.getElementById('loginErr');
+  errEl.classList.add('hidden');
+
+  if (!email || !password) {
+    errEl.textContent = 'Email and password are required.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  var btn = document.querySelector('.login-btn');
+  btn.textContent = 'Signing in…';
+  btn.disabled    = true;
+
+  var data = await api('POST', '/coaches/login', { email, password });
+
+  btn.textContent = 'Sign In';
+  btn.disabled    = false;
+
+  if (data && data.token) {
+    _token = data.token;
+    _coach = data.coach;
+    sessionStorage.setItem('coachToken', _token);
+    sessionStorage.setItem('coachData', JSON.stringify(_coach));
+    showApp();
+  } else {
+    errEl.textContent = (data && data.error) ? data.error : 'Login failed. Please check your credentials.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+function doLogout() {
+  sessionStorage.clear();
+  _token = null; _coach = null; _students = [];
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginEmail').value    = '';
+  document.getElementById('loginPassword').value = '';
+  checkBackend();
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display  = 'none';
+  document.getElementById('appShell').style.display     = 'flex';
+  document.getElementById('navCoachName').textContent   = _coach.name || '';
+  loadRoster();
+}
+
+// ════════════════════════════════════════════════════════════════
+// ROSTER
+// ════════════════════════════════════════════════════════════════
+async function loadRoster() {
+  showView('rosterView');
+  document.getElementById('rosterList').innerHTML = '<div class="spinner">Loading students…</div>';
+
+  var data = await api('GET', '/coaches/students');
+  if (!data || !data.students) {
+    document.getElementById('rosterList').innerHTML =
+      '<div class="spinner">Could not load students. Please try refreshing.</div>';
+    return;
+  }
+
+  _students = data.students;
+  renderSummary();
+  renderRoster();
+}
+
+function renderSummary() {
+  var total   = _students.length;
+  var avgProg = total
+    ? Math.round(_students.reduce(function(s, x) { return s + x.progress_pct; }, 0) / total)
+    : 0;
+  var behind  = _students.filter(function(s) { return s.progress_pct < 25; }).length;
+
+  document.getElementById('statStudents').textContent = total;
+  document.getElementById('statProgress').textContent = avgProg + '%';
+  document.getElementById('statBehind').textContent   = behind;
+}
+
+function renderRoster() {
+  var list    = document.getElementById('rosterList');
+  var sort    = document.getElementById('sortSelect').value;
+  var students = _students.slice();
+
+  if (sort === 'progress-asc')  students.sort(function(a,b) { return a.progress_pct - b.progress_pct; });
+  if (sort === 'progress-desc') students.sort(function(a,b) { return b.progress_pct - a.progress_pct; });
+  if (sort === 'name-asc')      students.sort(function(a,b) {
+    return (a.last_name + a.first_name).localeCompare(b.last_name + b.first_name);
+  });
+
+  if (!students.length) {
+    list.innerHTML =
+      '<div class="roster-empty">' +
+        '<strong>No students assigned yet</strong>' +
+        'Contact your administrator to get students assigned to you.' +
+      '</div>';
+    return;
+  }
+
+  list.innerHTML = students.map(function(s) {
+    var pct      = s.progress_pct || 0;
+    var fillCls  = pct < 25 ? 'low' : pct < 60 ? 'mid' : 'high';
+    var cls      = s.class_name  || 'No class assigned';
+    return '<div class="student-card">' +
+      '<div>' +
+        '<div class="sc-name">' + esc(s.first_name + ' ' + s.last_name) + '</div>' +
+        '<div class="sc-class">' + esc(cls) + '</div>' +
+        '<div class="sc-progress-wrap">' +
+          '<div class="progress-label">' +
+            '<span>Goal progress</span>' +
+            '<span><strong>' + pct + '%</strong> &nbsp;&middot;&nbsp; ' +
+              s.completed_activities + ' of ' + s.total_activities + ' activities</span>' +
+          '</div>' +
+          '<div class="progress-track">' +
+            '<div class="progress-fill ' + fillCls + '" style="width:' + pct + '%"></div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="sc-email-hint">Open student details to see email engagement</div>' +
+      '</div>' +
+      '<button class="btn-view" onclick="showDetail(' + s.id + ')">View Details</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════════════
+// DETAIL
+// ════════════════════════════════════════════════════════════════
+async function showDetail(studentId) {
+  showView('detailView');
+  document.getElementById('goalsList').innerHTML = '<div class="spinner">Loading…</div>';
+
+  var data = await api('GET', '/coaches/students/' + studentId + '/progress');
+  if (!data || !data.student) {
+    document.getElementById('goalsList').innerHTML =
+      '<div class="spinner">Could not load student data.</div>';
+    return;
+  }
+  _detail = data;
+
+  var s      = data.student;
+  var pct    = data.overall_pct;
+  var fillCls = pct < 25 ? 'low' : pct < 60 ? 'mid' : 'high';
+
+  document.getElementById('detailName').textContent = s.first_name + ' ' + s.last_name;
+  document.getElementById('detailMeta').textContent =
+    s.email + (s.class_name ? '  ·  ' + s.class_name : '');
+  document.getElementById('detailPct').textContent  = pct + '%';
+  document.getElementById('detailBar').style.width  = pct + '%';
+  document.getElementById('detailBar').className    = 'progress-fill ' + fillCls;
+
+  document.getElementById('gTotal').textContent   = data.total;
+  document.getElementById('gDone').textContent    = data.completed;
+  document.getElementById('gLeft').textContent    = data.total - data.completed;
+  document.getElementById('gEnrolled').textContent =
+    s.enrolled_at ? 'Enrolled ' + fmtDate(s.enrolled_at) : '';
+  document.getElementById('gFootnote').textContent =
+    pct === 100 ? '✓ All activities complete' :
+    pct === 0   ? 'No activities completed yet' : '';
+
+  document.getElementById('nudgeStudentId').value = studentId;
+
+  // Load email stats
+  loadEmailStats(studentId, s.class_id);
+  renderGoals(data.goals, data.overall_pct);
+}
+
+async function loadEmailStats(studentId, classId) {
+  ['eSent','eOpened','eClicked'].forEach(function(id) {
+    document.getElementById(id).textContent = '—';
+  });
+  document.getElementById('eLastEmail').textContent = '';
+  if (!classId) return;
+
+  var data = await api('GET', '/coaches/classes/' + classId + '/detail');
+  if (!data || !data.students) return;
+
+  var match = data.students.find(function(s) { return s.id === studentId; });
+  if (!match) return;
+
+  var openRate = match.emails_received > 0
+    ? Math.round((match.emails_opened / match.emails_received) * 100) + '%'
+    : '0%';
+
+  document.getElementById('eSent').textContent    = match.emails_received;
+  document.getElementById('eOpened').textContent  = openRate;
+  document.getElementById('eClicked').textContent = match.emails_clicked;
+  document.getElementById('eLastEmail').textContent =
+    match.last_email_at ? 'Last: ' + fmtDate(match.last_email_at) : 'No emails yet';
+}
+
+function renderGoals(goals, overallPct) {
+  document.getElementById('goalsOverallLabel').textContent = overallPct + '% overall';
+  var list = document.getElementById('goalsList');
+
+  if (!goals || !goals.length) {
+    list.innerHTML = '<div class="spinner" style="color:#aaa">No goal data available.</div>';
+    return;
+  }
+
+  list.innerHTML = goals.map(function(g) {
+    var pct     = g.progress_pct;
+    var fillCls = pct === 0 ? 'zero' : pct === 100 ? 'full' : pct >= 60 ? 'high' : pct >= 25 ? 'mid' : 'low';
+    // Partially complete goals open by default — 0% and 100% start closed
+    var isOpen  = pct > 0 && pct < 100;
+
+    var acts = g.activities.map(function(a) {
+      var checkHtml = a.completed
+        ? '<div class="activity-check done">&#10003;</div>'
+        : '<div class="activity-check"></div>';
+      var dateHtml = (a.completed && a.completed_at)
+        ? '<div class="activity-date">Completed ' + fmtDate(a.completed_at) + '</div>'
+        : '';
+      return '<div class="activity-row">' +
+        checkHtml +
+        '<div class="activity-body">' +
+          '<div class="activity-text">' + esc(a.content) + '</div>' +
+          dateHtml +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div class="goal-item' + (isOpen ? ' open' : '') + '" id="gi-' + g.id + '">' +
+      '<div class="goal-header" onclick="toggleGoal(' + g.id + ')">' +
+        '<div>' +
+          '<div class="goal-title">' + esc(g.title) + '</div>' +
+          '<div class="goal-count">' + g.completed + ' of ' + g.total + ' completed</div>' +
+        '</div>' +
+        '<div class="goal-mini-bar">' +
+          '<div class="goal-mini-track">' +
+            '<div class="goal-mini-fill ' + fillCls + '" style="width:' + pct + '%"></div>' +
+          '</div>' +
+          '<span class="goal-pct">' + pct + '%</span>' +
+        '</div>' +
+        '<button class="goal-chevron">&#8964;</button>' +
+      '</div>' +
+      '<div class="goal-activities">' + acts + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleGoal(id) {
+  var el = document.getElementById('gi-' + id);
+  if (el) el.classList.toggle('open');
+}
+
+function showRoster() {
+  showView('rosterView');
+  _detail = null;
+}
+
+// ════════════════════════════════════════════════════════════════
+// NUDGE
+// ════════════════════════════════════════════════════════════════
+function openNudge() {
+  if (!_detail) return;
+  var s = _detail.student;
+  document.getElementById('nudgeTo').textContent      = s.first_name + ' ' + s.last_name + '  ·  ' + s.email;
+  document.getElementById('nudgeSubject').value       = '';
+  document.getElementById('nudgeMessage').value       = '';
+  document.getElementById('nudgeStatus').textContent  = '';
+  document.getElementById('nudgeStatus').className    = 'nudge-status';
+  document.getElementById('nudgeModal').classList.add('open');
+}
+
+function closeNudge() {
+  document.getElementById('nudgeModal').classList.remove('open');
+}
+
+async function sendNudge() {
+  var studentId = parseInt(document.getElementById('nudgeStudentId').value);
+  var subject   = document.getElementById('nudgeSubject').value.trim();
+  var message   = document.getElementById('nudgeMessage').value.trim();
+  var statusEl  = document.getElementById('nudgeStatus');
+
+  statusEl.textContent = '';
+  if (!subject || !message) {
+    statusEl.textContent = 'Subject and message are required.';
+    statusEl.className   = 'nudge-status err';
+    return;
+  }
+
+  var btn = document.querySelector('.btn-nudge-send');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+
+  var res = await api('POST', '/coaches/students/' + studentId + '/nudge', { subject, message });
+
+  btn.textContent = 'Send Email'; btn.disabled = false;
+
+  if (res && res.success) {
+    statusEl.textContent = '✓ Sent!';
+    statusEl.className   = 'nudge-status ok';
+    setTimeout(closeNudge, 1400);
+  } else {
+    statusEl.textContent = '✕ ' + (res && res.error ? res.error : 'Send failed.');
+    statusEl.className   = 'nudge-status err';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════
+function showView(id) {
+  ['rosterView', 'detailView'].forEach(function(v) {
+    document.getElementById(v).classList.toggle('hidden', v !== id);
+  });
+  window.scrollTo(0, 0);
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function esc(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+</script>
+
+</body>
+</html>
