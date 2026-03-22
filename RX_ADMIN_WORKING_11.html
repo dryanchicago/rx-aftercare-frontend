@@ -26,6 +26,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#141e30;color:#e8e8e8;mi
 .tab{padding:12px 22px;cursor:pointer;font-size:0.9rem;font-weight:600;color:#8a9bb8;border-bottom:3px solid transparent;transition:color .15s,border-color .15s;user-select:none}
 .tab:hover{color:#c9a227}
 .tab.active{color:#c9a227;border-bottom-color:#c9a227}
+a.tab{text-decoration:none;display:inline-flex;align-items:center}
 
 /* MAIN */
 .main{padding:26px;max-width:1100px;margin:0 auto;background:#141e30}
@@ -324,6 +325,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:#141e30;color:#e8e8e8;mi
   <div class="tab" onclick="switchTab(this,'sec-classes')">📋 My Classes</div>
   <div class="tab" onclick="switchTab(this,'sec-students');loadStudents()">👥 Students</div>
   <div class="tab" onclick="switchTab(this,'sec-emaillib');loadEmailLibrary()">📧 Email Library</div>
+  <a class="tab" href="coach-admin.html">👤 Coaches ↗</a>
 </div>
 
 <!-- MAIN CONTENT -->
