@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rx Aftercare — Student Sign In</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #1e3c72 60%, #2a5298 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(240,192,64,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,192,64,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .login-wrap {
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .logo-area {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo-area img {
+      height: 56px;
+      margin-bottom: 14px;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
+    }
+    .logo-area .tagline {
+      color: rgba(255,255,255,0.55);
+      font-size: 13px;
+      letter-spacing: 0.5px;
+    }
+
+    .login-card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px 36px;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+    }
+
+    .card-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1e3c72;
+      margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 30px;
+    }
+
+    .error-banner {
+      background: #fff2f2;
+      border: 1px solid #f5c6cb;
+      border-left: 4px solid #e74c3c;
+      color: #c0392b;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 22px;
+      display: none;
+    }
+    .error-banner.visible { display: block; }
+
+    .success-banner {
+      background: #f0fff4;
+      border: 1px solid #b7ebc8;
+      border-left: 4px solid #27ae60;
+      color: #1a6e34;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 22px;
+      display: none;
+    }
+    .success-banner.visible { display: block; }
+
+    .field { margin-bottom: 20px; }
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .field input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #222;
+      background: #fafafa;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus {
+      outline: none;
+      border-color: #1e3c72;
+      background: white;
+      box-shadow: 0 0 0 3px rgba(30,60,114,0.1);
+    }
+    .field-hint {
+      font-size: 11px;
+      color: #999;
+      margin-top: 5px;
+    }
+
+    .pw-rules {
+      background: #f5f7ff;
+      border: 1px solid #dde3f5;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.7;
+    }
+    .pw-rules strong { color: #1e3c72; display: block; margin-bottom: 4px; }
+
+    .btn-signin {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #1e3c72, #2a5298);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.2s, transform 0.1s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-signin:hover:not(:disabled) { opacity: 0.93; transform: translateY(-1px); }
+    .btn-signin:active:not(:disabled) { transform: translateY(0); }
+    .btn-signin:disabled { background: #b0b8c8; cursor: not-allowed; transform: none; }
+
+    .spinner {
+      display: none;
+      width: 18px; height: 18px;
+      border: 3px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      position: absolute;
+      right: 18px; top: 50%;
+      transform: translateY(-50%);
+    }
+    .btn-signin.loading .spinner { display: block; }
+    @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+
+    .footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.3px;
+    }
+
+    /* steps */
+    .step { display: none; }
+    .step.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="login-wrap">
+
+    <div class="logo-area">
+      <img src="Rx_Logo_White_UltraSharp.png" alt="Rx Aftercare"
+           onerror="this.style.display='none'">
+      <div class="tagline">Professional Development Tracking Platform</div>
+    </div>
+
+    <div class="login-card">
+
+      <!-- ── STEP 1: Login ── -->
+      <div class="step active" id="stepLogin">
+        <div class="card-title">Student Sign In</div>
+        <div class="card-sub">Use the email and password from your welcome email.</div>
+
+        <div class="error-banner" id="loginError"></div>
+
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="loginEmail" autocomplete="username"
+                 placeholder="your@email.com" autofocus>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="loginPassword" autocomplete="current-password"
+                 placeholder="••••••••••">
+        </div>
+
+        <button class="btn-signin" id="loginBtn" onclick="doLogin()">
+          Sign In
+          <div class="spinner"></div>
+        </button>
+      </div>
+
+      <!-- ── STEP 2: Force password change ── -->
+      <div class="step" id="stepSetPassword">
+        <div class="card-title">Set Your Password</div>
+        <div class="card-sub">Your account was created with a temporary password. Please set a permanent one to continue.</div>
+
+        <div class="error-banner"   id="pwError"></div>
+        <div class="success-banner" id="pwSuccess"></div>
+
+        <div class="pw-rules">
+          <strong>Password requirements</strong>
+          At least 8 characters. Choose something memorable — you'll use this every time you sign in.
+        </div>
+
+        <div class="field">
+          <label>New Password</label>
+          <input type="password" id="newPassword" autocomplete="new-password"
+                 placeholder="Minimum 8 characters">
+        </div>
+        <div class="field">
+          <label>Confirm New Password</label>
+          <input type="password" id="confirmPassword" autocomplete="new-password"
+                 placeholder="Re-enter your new password">
+        </div>
+
+        <button class="btn-signin" id="setPwBtn" onclick="doSetPassword()">
+          Set Password &amp; Continue
+          <div class="spinner"></div>
+        </button>
+      </div>
+
+    </div>
+
+    <div class="footer">Rx Aftercare &copy; Gray Matters Group</div>
+  </div>
+
+<script>
+  var API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? 'http://localhost:3000/api'
+    : 'https://rx-aftercare-backend-production.up.railway.app/api';
+
+  var _token   = null;
+  var _classId = null;
+
+  // ── Check existing session ───────────────────────────────────────────────
+  (function checkExisting() {
+    var token   = localStorage.getItem('studentToken');
+    var classId = localStorage.getItem('studentClassId');
+    if (token && classId) {
+      window.location.replace('student.html?classId=' + classId);
+    }
+  })();
+
+  // ── Enter key support ────────────────────────────────────────────────────
+  document.getElementById('loginEmail').addEventListener('keydown',    enterKey('loginBtn'));
+  document.getElementById('loginPassword').addEventListener('keydown', enterKey('loginBtn'));
+  document.getElementById('newPassword').addEventListener('keydown',   enterKey('setPwBtn'));
+  document.getElementById('confirmPassword').addEventListener('keydown', enterKey('setPwBtn'));
+
+  function enterKey(btnId) {
+    return function(e) { if (e.key === 'Enter') document.getElementById(btnId).click(); };
+  }
+
+  // ── Step helpers ─────────────────────────────────────────────────────────
+  function showStep(id) {
+    document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function setLoading(btnId, loading) {
+    var btn = document.getElementById(btnId);
+    btn.disabled = loading;
+    if (loading) btn.classList.add('loading'); else btn.classList.remove('loading');
+  }
+
+  function showError(elId, msg) {
+    var el = document.getElementById(elId);
+    el.textContent = '⚠️  ' + msg;
+    el.classList.add('visible');
+  }
+
+  function hideError(elId) {
+    document.getElementById(elId).classList.remove('visible');
+  }
+
+  // ── Step 1: Login ────────────────────────────────────────────────────────
+  async function doLogin() {
+    hideError('loginError');
+    var email    = document.getElementById('loginEmail').value.trim();
+    var password = document.getElementById('loginPassword').value;
+
+    if (!email || !password) {
+      showError('loginError', 'Email and password are required.');
+      return;
+    }
+
+    setLoading('loginBtn', true);
+    try {
+      var res  = await fetch(API_URL + '/auth/student/login', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email: email, password: password })
+      });
+      var data = await res.json();
+
+      if (!res.ok || !data.token) {
+        showError('loginError', data.error || 'Invalid email or password.');
+        document.getElementById('loginPassword').value = '';
+        return;
+      }
+
+      _token   = data.token;
+      _classId = data.student.classId;
+
+      if (data.student.mustChangePassword) {
+        showStep('stepSetPassword');
+        setTimeout(function() { document.getElementById('newPassword').focus(); }, 100);
+      } else {
+        completeLogin();
+      }
+
+    } catch (e) {
+      showError('loginError', 'Cannot connect to server. Please try again.');
+    } finally {
+      setLoading('loginBtn', false);
+    }
+  }
+
+  // ── Step 2: Set password ─────────────────────────────────────────────────
+  async function doSetPassword() {
+    hideError('pwError');
+    var np = document.getElementById('newPassword').value;
+    var cp = document.getElementById('confirmPassword').value;
+
+    if (!np || np.length < 8) {
+      showError('pwError', 'Password must be at least 8 characters.');
+      return;
+    }
+    if (np !== cp) {
+      showError('pwError', 'Passwords do not match.');
+      return;
+    }
+
+    setLoading('setPwBtn', true);
+    try {
+      var res  = await fetch(API_URL + '/students/change-password', {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer ' + _token
+        },
+        body: JSON.stringify({ new_password: np })
+      });
+      var data = await res.json();
+
+      if (!res.ok || !data.success) {
+        showError('pwError', data.error || 'Could not set password. Please try again.');
+        return;
+      }
+
+      completeLogin();
+
+    } catch (e) {
+      showError('pwError', 'Cannot connect to server. Please try again.');
+    } finally {
+      setLoading('setPwBtn', false);
+    }
+  }
+
+  // ── Finish: store session and redirect ───────────────────────────────────
+  function completeLogin() {
+    localStorage.setItem('studentToken',   _token);
+    localStorage.setItem('studentClassId', _classId);
+    window.location.replace('student.html?classId=' + _classId);
+  }
+</script>
+
+</body>
+</html>
