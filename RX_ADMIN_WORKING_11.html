@@ -655,6 +655,10 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
           Copy content overrides
         </label>
         <button class="sc-btn-sm gold" onclick="duplicateSchedule()">Copy Schedule</button>
+        <div class="sc-divider"></div>
+        <label>Shift all slots:</label>
+        <input type="number" id="sc-shift-days" style="width:65px;text-align:center;background:#111827;border:1px solid #2a4570;color:#e8e8e8;padding:5px 8px;border-radius:4px;font-size:0.82rem" placeholder="±days">
+        <button class="sc-btn-sm" onclick="shiftSchedule()">↕ Shift</button>
       </div>
       <div class="sc-slot-list" id="sc-slot-list">
         <div class="sc-empty">No emails scheduled yet. Add your first one below.</div>
@@ -2148,6 +2152,18 @@ async function duplicateSchedule(){
   var res=await apiCall("POST","/classes/"+_scClassId+"/schedule/duplicate-from/"+sourceId,{copy_overrides:copyOverrides});
   if(res&&res.success){toast("✅ Schedule copied — "+res.slots_copied+" slots");await loadSchedule();}
   else alert(res&&res.error?res.error:"Copy failed.");
+}
+async function shiftSchedule(){
+  var days=parseInt(document.getElementById("sc-shift-days").value);
+  if(!days||isNaN(days)){alert("Enter a number of days to shift (e.g. 7 or -7).");return;}
+  var dir=days>0?"+"+days:String(days);
+  if(!confirm("Shift all schedule slots by "+dir+" days?\n\nSlots cannot go below day 1. This cannot be undone.")) return;
+  var res=await apiCall("PUT","/classes/"+_scClassId+"/schedule/shift",{days:days});
+  if(res&&res.success){
+    document.getElementById("sc-shift-days").value="";
+    toast("✅ Shifted "+res.slots_shifted+" slot"+(res.slots_shifted!==1?"s":"")+" by "+dir+" days");
+    await loadSchedule();
+  } else alert(res&&res.error?res.error:"Shift failed.");
 }
 
 async function loadSlotStats(slotId){
