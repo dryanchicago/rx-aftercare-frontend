@@ -39,7 +39,11 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 
 /* GOAL CARDS */
 .goal-card{background:#1a2744;border:1px solid #2a4a6e;border-radius:7px;margin-bottom:14px;overflow:hidden}
-.goal-card-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:#1f3358;gap:10px}
+.goal-card-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;background:#1f3358;gap:10px;cursor:pointer;user-select:none}
+.goal-toggle{font-size:0.7rem;color:#8a9bb8;margin-right:5px;display:inline-block;transition:transform .2s;}
+.goal-card-header.collapsed .goal-toggle{transform:rotate(-90deg);}
+.act-list{list-style:none;padding:0}
+.act-list.collapsed{display:none}
 .goal-left{display:flex;align-items:center;gap:10px}
 .goal-num{font-size:0.72rem;background:#1e3a5f;color:#8a9bb8;padding:2px 7px;border-radius:10px;font-weight:600;white-space:nowrap}
 .goal-title-text{font-size:0.95rem;font-weight:700;color:#c9a227}
@@ -639,6 +643,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <button onclick="downloadScheduleXlsx()" style="background:#1a6b3a;color:#fff;border:2px solid #27ae60;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:0.78rem;font-weight:700">⬇ Download Schedule</button>
+        <button onclick="deleteAllSlots()" style="background:none;color:#f07070;border:1px solid #f07070;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:0.78rem;font-weight:700">🗑 Delete All Slots</button>
         <button class="sc-close" onclick="closeSchedule()">✕</button>
       </div>
     </div>
@@ -880,15 +885,22 @@ function renderLib() {
         + '<div class="act-actions"><button class="btn-xs btn-edit" onclick="editActivity('+g.id+','+a.id+')">Edit</button>'
         + '<button class="btn-xs btn-del" onclick="deleteActivity('+g.id+','+a.id+')">✕</button></div></li>';
     }).join("");
-    return '<div class="goal-card"><div class="goal-card-header"><div class="goal-left">'
+    return '<div class="goal-card"><div class="goal-card-header" onclick="toggleGoalCard(this)"><div class="goal-left">'
+      + '<span class="goal-toggle">▼</span>'
       + '<span class="goal-num">#'+g.id+'</span><span class="goal-title-text">'+esc(g.title)+'</span>'
       + '<span style="font-size:0.75rem;color:#8a9bb8;margin-left:6px">('+g.activities.length+' activities)</span></div>'
-      + '<div class="goal-actions"><button class="btn-sm btn-edit" onclick="editGoalTitle('+g.id+')">✏️ Rename</button>'
+      + '<div class="goal-actions" onclick="event.stopPropagation()"><button class="btn-sm btn-edit" onclick="editGoalTitle('+g.id+')">✏️ Rename</button>'
       + '<button class="btn-sm btn-outline" onclick="addActivity('+g.id+')">+ Activity</button>'
       + '<button class="btn-sm btn-del" onclick="deleteGoal('+g.id+')">🗑</button></div></div>'
       + '<ul class="act-list">'+actsHtml+'</ul></div>';
   }).join("");
   renderCreate(null);
+}
+
+function toggleGoalCard(header){
+  header.classList.toggle('collapsed');
+  var list=header.closest('.goal-card').querySelector('.act-list');
+  if(list)list.classList.toggle('collapsed');
 }
 
 // ============================================================
@@ -1406,7 +1418,9 @@ function renderEmailLibrary(){
       +'<div class="el-card-actions">'
       +'<button class="el-btn-preview" onclick="previewTemplate('+t.id+')">👁 Preview</button>'
       +'<button class="el-btn-test" onclick="sendTestEmail('+t.id+')">📧 Test</button>'
-      +'<button class="el-btn-edit" onclick="openEmailEditById('+t.id+')">✏️ Edit</button>'
+      +(t.is_locked
+        ? '<button class="el-btn-edit" disabled style="opacity:0.4;cursor:not-allowed" title="Locked — use Save As New to create an editable copy">🔒 Locked</button>'
+        : '<button class="el-btn-edit" onclick="openEmailEditById('+t.id+')">✏️ Edit</button>')
       +'<button class="el-btn-delete" onclick="deleteTemplate('+t.id+')">🗑</button>'
       +'</div></div>';
   }).join("");
@@ -1430,6 +1444,15 @@ async function openEmailEdit(templateId){
       document.getElementById("ep-subject").value=t.subject;
       document.getElementById("ep-html").value=t.html_body;
       document.getElementById("ep-locked").value=String(t.is_locked);
+      if(t.is_locked){
+        document.getElementById("ep-msg").textContent="🔒 This template is locked. Use Save As New to create an editable copy.";
+        document.getElementById("ep-msg").style.color="#f07070";
+        document.querySelector(".ep-btn-save").disabled=true;
+        document.querySelector(".ep-btn-save").style.opacity="0.4";
+      } else {
+        document.querySelector(".ep-btn-save").disabled=false;
+        document.querySelector(".ep-btn-save").style.opacity="";
+      }
     }
   }
   document.getElementById("emailEditModal").classList.add("open");
@@ -1919,6 +1942,16 @@ async function deleteSlot(slotId){
   var res=await apiCall("DELETE","/classes/"+_scClassId+"/schedule/"+slotId);
   if(res&&res.success) await loadSchedule();
   else alert("Could not delete slot.");
+}
+
+async function deleteAllSlots(){
+  var className=document.getElementById("sc-class-name").textContent||"this class";
+  if(!confirm("Delete ALL schedule slots for "+className+"?\n\nThis cannot be undone.")) return;
+  var res=await apiCall("DELETE","/classes/"+_scClassId+"/schedule");
+  if(res&&res.success){
+    toast("🗑 Deleted "+res.deleted+" slot"+(res.deleted!==1?"s":"")+".");
+    await loadSchedule();
+  } else alert("Could not delete slots.");
 }
 
 // ── Edit slot ────────────────────────────────────────────────────────────
