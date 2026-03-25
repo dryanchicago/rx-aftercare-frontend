@@ -270,7 +270,17 @@
       border-radius: 7px 7px 0 0;
       font-size: 13px;
       font-weight: 700;
+      cursor: pointer;
+      user-select: none;
     }
+    .cg-arrow {
+      display: inline-block;
+      font-size: 10px;
+      margin-left: 8px;
+      transition: transform 0.2s;
+      transform: rotate(-90deg);
+    }
+    .class-group.open .cg-arrow { transform: rotate(0deg); }
     .btn-select-all {
       background: rgba(255,255,255,0.15);
       border: none;
@@ -283,11 +293,13 @@
     }
     .btn-select-all:hover { background: rgba(255,255,255,0.25); }
     .student-check-list {
+      display: none;
       border: 1px solid #e0e4ed;
       border-top: none;
       border-radius: 0 0 7px 7px;
       overflow: hidden;
     }
+    .class-group.open .student-check-list { display: block; }
     .student-check-item {
       display: flex;
       align-items: center;
@@ -907,15 +919,19 @@ function renderStudentList(assignedIds) {
     if (!students.length) return;
     any = true;
 
-    var allChecked = students.every(function(s) { return assignedIds.indexOf(s.id) !== -1; });
+    var allChecked  = students.every(function(s) { return assignedIds.indexOf(s.id) !== -1; });
+    var hasAssigned = students.some(function(s)  { return assignedIds.indexOf(s.id) !== -1; });
 
-    html += '<div class="class-group">' +
-      '<div class="class-group-header">' +
+    html += '<div class="class-group' + (hasAssigned ? ' open' : '') + '">' +
+      '<div class="class-group-header" onclick="toggleClassGroup(this)">' +
         '<span>' + esc(cls.name) + '</span>' +
-        '<button class="btn-select-all" id="sa-btn-' + cls.id + '" ' +
-                'onclick="toggleAll(' + cls.id + ',' + (!allChecked) + ')">' +
-          (allChecked ? 'Deselect All' : 'Select All') +
-        '</button>' +
+        '<div style="display:flex;align-items:center;gap:6px">' +
+          '<button class="btn-select-all" id="sa-btn-' + cls.id + '" ' +
+                  'onclick="event.stopPropagation();toggleAll(' + cls.id + ',' + (!allChecked) + ')">' +
+            (allChecked ? 'Deselect All' : 'Select All') +
+          '</button>' +
+          '<span class="cg-arrow">▼</span>' +
+        '</div>' +
       '</div>' +
       '<div class="student-check-list">';
 
@@ -936,6 +952,10 @@ function renderStudentList(assignedIds) {
   });
 
   list.innerHTML = any ? html : '<div class="no-students">No students found in any class.</div>';
+}
+
+function toggleClassGroup(header) {
+  header.closest('.class-group').classList.toggle('open');
 }
 
 function toggleOne(cbId, classId) {
