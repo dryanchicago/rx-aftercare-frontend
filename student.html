@@ -109,11 +109,11 @@ window.onload=async function(){
   try{
     var res=await fetch(API_BASE+"/classes/"+classId);
     var data=await res.json();
-    if(!data.success||!data.class){
+    if(!data||!data.id||!data.goals){
       document.getElementById("gc").innerHTML='<div class="error-msg">❌ Class not found. Please check your link.</div>';
       return;
     }
-    var cls=data.class;
+    var cls=data;
     className=cls.name||"";
     clientName=cls.client||"";
     durationDays=cls.duration_days||90;

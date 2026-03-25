@@ -885,14 +885,14 @@ function renderLib() {
         + '<div class="act-actions"><button class="btn-xs btn-edit" onclick="editActivity('+g.id+','+a.id+')">Edit</button>'
         + '<button class="btn-xs btn-del" onclick="deleteActivity('+g.id+','+a.id+')">✕</button></div></li>';
     }).join("");
-    return '<div class="goal-card"><div class="goal-card-header" onclick="toggleGoalCard(this)"><div class="goal-left">'
+    return '<div class="goal-card"><div class="goal-card-header collapsed" onclick="toggleGoalCard(this)"><div class="goal-left">'
       + '<span class="goal-toggle">▼</span>'
       + '<span class="goal-num">#'+g.id+'</span><span class="goal-title-text">'+esc(g.title)+'</span>'
       + '<span style="font-size:0.75rem;color:#8a9bb8;margin-left:6px">('+g.activities.length+' activities)</span></div>'
       + '<div class="goal-actions" onclick="event.stopPropagation()"><button class="btn-sm btn-edit" onclick="editGoalTitle('+g.id+')">✏️ Rename</button>'
       + '<button class="btn-sm btn-outline" onclick="addActivity('+g.id+')">+ Activity</button>'
       + '<button class="btn-sm btn-del" onclick="deleteGoal('+g.id+')">🗑</button></div></div>'
-      + '<ul class="act-list">'+actsHtml+'</ul></div>';
+      + '<ul class="act-list collapsed">'+actsHtml+'</ul></div>';
   }).join("");
   renderCreate(null);
 }
