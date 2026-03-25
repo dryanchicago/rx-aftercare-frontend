@@ -1041,7 +1041,7 @@ async function saveClass(){
   var goal_ids=getCheckedGoalIds();
   if(!name){toast("⚠️ Please enter a class name.");return;}
   if(!goal_ids.length){toast("⚠️ Please select at least one goal.");return;}
-  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,bcc_emails:bcc_emails,send_welcome_email:send_welcome_email};
+  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,bcc_emails:bcc_emails,send_welcome_email:send_welcome_email,logo_data:FORM_LOGO||null};
   var result;
   if(editingClassId){
     result=await apiCall("PUT","/classes/"+editingClassId,payload);
@@ -1100,7 +1100,7 @@ async function editClass(classId){
   document.getElementById("saveBtn").textContent="💾 Update Class";
   document.getElementById("cancelBtn").style.display="inline-block";
   var sId=String(cls.id);
-  FORM_LOGO=CLASS_LOGOS[sId]||null;
+  FORM_LOGO=CLASS_LOGOS[sId]||cls.logo_data||null;
   if(FORM_LOGO) showLogoPreview(FORM_LOGO); else clearLogo();
   var savedSel=CLASS_ACT_SEL[sId]||null;
   var clsGoalIds=[];
