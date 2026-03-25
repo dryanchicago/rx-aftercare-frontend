@@ -1,401 +1,453 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rx Aftercare — Student Sign In</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rx Aftercare — Student Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #1e3c72 60%, #2a5298 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-    }
+  :root {
+    --navy:   #0F1E3C;
+    --gold:   #C9A227;
+    --gold-lt:#E8C84A;
+    --blue:   #2A5298;
+    --white:  #FFFFFF;
+    --off:    #F4F6FA;
+    --muted:  #8A9BB8;
+    --error:  #C0392B;
+    --green:  #27AE60;
+  }
 
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(240,192,64,0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(240,192,64,0.04) 1px, transparent 1px);
-      background-size: 40px 40px;
-      pointer-events: none;
-    }
+  html, body {
+    height: 100%;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    overflow: hidden;
+  }
 
-    .login-wrap {
-      width: 100%;
-      max-width: 420px;
-      position: relative;
-      z-index: 1;
-    }
+  /* ── Background mesh ── */
+  .bg {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%,  rgba(42,82,152,0.45) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 90%,  rgba(201,162,39,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, #0F1E3C 0%, #070E1E 100%);
+  }
+  .bg::after {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.015'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
 
-    .logo-area {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .logo-area img {
-      height: 56px;
-      margin-bottom: 14px;
-      filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4));
-    }
-    .logo-area .tagline {
-      color: rgba(255,255,255,0.55);
-      font-size: 13px;
-      letter-spacing: 0.5px;
-    }
+  /* ── Layout ── */
+  .page {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    overflow-y: auto;
+  }
 
-    .login-card {
-      background: white;
-      border-radius: 16px;
-      padding: 40px 36px;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.35);
-    }
+  .card {
+    width: 100%;
+    max-width: 440px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 20px;
+    padding: 52px 48px 44px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,162,39,0.08);
+    animation: fadeUp 0.6s ease both;
+  }
 
-    .card-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1e3c72;
-      margin-bottom: 6px;
-    }
-    .card-sub {
-      font-size: 13px;
-      color: #888;
-      margin-bottom: 30px;
-    }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
 
-    .error-banner {
-      background: #fff2f2;
-      border: 1px solid #f5c6cb;
-      border-left: 4px solid #e74c3c;
-      color: #c0392b;
-      padding: 12px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 22px;
-      display: none;
-    }
-    .error-banner.visible { display: block; }
+  /* ── Branding ── */
+  .brand {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  .brand-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(201,162,39,0.12);
+    border: 1px solid rgba(201,162,39,0.30);
+    border-radius: 100px;
+    padding: 6px 16px 6px 8px;
+    margin-bottom: 24px;
+  }
+  .brand-dot {
+    width: 28px; height: 28px;
+    background: var(--gold);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--navy);
+  }
+  .brand-badge span {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .brand h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    font-weight: 400;
+    color: var(--white);
+    line-height: 1.15;
+    margin-bottom: 8px;
+  }
+  .brand h1 em { font-style: italic; color: var(--gold); }
+  .brand p { font-size: 14px; color: var(--muted); font-weight: 300; }
 
-    .success-banner {
-      background: #f0fff4;
-      border: 1px solid #b7ebc8;
-      border-left: 4px solid #27ae60;
-      color: #1a6e34;
-      padding: 12px 14px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 22px;
-      display: none;
-    }
-    .success-banner.visible { display: block; }
+  /* ── Step badge for panel 2 ── */
+  .step-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(39,174,96,0.12);
+    border: 1px solid rgba(39,174,96,0.30);
+    border-radius: 100px;
+    padding: 6px 16px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #5DD68A;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .step-dot {
+    width: 8px; height: 8px;
+    background: #27AE60;
+    border-radius: 50%;
+  }
 
-    .field { margin-bottom: 20px; }
-    .field label {
-      display: block;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: #555;
-      margin-bottom: 8px;
-    }
-    .field input {
-      width: 100%;
-      padding: 12px 14px;
-      border: 2px solid #e0e0e0;
-      border-radius: 8px;
-      font-size: 14px;
-      color: #222;
-      background: #fafafa;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .field input:focus {
-      outline: none;
-      border-color: #1e3c72;
-      background: white;
-      box-shadow: 0 0 0 3px rgba(30,60,114,0.1);
-    }
-    .field-hint {
-      font-size: 11px;
-      color: #999;
-      margin-top: 5px;
-    }
+  /* ── Form ── */
+  .form-group { margin-bottom: 20px; }
+  label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  input {
+    width: 100%;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    color: var(--white);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+  }
+  input::placeholder { color: rgba(255,255,255,0.25); }
+  input:focus {
+    border-color: var(--gold);
+    background: rgba(255,255,255,0.09);
+    box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
+  }
+  input.error { border-color: var(--error); }
 
-    .pw-rules {
-      background: #f5f7ff;
-      border: 1px solid #dde3f5;
-      border-radius: 8px;
-      padding: 12px 14px;
-      margin-bottom: 20px;
-      font-size: 12px;
-      color: #555;
-      line-height: 1.7;
-    }
-    .pw-rules strong { color: #1e3c72; display: block; margin-bottom: 4px; }
+  /* ── Error / info messages ── */
+  .msg {
+    display: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .msg.show { display: block; }
+  .msg.error {
+    background: rgba(192,57,43,0.15);
+    border: 1px solid rgba(192,57,43,0.35);
+    color: #E8856A;
+  }
 
-    .btn-signin {
-      width: 100%;
-      padding: 14px;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 8px;
-      transition: opacity 0.2s, transform 0.1s;
-      position: relative;
-      overflow: hidden;
-    }
-    .btn-signin:hover:not(:disabled) { opacity: 0.93; transform: translateY(-1px); }
-    .btn-signin:active:not(:disabled) { transform: translateY(0); }
-    .btn-signin:disabled { background: #b0b8c8; cursor: not-allowed; transform: none; }
+  /* ── Button ── */
+  .btn-main {
+    width: 100%;
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    border-radius: 10px;
+    padding: 15px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    letter-spacing: 0.02em;
+    margin-top: 4px;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-main:hover  { background: var(--gold-lt); box-shadow: 0 6px 24px rgba(201,162,39,0.35); }
+  .btn-main:active { transform: scale(0.98); }
+  .btn-main:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+  .btn-main .spinner {
+    display: none;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(15,30,60,0.3);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin: 0 auto;
+  }
+  .btn-main.loading .btn-text { display: none; }
+  .btn-main.loading .spinner  { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-    .spinner {
-      display: none;
-      width: 18px; height: 18px;
-      border: 3px solid rgba(255,255,255,0.4);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      position: absolute;
-      right: 18px; top: 50%;
-      transform: translateY(-50%);
-    }
-    .btn-signin.loading .spinner { display: block; }
-    @keyframes spin { to { transform: translateY(-50%) rotate(360deg); } }
+  /* ── Password hint ── */
+  .pw-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
 
-    .footer {
-      text-align: center;
-      margin-top: 24px;
-      font-size: 11px;
-      color: rgba(255,255,255,0.35);
-      letter-spacing: 0.3px;
-    }
+  /* ── Footer ── */
+  .card-footer {
+    text-align: center;
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+  .card-footer p { font-size: 12px; color: rgba(138,155,184,0.7); }
+  .gmg-logo {
+    margin-top: 14px;
+    font-size: 11px;
+    color: rgba(138,155,184,0.5);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
 
-    /* steps */
-    .step { display: none; }
-    .step.active { display: block; }
-  </style>
+  /* ── Panel transitions ── */
+  .panel { animation: fadeUp 0.4s ease both; }
+</style>
 </head>
 <body>
 
-  <div class="login-wrap">
+<div class="bg"></div>
 
-    <div class="logo-area">
-      <img src="Rx_Logo_White_UltraSharp.png" alt="Rx Aftercare"
-           onerror="this.style.display='none'">
-      <div class="tagline">Professional Development Tracking Platform</div>
-    </div>
+<div class="page">
+  <div class="card">
 
-    <div class="login-card">
-
-      <!-- ── STEP 1: Login ── -->
-      <div class="step active" id="stepLogin">
-        <div class="card-title">Student Sign In</div>
-        <div class="card-sub">Use the email and password from your welcome email.</div>
-
-        <div class="error-banner" id="loginError"></div>
-
-        <div class="field">
-          <label>Email Address</label>
-          <input type="email" id="loginEmail" autocomplete="username"
-                 placeholder="your@email.com" autofocus>
+    <!-- ── Panel 1: Sign In ── -->
+    <div id="panel-login" class="panel">
+      <div class="brand">
+        <div class="brand-badge">
+          <div class="brand-dot">Rx</div>
+          <span>Student Portal</span>
         </div>
-        <div class="field">
-          <label>Password</label>
-          <input type="password" id="loginPassword" autocomplete="current-password"
-                 placeholder="••••••••••">
-        </div>
-
-        <button class="btn-signin" id="loginBtn" onclick="doLogin()">
-          Sign In
-          <div class="spinner"></div>
-        </button>
+        <h1>Welcome<br>back, <em>scholar.</em></h1>
+        <p>Sign in to access your program dashboard</p>
       </div>
 
-      <!-- ── STEP 2: Force password change ── -->
-      <div class="step" id="stepSetPassword">
-        <div class="card-title">Set Your Password</div>
-        <div class="card-sub">Your account was created with a temporary password. Please set a permanent one to continue.</div>
+      <div class="msg error" id="loginError"></div>
 
-        <div class="error-banner"   id="pwError"></div>
-        <div class="success-banner" id="pwSuccess"></div>
-
-        <div class="pw-rules">
-          <strong>Password requirements</strong>
-          At least 8 characters. Choose something memorable — you'll use this every time you sign in.
-        </div>
-
-        <div class="field">
-          <label>New Password</label>
-          <input type="password" id="newPassword" autocomplete="new-password"
-                 placeholder="Minimum 8 characters">
-        </div>
-        <div class="field">
-          <label>Confirm New Password</label>
-          <input type="password" id="confirmPassword" autocomplete="new-password"
-                 placeholder="Re-enter your new password">
-        </div>
-
-        <button class="btn-signin" id="setPwBtn" onclick="doSetPassword()">
-          Set Password &amp; Continue
-          <div class="spinner"></div>
-        </button>
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="you@company.com" autocomplete="email">
       </div>
 
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn-main" id="loginBtn" onclick="doLogin()">
+        <span class="btn-text">Sign In</span>
+        <div class="spinner"></div>
+      </button>
+
+      <div class="card-footer">
+        <p>Access restricted to enrolled participants.<br>Contact your GMG program manager if you need help.</p>
+        <div class="gmg-logo">Gray Matters Group</div>
+      </div>
     </div>
 
-    <div class="footer">Rx Aftercare &copy; Gray Matters Group</div>
+    <!-- ── Panel 2: Set New Password ── -->
+    <div id="panel-password" class="panel" style="display:none">
+      <div class="brand">
+        <div class="step-badge"><div class="step-dot"></div>One more step</div>
+        <h1>Set your<br><em>password.</em></h1>
+        <p>Your temporary password has been verified.<br>Please choose a permanent one to continue.</p>
+      </div>
+
+      <div class="msg error" id="pwError"></div>
+
+      <div class="form-group">
+        <label for="newpw">New Password</label>
+        <input type="password" id="newpw" placeholder="••••••••" autocomplete="new-password">
+        <div class="pw-hint">Minimum 8 characters</div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmpw">Confirm Password</label>
+        <input type="password" id="confirmpw" placeholder="••••••••" autocomplete="new-password">
+      </div>
+
+      <button class="btn-main" id="pwBtn" onclick="doChangePassword()">
+        <span class="btn-text">Save &amp; Continue to Dashboard</span>
+        <div class="spinner"></div>
+      </button>
+    </div>
+
   </div>
+</div>
 
 <script>
-  var API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:3000/api'
-    : 'https://rx-aftercare-backend-production.up.railway.app/api';
+  const API = 'https://rx-aftercare-backend-production.up.railway.app';
+  let tempToken   = null;
+  let tempStudent = null;
 
-  var _token   = null;
-  var _classId = null;
-
-  // ── Check existing session ───────────────────────────────────────────────
-  (function checkExisting() {
-    var token   = localStorage.getItem('studentToken');
-    var classId = localStorage.getItem('studentClassId');
-    if (token && classId) {
-      window.location.replace('student.html?classId=' + classId);
+  // ── Redirect if already logged in ─────────────────────────────────────
+  (function() {
+    const tok = localStorage.getItem('student_token');
+    if (!tok) return;
+    try {
+      const p = JSON.parse(atob(tok.split('.')[1]));
+      if (p.exp * 1000 > Date.now()) {
+        window.location.href = 'student.html?classId=' + p.classId;
+      } else {
+        localStorage.removeItem('student_token');
+        localStorage.removeItem('student_data');
+      }
+    } catch(e) {
+      localStorage.removeItem('student_token');
     }
   })();
 
-  // ── Enter key support ────────────────────────────────────────────────────
-  document.getElementById('loginEmail').addEventListener('keydown',    enterKey('loginBtn'));
-  document.getElementById('loginPassword').addEventListener('keydown', enterKey('loginBtn'));
-  document.getElementById('newPassword').addEventListener('keydown',   enterKey('setPwBtn'));
-  document.getElementById('confirmPassword').addEventListener('keydown', enterKey('setPwBtn'));
+  // ── Keyboard support ───────────────────────────────────────────────────
+  document.getElementById('email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('password').focus();
+  });
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+  document.getElementById('newpw').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('confirmpw').focus();
+  });
+  document.getElementById('confirmpw').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doChangePassword();
+  });
 
-  function enterKey(btnId) {
-    return function(e) { if (e.key === 'Enter') document.getElementById(btnId).click(); };
+  // ── Helpers ────────────────────────────────────────────────────────────
+  function showError(id, msg) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function clearError(id) {
+    document.getElementById(id).classList.remove('show');
+  }
+  function setLoading(btn, on) {
+    btn.disabled = on;
+    btn.classList.toggle('loading', on);
   }
 
-  // ── Step helpers ─────────────────────────────────────────────────────────
-  function showStep(id) {
-    document.querySelectorAll('.step').forEach(function(s) { s.classList.remove('active'); });
-    document.getElementById(id).classList.add('active');
-  }
-
-  function setLoading(btnId, loading) {
-    var btn = document.getElementById(btnId);
-    btn.disabled = loading;
-    if (loading) btn.classList.add('loading'); else btn.classList.remove('loading');
-  }
-
-  function showError(elId, msg) {
-    var el = document.getElementById(elId);
-    el.textContent = '⚠️  ' + msg;
-    el.classList.add('visible');
-  }
-
-  function hideError(elId) {
-    document.getElementById(elId).classList.remove('visible');
-  }
-
-  // ── Step 1: Login ────────────────────────────────────────────────────────
+  // ── Panel 1: Login ─────────────────────────────────────────────────────
   async function doLogin() {
-    hideError('loginError');
-    var email    = document.getElementById('loginEmail').value.trim();
-    var password = document.getElementById('loginPassword').value;
+    clearError('loginError');
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('loginBtn');
 
     if (!email || !password) {
-      showError('loginError', 'Email and password are required.');
+      showError('loginError', 'Please enter your email and password.');
       return;
     }
 
-    setLoading('loginBtn', true);
+    setLoading(btn, true);
     try {
-      var res  = await fetch(API_URL + '/auth/student/login', {
+      const res  = await fetch(`${API}/api/auth/student/login`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email: email, password: password })
+        body:    JSON.stringify({ email, password })
       });
-      var data = await res.json();
+      const data = await res.json();
 
-      if (!res.ok || !data.token) {
-        showError('loginError', data.error || 'Invalid email or password.');
-        document.getElementById('loginPassword').value = '';
+      if (!res.ok) {
+        showError('loginError', data.error || 'Sign in failed. Please try again.');
         return;
       }
 
-      _token   = data.token;
-      _classId = data.student.classId;
-
       if (data.student.mustChangePassword) {
-        showStep('stepSetPassword');
-        setTimeout(function() { document.getElementById('newPassword').focus(); }, 100);
+        // Hold token temporarily — do NOT store yet
+        tempToken   = data.token;
+        tempStudent = data.student;
+        // Slide to panel 2
+        document.getElementById('panel-login').style.display    = 'none';
+        document.getElementById('panel-password').style.display = '';
+        setTimeout(() => document.getElementById('newpw').focus(), 60);
       } else {
-        completeLogin();
+        // Normal login — store and go
+        localStorage.setItem('student_token', data.token);
+        localStorage.setItem('student_data',  JSON.stringify(data.student));
+        window.location.href = 'student.html?classId=' + data.student.classId;
       }
 
-    } catch (e) {
-      showError('loginError', 'Cannot connect to server. Please try again.');
+    } catch(err) {
+      showError('loginError', 'Cannot reach server. Please try again in a moment.');
     } finally {
-      setLoading('loginBtn', false);
+      setLoading(btn, false);
     }
   }
 
-  // ── Step 2: Set password ─────────────────────────────────────────────────
-  async function doSetPassword() {
-    hideError('pwError');
-    var np = document.getElementById('newPassword').value;
-    var cp = document.getElementById('confirmPassword').value;
+  // ── Panel 2: Change password ───────────────────────────────────────────
+  async function doChangePassword() {
+    clearError('pwError');
+    const np  = document.getElementById('newpw').value;
+    const cp  = document.getElementById('confirmpw').value;
+    const btn = document.getElementById('pwBtn');
 
-    if (!np || np.length < 8) {
-      showError('pwError', 'Password must be at least 8 characters.');
-      return;
-    }
-    if (np !== cp) {
-      showError('pwError', 'Passwords do not match.');
-      return;
-    }
+    if (!np)           { showError('pwError', 'Please enter a new password.');           return; }
+    if (np.length < 8) { showError('pwError', 'Password must be at least 8 characters.'); return; }
+    if (np !== cp)     { showError('pwError', 'Passwords do not match.');                 return; }
 
-    setLoading('setPwBtn', true);
+    setLoading(btn, true);
     try {
-      var res  = await fetch(API_URL + '/students/change-password', {
+      const res  = await fetch(`${API}/api/students/change-password`, {
         method:  'POST',
         headers: {
           'Content-Type':  'application/json',
-          'Authorization': 'Bearer ' + _token
+          'Authorization': 'Bearer ' + tempToken
         },
         body: JSON.stringify({ new_password: np })
       });
-      var data = await res.json();
+      const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        showError('pwError', data.error || 'Could not set password. Please try again.');
+      if (!res.ok) {
+        showError('pwError', data.error || 'Failed to update password. Please try again.');
         return;
       }
 
-      completeLogin();
+      // Password changed — now it's safe to persist the session
+      localStorage.setItem('student_token', tempToken);
+      localStorage.setItem('student_data',  JSON.stringify(tempStudent));
+      window.location.href = 'student.html?classId=' + tempStudent.classId;
 
-    } catch (e) {
-      showError('pwError', 'Cannot connect to server. Please try again.');
+    } catch(err) {
+      showError('pwError', 'Cannot reach server. Please try again in a moment.');
     } finally {
-      setLoading('setPwBtn', false);
+      setLoading(btn, false);
     }
   }
-
-  // ── Finish: store session and redirect ───────────────────────────────────
-  function completeLogin() {
-    localStorage.setItem('studentToken',   _token);
-    localStorage.setItem('studentClassId', _classId);
-    window.location.replace('student.html?classId=' + _classId);
-  }
 </script>
-
 </body>
 </html>
