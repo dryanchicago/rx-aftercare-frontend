@@ -879,7 +879,7 @@ async function openStudentModal(coachId) {
   // Load all classes if not cached
   if (!_allClasses.length) {
     var cd = await apiCall('GET', '/classes');
-    _allClasses = (cd && cd.classes) ? cd.classes : [];
+    _allClasses = Array.isArray(cd) ? cd : (cd && cd.classes) ? cd.classes : [];
   }
 
   // Load students per class if not cached
@@ -887,7 +887,7 @@ async function openStudentModal(coachId) {
     var cls = _allClasses[i];
     if (!_classStudents[cls.id]) {
       var sd = await apiCall('GET', '/students/class/' + cls.id);
-      _classStudents[cls.id] = (sd && sd.students) ? sd.students : [];
+      _classStudents[cls.id] = Array.isArray(sd) ? sd : (sd && sd.students) ? sd.students : [];
     }
   }
 
