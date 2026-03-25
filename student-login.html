@@ -365,7 +365,11 @@
   async function doLogin() {
     clearError('loginError');
     const email    = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
+    // Normalize: trim whitespace + convert en/em dashes to hyphens
+    // (Outlook & some email clients replace hyphens when copying styled text)
+    const password = document.getElementById('password').value
+      .trim()
+      .replace(/[\u2012\u2013\u2014\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-');
     const btn      = document.getElementById('loginBtn');
 
     if (!email || !password) {
