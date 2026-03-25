@@ -1257,6 +1257,7 @@ function renderStudents(){
       +'<div class="student-meta"><span>✉️ '+esc(s.email||'')+'</span><span>📋 '+esc(className)+'</span>'
       +(s.completed_activities!=null?'<span>✅ '+s.completed_activities+'/'+s.total_activities+' activities</span>':'')
       +'</div></div><div class="class-actions" style="display:flex;gap:6px">'
+      +'<button class="btn-sm" style="background:#2a5298;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resendWelcome('+s.id+')">📧 Resend Email</button>'
       +'<button class="btn-sm btn-del" onclick="removeStudent('+s.id+')">🗑 Remove</button></div></div></div>';
   }).join("");
 }
@@ -1291,6 +1292,25 @@ function switchInviteTab(which){
 function showInviteError(msg){var el=document.getElementById("inviteError");if(el){el.textContent=msg;el.style.display="block";}}
 function hideInviteError(){var el=document.getElementById("inviteError");if(el)el.style.display="none";}
 
+async function resendWelcome(studentId){
+  var st=STUDENTS.find(function(x){return x.id===studentId;}); if(!st) return;
+  var alreadySet=!st.must_change_password;
+  var msg=alreadySet
+    ? 'This student has already set their own password.
+
+Resending will generate a NEW temporary password and require them to change it again on next login — but their saved goals will not be affected.
+
+Continue?'
+    : 'Resend the welcome email to '+esc(st.email)+'?
+
+They will receive their current temporary password again. Continue?';
+  if(!confirm(msg)) return;
+  var result=await apiCall('POST','/students/'+studentId+'/resend-welcome');
+  if(result&&result.success){
+    toast('📧 Welcome email resent to '+esc(st.email)+(result.didReset?' — password has been reset.':'.'));
+    if(result.didReset) await loadStudents();
+  }
+}
 async function submitInvite(){
   hideInviteError();
   var firstName=(document.getElementById("inviteFirstName").value||"").trim();
