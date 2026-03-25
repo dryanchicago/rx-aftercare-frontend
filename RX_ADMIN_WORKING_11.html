@@ -1296,18 +1296,12 @@ async function resendWelcome(studentId){
   var st=STUDENTS.find(function(x){return x.id===studentId;}); if(!st) return;
   var alreadySet=!st.must_change_password;
   var msg=alreadySet
-    ? 'This student has already set their own password.
-
-Resending will generate a NEW temporary password and require them to change it again on next login — but their saved goals will not be affected.
-
-Continue?'
-    : 'Resend the welcome email to '+esc(st.email)+'?
-
-They will receive their current temporary password again. Continue?';
+    ? 'This student already set their own password. Resending will generate a NEW temporary password and require them to change it again on next login - but their saved goals will not be affected. Continue?'
+    : 'Resend the welcome email to '+esc(st.email)+'? They will receive their current temporary password again. Continue?';
   if(!confirm(msg)) return;
   var result=await apiCall('POST','/students/'+studentId+'/resend-welcome');
   if(result&&result.success){
-    toast('📧 Welcome email resent to '+esc(st.email)+(result.didReset?' — password has been reset.':'.'));
+    toast('Email resent to '+esc(st.email)+(result.didReset?' - password has been reset.':'.')); 
     if(result.didReset) await loadStudents();
   }
 }
