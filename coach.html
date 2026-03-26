@@ -1141,7 +1141,10 @@ function renderRoster() {
             '<div class="progress-fill ' + fillCls + '" style="width:' + pct + '%"></div>' +
           '</div>' +
         '</div>' +
-        '<div class="sc-email-hint">Open student details to see email engagement</div>' +
+        '<div class="sc-email-hint">' +
+          (s.last_active_at ? 'Last active: ' + fmtDate(s.last_active_at) : 'No activity recorded yet') +
+          ' &nbsp;&middot;&nbsp; Open details for email engagement' +
+        '</div>' +
       '</div>' +
       '<button class="btn-view" onclick="showDetail(' + s.id + ')">View Details</button>' +
     '</div>';
