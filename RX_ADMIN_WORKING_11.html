@@ -1952,7 +1952,12 @@ function parseLocalDate(str) {
 }
 
 async function deleteSlot(slotId){
-  if(!confirm("Remove this email from the schedule?")) return;
+  var slot=_scSlotMap[slotId];
+  var sends=slot&&parseInt(slot.sends_total)||0;
+  var msg=sends>0
+    ?"This slot has "+sends+" emails already sent. Send history will be preserved, but this slot will no longer appear in the schedule.\n\nRemove it?"
+    :"Remove this email from the schedule?";
+  if(!confirm(msg)) return;
   var res=await apiCall("DELETE","/classes/"+_scClassId+"/schedule/"+slotId);
   if(res&&res.success) await loadSchedule();
   else alert("Could not delete slot.");
