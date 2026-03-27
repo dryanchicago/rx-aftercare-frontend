@@ -1889,6 +1889,7 @@ function renderSlotList(slots, startDateStr){
       +'<div class="sc-slot-stat"><strong>'+(s.clicks_total||0)+'</strong><span>Clicks</span></div>'
       +'</div>'
       +'<div class="sc-slot-actions">'
+      +(parseInt(s.failed_total)>0?'<button class="sc-btn-icon" title="Resend to '+s.failed_total+' failed/dropped student(s)" onclick="resendFailed('+s.id+')" style="border-color:#c9a227;color:#c9a227;">↩'+s.failed_total+'</button>':'')
       +'<button class="sc-btn-icon" title="Edit slot" onclick="openEditSlot('+s.id+')">✏️</button>'
       +'<button class="sc-btn-icon" title="Send test email" onclick="sendTestSlotEmail('+s.id+')">📧</button>'
       +'<button class="sc-btn-icon" title="View student detail" onclick="loadSlotStats('+s.id+')">📊</button>'
@@ -1961,6 +1962,18 @@ async function deleteSlot(slotId){
   var res=await apiCall("DELETE","/classes/"+_scClassId+"/schedule/"+slotId);
   if(res&&res.success) await loadSchedule();
   else alert("Could not delete slot.");
+}
+
+async function resendFailed(slotId){
+  var slot=_scSlotMap[slotId];
+  var n=slot&&parseInt(slot.failed_total)||0;
+  if(!confirm("Resend to "+n+" student(s) who failed or were dropped?\n\nNo BCC will be sent — only the individual students.")) return;
+  var res=await apiCall("POST","/classes/"+_scClassId+"/schedule/"+slotId+"/resend-failed");
+  if(!res||!res.success){alert("Resend failed: "+(res&&res.error||"unknown error"));return;}
+  var msg="✅ Resent to "+res.sent.length+" student(s).";
+  if(res.errors&&res.errors.length) msg+="\n⚠️ "+res.errors.length+" still failed: "+res.errors.map(function(e){return e.email;}).join(", ");
+  alert(msg);
+  await loadSchedule();
 }
 
 async function deleteAllSlots(){
