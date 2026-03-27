@@ -71,7 +71,8 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
 .btn-s{background:white;color:#1e3c72;border:2px solid #1e3c72}
 .btn-logout{background:none;border:2px solid #aaa;color:#888;font-size:15px;font-weight:700;padding:13px 32px;border-radius:8px;cursor:pointer;font-family:inherit}
 .btn-logout:hover{background:#f5f5f5;color:#555}
-#autosave-toast{position:fixed;bottom:24px;right:24px;background:#1a6e34;color:white;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+#autosave-info{display:none;background:#d1e7dd;border:1.5px solid #a3cfbb;color:#0a5c36;padding:13px 20px;margin:0 28px 6px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;transition:background .25s,color .25s}
+#autosave-info.pulse{background:#0a5c36;color:#fff}
 </style>
 </head>
 <body>
@@ -103,12 +104,12 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
     <div class="stat"><div class="snum" id="as">0</div><div class="slbl">Activities</div></div>
     <div class="stat"><div class="snum" id="cs">0</div><div class="slbl">Custom</div></div>
   </div></div>
+  <div id="autosave-info">✅ Your updates are automatically saved. Use <strong>Print / Save PDF</strong> to keep a copy.</div>
   <div class="abuts">
     <button class="btn btn-s" id="resetBtn" onclick="resetAll()">Reset</button>
     <button class="btn btn-p" onclick="savePDF()">🖨️ Print / Save PDF</button>
     <button class="btn btn-logout" onclick="doLogout()">Sign Out</button>
   </div>
-  <div id="autosave-toast">✓ Saved</div>
 </div>
 <script>
 var API_BASE=window.location.hostname==="localhost"||window.location.hostname==="127.0.0.1"?"http://localhost:3000/api":"https://rx-aftercare-backend-production.up.railway.app/api";
@@ -279,6 +280,7 @@ function initCheckin(){
     +'<div class="stat"><div class="snum" id="cs">0</div><div class="slbl">Not Started</div></div>'
     +'</div>';
   document.getElementById('resetBtn').style.display='none';
+  document.getElementById('autosave-info').style.display='block';
   updCheckin();
 }
 
@@ -348,9 +350,9 @@ function saveActivityStatus(actId,status){
   }).then(function(){showToast();}).catch(function(){});
 }
 function showToast(){
-  var t=document.getElementById('autosave-toast');
-  t.style.opacity='1';
-  setTimeout(function(){t.style.opacity='0';},1800);
+  var bar=document.getElementById('autosave-info');
+  bar.classList.add('pulse');
+  setTimeout(function(){bar.classList.remove('pulse');},700);
 }
 function updCheckin(){
   var vals=Object.values(savedStatuses);
