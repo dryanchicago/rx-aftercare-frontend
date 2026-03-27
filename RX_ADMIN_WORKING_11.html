@@ -1965,9 +1965,12 @@ async function deleteSlot(slotId){
 }
 
 async function resendFailed(slotId){
-  var slot=_scSlotMap[slotId];
-  var n=slot&&parseInt(slot.failed_total)||0;
-  if(!confirm("Resend to "+n+" student(s) who failed or were dropped?\n\nNo BCC will be sent — only the individual students.")) return;
+  // Fetch delivery detail to show who will be resent to
+  var detail=await apiCall("GET","/classes/"+_scClassId+"/schedule/"+slotId+"/delivery");
+  var failed=(detail&&detail.sent||[]).filter(function(s){return s.status==='failed'||s.status==='dropped';});
+  if(!failed.length){alert("No failed or dropped students found.");return;}
+  var names=failed.map(function(s){return "• "+s.first_name+" "+s.last_name+" ("+s.email+")"}).join("\n");
+  if(!confirm("Resend to "+failed.length+" student(s):\n\n"+names+"\n\nNo BCC will be sent — only these students.")) return;
   var res=await apiCall("POST","/classes/"+_scClassId+"/schedule/"+slotId+"/resend-failed");
   if(!res||!res.success){alert("Resend failed: "+(res&&res.error||"unknown error"));return;}
   var msg="✅ Resent to "+res.sent.length+" student(s).";
