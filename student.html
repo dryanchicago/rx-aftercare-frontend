@@ -89,7 +89,7 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
     <div><h2 id="welcomeName">Welcome!</h2><p>Build your plan.</p></div>
     <div class="timer"><div class="days" id="daysNum">90</div><div class="dlbl">Days Remaining</div></div>
   </div>
-  <div class="instr">
+  <div class="instr" id="instrBox">
     <h3>📋 Instructions</h3>
     <ul>
       <li>Select <strong>at least 4 goals</strong></li>
@@ -280,6 +280,7 @@ function initCheckin(){
     +'<div class="stat"><div class="snum" id="cs">0</div><div class="slbl">Not Started</div></div>'
     +'</div>';
   document.getElementById('resetBtn').style.display='none';
+  document.getElementById('instrBox').style.display='none';
   document.getElementById('autosave-info').style.display='block';
   updCheckin();
 }
