@@ -48,6 +48,17 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
 .ss-btn.active-ns{background:#eef0f6;border-color:#aaa;color:#555}
 .ss-btn.active-ip{background:#fff3cd;border-color:#d4a017;color:#856404}
 .ss-btn.active-cp{background:#d4edda;border-color:#28a745;color:#1a6e34}
+.addArea{margin-top:14px;padding-top:14px;border-top:2px dashed #ddd}
+.addAreaToggle{font-size:12px;color:#888;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;margin-bottom:8px;user-select:none}
+.addAreaToggle:hover{color:#1e3c72}
+.addAreaToggle .tog-icon{font-size:10px;transition:transform .2s}
+.addAreaToggle.open .tog-icon{transform:rotate(180deg)}
+.pickList{display:none;margin-bottom:10px}
+.pickList.open{display:block}
+.pickItem{display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:7px;margin-bottom:5px;background:#f0f4ff;font-size:13px;line-height:1.45;color:#444}
+.pickItem .pick-text{flex:1}
+.pickItem .pick-add{flex-shrink:0;background:#1e3c72;color:white;border:none;padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pickItem .pick-add:hover{background:#16305e}
 .summary{background:linear-gradient(135deg,#1a1a2e,#1e3c72);color:white;padding:24px 28px;margin:10px 28px 18px;border-radius:12px;text-align:center}
 .summary h3{color:#f0c040;font-size:19px;margin-bottom:16px}
 .stats{display:flex;justify-content:space-around;flex-wrap:wrap;gap:14px}
@@ -234,12 +245,79 @@ function initCheckin(){
         +'<button class="ss-btn '+cpA+'" onclick="setStatus('+a.id+',\'complete\',this)">Complete</button>'
         +'</div></div>';
     });
+    // Build pick-from-list for uncommitted activities in this goal
+    var uncommitted=g.activities.filter(function(a){return a.id&&!savedStatuses[a.id];});
+    var pickHtml='';
+    if(uncommitted.length){
+      uncommitted.forEach(function(a){
+        pickHtml+='<div class="pickItem" id="pick-'+a.id+'">'
+          +'<div class="pick-text">'+esc(a.content)+'</div>'
+          +'<button class="pick-add" onclick="addFromList('+a.id+','+g.id+',this)">+ Add</button>'
+          +'</div>';
+      });
+    }
+    var pickSection=uncommitted.length
+      ?'<div class="addAreaToggle" onclick="togglePickList('+g.id+')" id="pltog-'+g.id+'"><span>Pick from original list ('+uncommitted.length+' available)</span><span class="tog-icon">▼</span></div>'
+        +'<div class="pickList" id="pl-'+g.id+'">'+pickHtml+'</div>'
+      :'';
+
     d.innerHTML='<div class="ghdr" onclick="tgl('+g.id+')"><div class="gtitle">'+esc(g.title)+'</div><div class="gbadge" id="b'+g.id+'">'+(committed.length)+' activities</div><span class="gicon">▼</span></div>'
-      +'<div class="aPanel"><div class="aHdr">Update your status for each activity:</div>'+ah
-      +'<div class="custArea"><div class="aHdr">Add a new activity:</div><input type="text" class="custInput" id="ci'+g.id+'" placeholder="Your activity..."><button class="custBtn" onclick="acCheckin('+g.id+')">+ Add</button><div id="cl'+g.id+'"></div></div></div>';
+      +'<div class="aPanel"><div class="aHdr">Update your status for each activity:</div><div id="cl-committed-'+g.id+'">'+ah+'</div>'
+      +'<div class="addArea">'+pickSection
+      +'<div class="aHdr" style="margin-top:'+(uncommitted.length?'10px':'0')+';margin-bottom:6px">Or add a custom activity:</div>'
+      +'<input type="text" class="custInput" id="ci'+g.id+'" placeholder="Describe your activity..."><button class="custBtn" onclick="acCheckin('+g.id+')">+ Add</button>'
+      +'<div id="cl'+g.id+'"></div></div></div>';
     c.appendChild(d);
   });
   if(!hasAny){c.innerHTML+='<div style="color:#888;text-align:center;padding:20px">No committed activities found.</div>';}
+}
+
+function togglePickList(gid){
+  var tog=document.getElementById('pltog-'+gid);
+  var pl=document.getElementById('pl-'+gid);
+  tog.classList.toggle('open');
+  pl.classList.toggle('open');
+}
+
+function addFromList(actId,gid,btn){
+  // Remove from pick list
+  var pickRow=document.getElementById('pick-'+actId);
+  if(pickRow)pickRow.style.display='none';
+
+  // Update available count
+  var tog=document.getElementById('pltog-'+gid);
+  if(tog){
+    var remaining=document.querySelectorAll('#pl-'+gid+' .pickItem:not([style*="none"])').length;
+    var span=tog.querySelector('span');
+    if(span)span.textContent='Pick from original list ('+remaining+' available)';
+    if(remaining===0)tog.style.display='none';
+  }
+
+  // Save to DB as committed
+  savedStatuses[actId]='committed';
+  saveActivityStatus(actId,'committed');
+
+  // Find the activity content from goals data
+  var actContent='';
+  goals.forEach(function(g){
+    if(g.id===gid){g.activities.forEach(function(a){if(a.id===actId)actContent=a.content;});}
+  });
+
+  // Add to committed activities section with Not Started status
+  var container=document.getElementById('cl-committed-'+gid);
+  var newItem=document.createElement('div');
+  newItem.className='aItem checkin-item';
+  newItem.innerHTML='<div class="atxt">'+esc(actContent)+'</div>'
+    +'<div class="status-sel">'
+    +'<button class="ss-btn active-ns" onclick="setStatus('+actId+',\'committed\',this)">Not Started</button>'
+    +'<button class="ss-btn" onclick="setStatus('+actId+',\'in_progress\',this)">In Progress</button>'
+    +'<button class="ss-btn" onclick="setStatus('+actId+',\'complete\',this)">Complete</button>'
+    +'</div>';
+  container.appendChild(newItem);
+
+  // Update badge
+  var badge=document.getElementById('b'+gid);
+  if(badge)badge.textContent=(parseInt(badge.textContent)||0)+1+' activities';
 }
 
 function setStatus(actId,status,btn){
