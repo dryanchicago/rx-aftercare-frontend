@@ -275,10 +275,70 @@
         <div class="spinner"></div>
       </button>
 
+      <div style="text-align:center;margin-top:14px;">
+        <a href="#" onclick="showForgot();return false;" style="font-size:13px;color:#888;text-decoration:none;">Forgot your password?</a>
+      </div>
+
       <div class="card-footer">
         <p>Access restricted to enrolled participants.<br>Contact your GMG program manager if you need help.</p>
         <div class="gmg-logo">Gray Matters Group</div>
       </div>
+    </div>
+
+    <!-- ── Panel 3: Forgot Password ── -->
+    <div id="panel-forgot" class="panel" style="display:none">
+      <div class="brand">
+        <div class="brand-badge">
+          <div class="brand-dot">Rx</div>
+          <span>Student Portal</span>
+        </div>
+        <h1>Reset your<br><em>password.</em></h1>
+        <p>Enter your email and we'll send you a reset link.</p>
+      </div>
+
+      <div class="msg error" id="forgotError"></div>
+      <div class="msg success" id="forgotSuccess" style="background:#d4edda;color:#1a6e34;border-color:#c3e6cb;"></div>
+
+      <div class="form-group">
+        <label for="forgotEmail">Email Address</label>
+        <input type="email" id="forgotEmail" placeholder="you@company.com" autocomplete="email">
+      </div>
+
+      <button class="btn-main" id="forgotBtn" onclick="doForgot()">
+        <span class="btn-text">Send Reset Link</span>
+        <div class="spinner"></div>
+      </button>
+
+      <div style="text-align:center;margin-top:14px;">
+        <a href="#" onclick="showLogin();return false;" style="font-size:13px;color:#888;text-decoration:none;">← Back to Sign In</a>
+      </div>
+    </div>
+
+    <!-- ── Panel 4: Reset Password (via email link) ── -->
+    <div id="panel-reset" class="panel" style="display:none">
+      <div class="brand">
+        <div class="step-badge"><div class="step-dot"></div>Almost done</div>
+        <h1>Choose a new<br><em>password.</em></h1>
+        <p>Your reset link is valid. Enter your new password below.</p>
+      </div>
+
+      <div class="msg error" id="resetError"></div>
+
+      <div class="form-group">
+        <label for="resetPw">New Password</label>
+        <input type="password" id="resetPw" placeholder="••••••••" autocomplete="new-password">
+        <div class="pw-hint">Minimum 8 characters</div>
+      </div>
+
+      <div class="form-group">
+        <label for="resetConfirm">Confirm Password</label>
+        <input type="password" id="resetConfirm" placeholder="••••••••" autocomplete="new-password">
+      </div>
+
+      <button class="btn-main" id="resetBtn" onclick="doReset()">
+        <span class="btn-text">Save &amp; Sign In</span>
+        <div class="spinner"></div>
+      </button>
     </div>
 
     <!-- ── Panel 2: Set New Password ── -->
@@ -315,9 +375,29 @@
   const API = 'https://rx-aftercare-backend-production.up.railway.app';
   let tempToken   = null;
   let tempStudent = null;
+  let resetToken  = null;
+
+  // ── Panel helpers ───────────────────────────────────────────────────────
+  function showPanel(id) {
+    ['panel-login','panel-password','panel-forgot','panel-reset'].forEach(p => {
+      document.getElementById(p).style.display = p === id ? '' : 'none';
+    });
+  }
+  function showLogin()  { showPanel('panel-login');  }
+  function showForgot() { showPanel('panel-forgot'); setTimeout(() => document.getElementById('forgotEmail').focus(), 60); }
 
   // ── Redirect if already logged in ─────────────────────────────────────
   (function() {
+    // Check for password reset token in URL
+    const params = new URLSearchParams(window.location.search);
+    const rt = params.get('reset');
+    if (rt) {
+      resetToken = rt;
+      showPanel('panel-reset');
+      setTimeout(() => document.getElementById('resetPw').focus(), 60);
+      return;
+    }
+
     const tok = localStorage.getItem('student_token');
     if (!tok) return;
     try {
@@ -448,6 +528,73 @@
 
     } catch(err) {
       showError('pwError', 'Cannot reach server. Please try again in a moment.');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // ── Panel 3: Forgot password ────────────────────────────────────────────
+  async function doForgot() {
+    clearError('forgotError');
+    document.getElementById('forgotSuccess').classList.remove('show');
+    const email = document.getElementById('forgotEmail').value.trim();
+    const btn   = document.getElementById('forgotBtn');
+
+    if (!email) { showError('forgotError', 'Please enter your email address.'); return; }
+
+    setLoading(btn, true);
+    try {
+      await fetch(`${API}/api/auth/student/forgot-password`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ email })
+      });
+      // Always show success — don't reveal if email exists
+      const el = document.getElementById('forgotSuccess');
+      el.textContent = 'If that email is registered, a reset link is on its way. Check your inbox.';
+      el.classList.add('show');
+      document.getElementById('forgotBtn').disabled = true;
+    } catch(err) {
+      showError('forgotError', 'Cannot reach server. Please try again in a moment.');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
+  // ── Panel 4: Reset password ─────────────────────────────────────────────
+  document.getElementById('resetPw').addEventListener('keydown',      e => { if (e.key === 'Enter') document.getElementById('resetConfirm').focus(); });
+  document.getElementById('resetConfirm').addEventListener('keydown', e => { if (e.key === 'Enter') doReset(); });
+
+  async function doReset() {
+    clearError('resetError');
+    const np  = document.getElementById('resetPw').value;
+    const cp  = document.getElementById('resetConfirm').value;
+    const btn = document.getElementById('resetBtn');
+
+    if (!np)           { showError('resetError', 'Please enter a new password.');            return; }
+    if (np.length < 8) { showError('resetError', 'Password must be at least 8 characters.'); return; }
+    if (np !== cp)     { showError('resetError', 'Passwords do not match.');                  return; }
+
+    setLoading(btn, true);
+    try {
+      const res  = await fetch(`${API}/api/auth/student/reset-password`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ token: resetToken, new_password: np })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        showError('resetError', data.error || 'Reset failed. Please request a new link.');
+        return;
+      }
+
+      localStorage.setItem('student_token', data.token);
+      localStorage.setItem('student_data',  JSON.stringify(data.student));
+      window.location.href = 'student.html?classId=' + data.student.classId;
+
+    } catch(err) {
+      showError('resetError', 'Cannot reach server. Please try again in a moment.');
     } finally {
       setLoading(btn, false);
     }
