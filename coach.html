@@ -627,6 +627,20 @@
       letter-spacing: 0.4px;
       margin-top: 3px;
     }
+    .activity-status {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-top: 2px;
+      white-space: nowrap;
+    }
+    .activity-status.not-started { background: #eef0f6; color: #888; }
+    .activity-status.in-progress { background: #fff3cd; color: #856404; }
+    .activity-status.complete    { background: #d4edda; color: #1a6e34; }
 
     /* ══════════════════════════════════════════════════════
        NUDGE MODAL
@@ -1226,25 +1240,35 @@ function renderGoals(goals, overallPct) {
     return;
   }
 
-  list.innerHTML = goals.map(function(g) {
+  // Only show goals where student committed to at least one activity
+  var activeGoals = goals.filter(function(g) { return g.committed > 0; });
+  if (!activeGoals.length) {
+    list.innerHTML = '<div class="spinner" style="color:#aaa">Student has not committed to any activities yet.</div>';
+    return;
+  }
+
+  list.innerHTML = activeGoals.map(function(g) {
     var pct     = g.progress_pct;
     var fillCls = pct === 0 ? 'zero' : pct === 100 ? 'full' : pct >= 60 ? 'high' : pct >= 25 ? 'mid' : 'low';
-    // Partially complete goals open by default — 0% and 100% start closed
     var isOpen  = pct > 0 && pct < 100;
 
-    var acts = g.activities.map(function(a) {
-      var checkHtml = a.completed
-        ? '<div class="activity-check done">&#10003;</div>'
-        : '<div class="activity-check"></div>';
-      var dateHtml = (a.completed && a.completed_at)
-        ? '<div class="activity-date">Completed ' + fmtDate(a.completed_at) + '</div>'
+    // Only show committed activities
+    var committedActs = g.activities.filter(function(a) { return a.status !== null; });
+
+    var acts = committedActs.map(function(a) {
+      var statusLabel = a.status === 'complete' ? 'Complete' : a.status === 'in_progress' ? 'In Progress' : 'Not Started';
+      var statusCls   = a.status === 'complete' ? 'complete' : a.status === 'in_progress' ? 'in-progress' : 'not-started';
+      var dateHtml = (a.status === 'complete' && a.updated_at)
+        ? '<div class="activity-date">Completed ' + fmtDate(a.updated_at) + '</div>'
+        : (a.status === 'in_progress' && a.updated_at)
+        ? '<div class="activity-date">Updated ' + fmtDate(a.updated_at) + '</div>'
         : '';
       return '<div class="activity-row">' +
-        checkHtml +
         '<div class="activity-body">' +
           '<div class="activity-text">' + esc(a.content) + '</div>' +
           dateHtml +
         '</div>' +
+        '<div class="activity-status ' + statusCls + '">' + statusLabel + '</div>' +
       '</div>';
     }).join('');
 
@@ -1252,7 +1276,7 @@ function renderGoals(goals, overallPct) {
       '<div class="goal-header" onclick="toggleGoal(' + g.id + ')">' +
         '<div>' +
           '<div class="goal-title">' + esc(g.title) + '</div>' +
-          '<div class="goal-count">' + g.completed + ' of ' + g.total + ' completed</div>' +
+          '<div class="goal-count">' + g.completed + ' of ' + g.committed + ' complete</div>' +
         '</div>' +
         '<div class="goal-mini-bar">' +
           '<div class="goal-mini-track">' +

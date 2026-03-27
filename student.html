@@ -41,6 +41,13 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
 .custArea{margin-top:14px;padding-top:14px;border-top:2px dashed #ddd}
 .custInput{width:100%;padding:9px;border:2px solid #ddd;border-radius:7px;font-size:13px;margin-top:7px}
 .custBtn{background:#1e3c72;color:white;border:none;padding:9px 15px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;margin-top:7px}
+.checkin-banner{background:#fff8e1;border:2px solid #f0c040;border-radius:10px;padding:14px 18px;margin-bottom:14px;font-size:13px;color:#856404;font-weight:600}
+.aItem.checkin-item{flex-direction:column;gap:6px;background:#f8f9fa}
+.status-sel{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.ss-btn{padding:5px 13px;border-radius:20px;border:2px solid #ddd;background:white;font-size:12px;font-weight:600;cursor:pointer;color:#666;transition:all .15s}
+.ss-btn.active-ns{background:#eef0f6;border-color:#aaa;color:#555}
+.ss-btn.active-ip{background:#fff3cd;border-color:#d4a017;color:#856404}
+.ss-btn.active-cp{background:#d4edda;border-color:#28a745;color:#1a6e34}
 .summary{background:linear-gradient(135deg,#1a1a2e,#1e3c72);color:white;padding:24px 28px;margin:10px 28px 18px;border-radius:12px;text-align:center}
 .summary h3{color:#f0c040;font-size:19px;margin-bottom:16px}
 .stats{display:flex;justify-content:space-around;flex-wrap:wrap;gap:14px}
@@ -99,6 +106,8 @@ var durationDays=90;
 var pc="#1e3c72";
 var sG=new Set(),sA={},cA={};
 var studentData=null,studentToken=null,savedProgress=new Set();
+var savedStatuses={};  // activityId → 'committed'|'in_progress'|'complete'
+var appMode='commitment'; // 'commitment' or 'checkin'
 
 function getClassId(){
   var params=new URLSearchParams(window.location.search);
@@ -162,8 +171,17 @@ window.onload=async function(){
     try{
       var pr=await fetch(API_BASE+'/students/me/progress',{headers:{'Authorization':'Bearer '+studentToken}});
       var pd=await pr.json();
-      if(pd.progress){pd.progress.forEach(function(p){if(p.completed)savedProgress.add(p.activity_id);});}
+      if(pd.progress){pd.progress.forEach(function(p){
+        if(p.status){savedStatuses[p.activity_id]=p.status;}
+        if(p.completed)savedProgress.add(p.activity_id);
+      });}
     }catch(e){}
+
+    // Determine mode: if student has any committed activities → check-in mode
+    appMode=Object.keys(savedStatuses).length>0?'checkin':'commitment';
+    if(appMode==='checkin'){
+      document.getElementById("programSubtitle").textContent=durationDays+"-Day Progress Update";
+    }
 
     init();
   }catch(e){
@@ -173,6 +191,7 @@ window.onload=async function(){
 };
 
 function init(){
+  if(appMode==='checkin'){initCheckin();return;}
   var c=document.getElementById("gc");
   c.innerHTML="";
   goals.forEach(function(g){
@@ -181,22 +200,104 @@ function init(){
     d.id="sg"+g.id;
     var ah="";
     g.activities.forEach(function(a,ai){
-      var chk=a.id&&savedProgress.has(a.id)?'checked':'';
+      var chk=a.id&&savedStatuses[a.id]?'checked':'';
       if(chk){if(!sA[g.id])sA[g.id]=new Set();sA[g.id].add(ai);sG.add(g.id);}
       ah+='<div class="aItem"><input type="checkbox" class="acb" id="a'+g.id+'_'+ai+'" data-aid="'+(a.id||'')+'" '+chk+' onchange="ta('+g.id+','+ai+')"><label class="atxt">'+esc(a.content)+'</label></div>';
     });
-    d.innerHTML='<div class="ghdr" onclick="tgl('+g.id+')"><input type="checkbox" class="gcb" id="gc'+g.id+'" '+(sG.has(g.id)?'checked':'')+' onclick="event.stopPropagation();tg('+g.id+')"><div class="gtitle">'+esc(g.title)+'</div><div class="gbadge" id="b'+g.id+'">0</div><span class="gicon">▼</span></div><div class="aPanel"><div class="aHdr">Select minimum 3:</div>'+ah+'<div class="custArea"><div class="aHdr">Add custom:</div><input type="text" class="custInput" id="ci'+g.id+'" placeholder="Your activity..."><button class="custBtn" onclick="ac('+g.id+')">+ Add</button><div id="cl'+g.id+'"></div></div></div>';
+    d.innerHTML='<div class="ghdr" onclick="tgl('+g.id+')"><input type="checkbox" class="gcb" id="gc'+g.id+'" '+(sG.has(g.id)?'checked':'')+' onclick="event.stopPropagation();tg('+g.id+')"><div class="gtitle">'+esc(g.title)+'</div><div class="gbadge" id="b'+g.id+'">0</div><span class="gicon">▼</span></div><div class="aPanel"><div class="aHdr">Select minimum 3 activities you commit to:</div>'+ah+'<div class="custArea"><div class="aHdr">Add custom:</div><input type="text" class="custInput" id="ci'+g.id+'" placeholder="Your activity..."><button class="custBtn" onclick="ac('+g.id+')">+ Add</button><div id="cl'+g.id+'"></div></div></div>';
     if(sG.has(g.id))d.classList.add('open');
     c.appendChild(d);
   });
   upd();
 }
 
+function initCheckin(){
+  var c=document.getElementById("gc");
+  c.innerHTML='<div class="checkin-banner">Update your progress below. For each activity you committed to, mark where you stand.</div>';
+  var hasAny=false;
+  goals.forEach(function(g){
+    // Only include goals with committed activities
+    var committed=g.activities.filter(function(a){return a.id&&savedStatuses[a.id];});
+    if(!committed.length)return;
+    hasAny=true;
+    var d=document.createElement("div");
+    d.className="gcard open";
+    d.id="sg"+g.id;
+    var ah="";
+    committed.forEach(function(a){
+      var st=savedStatuses[a.id]||'committed';
+      var nsA=st==='committed'?'active-ns':'', ipA=st==='in_progress'?'active-ip':'', cpA=st==='complete'?'active-cp':'';
+      ah+='<div class="aItem checkin-item"><div class="atxt">'+esc(a.content)+'</div>'
+        +'<div class="status-sel">'
+        +'<button class="ss-btn '+nsA+'" onclick="setStatus('+a.id+',\'committed\',this)">Not Started</button>'
+        +'<button class="ss-btn '+ipA+'" onclick="setStatus('+a.id+',\'in_progress\',this)">In Progress</button>'
+        +'<button class="ss-btn '+cpA+'" onclick="setStatus('+a.id+',\'complete\',this)">Complete</button>'
+        +'</div></div>';
+    });
+    d.innerHTML='<div class="ghdr" onclick="tgl('+g.id+')"><div class="gtitle">'+esc(g.title)+'</div><div class="gbadge" id="b'+g.id+'">'+(committed.length)+' activities</div><span class="gicon">▼</span></div>'
+      +'<div class="aPanel"><div class="aHdr">Update your status for each activity:</div>'+ah
+      +'<div class="custArea"><div class="aHdr">Add a new activity:</div><input type="text" class="custInput" id="ci'+g.id+'" placeholder="Your activity..."><button class="custBtn" onclick="acCheckin('+g.id+')">+ Add</button><div id="cl'+g.id+'"></div></div></div>';
+    c.appendChild(d);
+  });
+  if(!hasAny){c.innerHTML+='<div style="color:#888;text-align:center;padding:20px">No committed activities found.</div>';}
+}
+
+function setStatus(actId,status,btn){
+  savedStatuses[actId]=status;
+  // Update button styles within the same status-sel group
+  var sel=btn.closest('.status-sel');
+  sel.querySelectorAll('.ss-btn').forEach(function(b){b.className='ss-btn';});
+  btn.className='ss-btn '+(status==='committed'?'active-ns':status==='in_progress'?'active-ip':'active-cp');
+  saveActivityStatus(actId,status);
+}
+
+function saveActivityStatus(actId,status){
+  fetch(API_BASE+'/students/'+studentData.id+'/progress',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},
+    body:JSON.stringify({activityId:actId,status:status})
+  }).catch(function(){});
+}
+
+function acCheckin(gid){
+  var inp=document.getElementById("ci"+gid);
+  var txt=inp.value.trim();
+  if(!txt)return;
+  // Save as new activity commitment via backend (custom activities don't have IDs)
+  // For now add visually with Not Started status
+  var cl=document.getElementById("cl"+gid);
+  var ci=document.createElement("div");
+  ci.className="aItem checkin-item";
+  ci.style.background="#fff8e1";
+  ci.innerHTML='<div class="atxt"><strong>Custom:</strong> '+esc(txt)+'</div>'
+    +'<div class="status-sel">'
+    +'<button class="ss-btn active-ns" disabled>Not Started</button>'
+    +'<button class="ss-btn" disabled>In Progress</button>'
+    +'<button class="ss-btn" disabled>Complete</button>'
+    +'</div>';
+  cl.appendChild(ci);
+  inp.value="";
+}
+
 function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function tgl(id){document.getElementById("sg"+id).classList.toggle("open")}
 function tg(id){var card=document.getElementById("sg"+id);if(sG.has(id)){sG.delete(id);if(sA[id])delete sA[id];card.querySelectorAll(".acb").forEach(function(cb){cb.checked=false});card.classList.remove("open")}else{sG.add(id);if(!sA[id])sA[id]=new Set();card.classList.add("open")}upd()}
 function ta(gid,aid){if(!sA[gid])sA[gid]=new Set();var cb=document.getElementById("a"+gid+"_"+aid);var actId=parseInt(cb.getAttribute("data-aid")||"0");if(cb.checked){sA[gid].add(aid);if(!sG.has(gid)){sG.add(gid);document.getElementById("gc"+gid).checked=true}}else{sA[gid].delete(aid)}if(actId&&studentData&&studentData.id)saveActivity(actId,cb.checked);ub(gid);upd()}
-function saveActivity(actId,completed){fetch(API_BASE+'/students/'+studentData.id+'/progress',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},body:JSON.stringify({activityId:actId,completed:completed})}).catch(function(){});}
+function saveActivity(actId,committed){
+  // In commitment mode: checking = committed, unchecking = delete the record
+  if(committed){
+    fetch(API_BASE+'/students/'+studentData.id+'/progress',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},
+      body:JSON.stringify({activityId:actId,status:'committed'})
+    }).catch(function(){});
+  } else {
+    fetch(API_BASE+'/students/'+studentData.id+'/progress/'+actId,{
+      method:'DELETE',
+      headers:{'Authorization':'Bearer '+studentToken}
+    }).catch(function(){});
+  }
+}
 function ac(gid){var inp=document.getElementById("ci"+gid);var txt=inp.value.trim();if(!txt)return;if(!cA[gid])cA[gid]=[];cA[gid].push(txt);var cl=document.getElementById("cl"+gid);var ci=document.createElement("div");ci.className="aItem";ci.style.background="#fff8e1";ci.innerHTML='<input type="checkbox" class="acb" checked disabled><div class="atxt"><strong>Custom:</strong> '+esc(txt)+'</div>';cl.appendChild(ci);inp.value="";if(!sG.has(gid)){sG.add(gid);document.getElementById("gc"+gid).checked=true}ub(gid);upd()}
 function ub(gid){var b=document.getElementById("b"+gid);var n=(sA[gid]?sA[gid].size:0)+(cA[gid]?cA[gid].length:0);b.textContent=n;b.style.background=n>=3?"#28a745":pc}
 function upd(){document.getElementById("gs").textContent=sG.size;var ta=0;for(var k in sA)ta+=sA[k].size;document.getElementById("as").textContent=ta;var tc=0;for(var k in cA)tc+=cA[k].length;document.getElementById("cs").textContent=tc;if(goals.length>0)document.getElementById("pf").style.width=(sG.size/goals.length*100)+"%"}
