@@ -176,6 +176,10 @@
     .status-badge.pending  { background: #fff3cd; color: #856404; }
     .status-badge.invited  { background: #cfe2ff; color: #084298; }
     .status-badge.active   { background: #d1e7dd; color: #155724; }
+    .class-pill { display:inline-block; font-size:11px; background:#eef1f8; color:#445; border-radius:10px; padding:2px 8px; margin:2px 2px 0 0; }
+    .filter-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+    .filter-bar label { font-size:13px; color:#667; font-weight:600; }
+    .filter-select { font-size:13px; padding:6px 10px; border:1px solid #dde3f0; border-radius:6px; background:#fff; color:#1a2744; cursor:pointer; }
 
     .table-empty {
       text-align: center;
@@ -466,6 +470,12 @@
       </div>
     </div>
 
+    <div class="filter-bar">
+      <label for="classFilter">Filter by Class:</label>
+      <select class="filter-select" id="classFilter" onchange="renderCoachTable()">
+        <option value="">All Classes</option>
+      </select>
+    </div>
     <div class="table-card" id="coachTableWrap">
       <div class="spinner">Loading coaches…</div>
     </div>
@@ -738,22 +748,46 @@ async function loadCoaches() {
     return;
   }
   _coaches = data.coaches;
+
+  // Populate class filter dropdown from all students' class assignments
+  var classMap = {};
+  _coaches.forEach(function(c) {
+    (c.students || []).forEach(function(s) {
+      if (s.class_id && s.class_name) classMap[s.class_id] = s.class_name;
+    });
+  });
+  var sel = document.getElementById('classFilter');
+  var current = sel.value;
+  sel.innerHTML = '<option value="">All Classes</option>';
+  Object.keys(classMap).sort(function(a,b){ return classMap[a].localeCompare(classMap[b]); }).forEach(function(cid) {
+    var opt = document.createElement('option');
+    opt.value = cid; opt.textContent = classMap[cid];
+    if (cid == current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
   renderCoachTable();
 }
 
 function renderCoachTable() {
   var wrap = document.getElementById('coachTableWrap');
+  var filterClassId = document.getElementById('classFilter').value;
 
-  if (!_coaches.length) {
-    wrap.innerHTML =
-      '<div class="table-empty">' +
-        '<strong>No coaches yet</strong>' +
-        'Click <em>+ Add Coach</em> to create the first one.' +
+  var filtered = filterClassId
+    ? _coaches.filter(function(c) {
+        return (c.students || []).some(function(s) { return String(s.class_id) === filterClassId; });
+      })
+    : _coaches;
+
+  if (!filtered.length) {
+    wrap.innerHTML = '<div class="table-empty"><strong>' +
+      (filterClassId ? 'No coaches assigned to this class.' : 'No coaches yet') + '</strong>' +
+      (!filterClassId ? 'Click <em>+ Add Coach</em> to create the first one.' : '') +
       '</div>';
     return;
   }
 
-  var rows = _coaches.map(function(c) {
+  var rows = filtered.map(function(c) {
     var count = c.student_count || 0;
     var studentCell = count
       ? '<span class="pill">' + count + ' student' + (count !== 1 ? 's' : '') + '</span>'
@@ -777,11 +811,19 @@ function renderCoachTable() {
       ? '<button class="btn-invite" onclick="sendInvite(' + c.id + ')">✉ Send Invite</button>'
       : '';
 
+    // Class pills from student assignments
+    var classNames = [];
+    (c.students || []).forEach(function(s) {
+      if (s.class_name && classNames.indexOf(s.class_name) === -1) classNames.push(s.class_name);
+    });
+    var classPills = classNames.map(function(n) { return '<span class="class-pill">' + esc(n) + '</span>'; }).join('');
+
     return '<tr>' +
       '<td>' +
         '<div class="coach-name">' + esc(c.name) + statusBadge + '</div>' +
         '<div class="coach-email">' + esc(c.email) + '</div>' +
         (meta ? '<div class="coach-meta">' + esc(meta) + '</div>' : '') +
+        (classPills ? '<div style="margin-top:4px">' + classPills + '</div>' : '') +
       '</td>' +
       '<td>' + studentCell + '</td>' +
       '<td>' +
