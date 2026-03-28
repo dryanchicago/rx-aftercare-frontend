@@ -392,6 +392,16 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <div style="font-size:0.75rem;color:#8a9bb8;margin-top:5px">Turn off for mid-stream imports where students don't need a welcome email.</div>
       </div>
       <div class="form-row">
+        <label>Coach Invites</label>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:4px">
+          <label class="toggle-wrap" style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:400;text-transform:none;font-size:0.9rem;color:#cdd9e8">
+            <input type="checkbox" id="classCoachAutoInvite" style="width:18px;height:18px;accent-color:#c9a227;cursor:pointer">
+            Auto-send coach invites on class start date
+          </label>
+        </div>
+        <div style="font-size:0.75rem;color:#8a9bb8;margin-top:5px">When on, coaches assigned to this class will automatically receive their login credentials on the day the class starts.</div>
+      </div>
+      <div class="form-row">
         <label>Client Logo <span style="font-weight:400;text-transform:none;font-size:0.78rem;color:#8a9bb8">(optional — appears in generated student dashboard)</span></label>
         <div class="logo-upload-wrap">
           <input type="file" id="logoFile" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
@@ -1038,10 +1048,11 @@ async function saveClass(){
   var duration=parseInt(document.getElementById("classDuration").value)||90;
   var bcc_emails=(document.getElementById("classCoach").value||"").trim()||null;
   var send_welcome_email=document.getElementById("classSendWelcome").checked;
+  var coach_auto_invite=document.getElementById("classCoachAutoInvite").checked;
   var goal_ids=getCheckedGoalIds();
   if(!name){toast("⚠️ Please enter a class name.");return;}
   if(!goal_ids.length){toast("⚠️ Please select at least one goal.");return;}
-  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,bcc_emails:bcc_emails,send_welcome_email:send_welcome_email,logo_data:FORM_LOGO||null};
+  var payload={name:name,client:client,goal_ids:goal_ids,duration_days:duration,bcc_emails:bcc_emails,send_welcome_email:send_welcome_email,coach_auto_invite:coach_auto_invite,logo_data:FORM_LOGO||null};
   var result;
   if(editingClassId){
     result=await apiCall("PUT","/classes/"+editingClassId,payload);
@@ -1096,6 +1107,7 @@ async function editClass(classId){
   document.getElementById("classDuration").value=cls.duration_days||90;
   document.getElementById("classCoach").value=cls.bcc_emails||"";
   document.getElementById("classSendWelcome").checked=cls.send_welcome_email!==false;
+  document.getElementById("classCoachAutoInvite").checked=cls.coach_auto_invite===true;
   document.getElementById("createTitle").textContent="Editing: "+cls.name;
   document.getElementById("saveBtn").textContent="💾 Update Class";
   document.getElementById("cancelBtn").style.display="inline-block";
@@ -1120,6 +1132,7 @@ function cancelEdit(){
   document.getElementById("classDuration").value="90";
   document.getElementById("classCoach").value="";
   document.getElementById("classSendWelcome").checked=true;
+  document.getElementById("classCoachAutoInvite").checked=false;
   document.getElementById("createTitle").textContent="Create New Class";
   document.getElementById("saveBtn").textContent="💾 Save Class";
   document.getElementById("cancelBtn").style.display="none";

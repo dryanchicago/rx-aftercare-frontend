@@ -767,7 +767,8 @@
     <div class="login-platform-label">Professional Development Tracking Platform</div>
   </div>
 
-  <div class="login-card">
+  <!-- Panel 1: Sign In -->
+  <div class="login-card" id="loginPanel">
     <h1>Coach Sign In</h1>
     <p class="login-org">Gray Matters Group</p>
 
@@ -786,6 +787,28 @@
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">Checking connection…</span>
     </div>
+  </div>
+
+  <!-- Panel 2: Set New Password (first login) -->
+  <div class="login-card hidden" id="changePasswordPanel">
+    <h1>Set Your Password</h1>
+    <p class="login-org">Gray Matters Group</p>
+    <p style="font-size:13px;color:#8a9bb8;margin:0 0 20px;line-height:1.5;">You're using a temporary password. Please set a permanent one to continue.</p>
+
+    <div class="login-field">
+      <label>Temporary Password</label>
+      <input type="password" id="cpCurrentPassword" placeholder="Your temporary password">
+    </div>
+    <div class="login-field">
+      <label>New Password</label>
+      <input type="password" id="cpNewPassword" placeholder="Minimum 8 characters">
+    </div>
+    <div class="login-field">
+      <label>Confirm New Password</label>
+      <input type="password" id="cpConfirmPassword" placeholder="Repeat new password">
+    </div>
+    <button class="login-btn" onclick="doChangePassword()">Save &amp; Continue</button>
+    <div class="login-err hidden" id="cpErr"></div>
   </div>
 
   <div class="login-footer">Rx Aftercare &copy; Gray Matters Group</div>
@@ -1060,11 +1083,56 @@ async function doLogin() {
   if (data && data.token) {
     _token = data.token;
     _coach = data.coach;
+    if (data.mustChangePassword) {
+      // Store token temporarily for the change-password call
+      sessionStorage.setItem('coachToken', _token);
+      // Show forced password change panel
+      document.getElementById('loginPanel').classList.add('hidden');
+      document.getElementById('changePasswordPanel').classList.remove('hidden');
+      document.getElementById('cpCurrentPassword').focus();
+    } else {
+      sessionStorage.setItem('coachToken', _token);
+      sessionStorage.setItem('coachData', JSON.stringify(_coach));
+      showApp();
+    }
+  } else {
+    errEl.textContent = (data && data.error) ? data.error : 'Login failed. Please check your credentials.';
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function doChangePassword() {
+  var current = document.getElementById('cpCurrentPassword').value;
+  var newPw   = document.getElementById('cpNewPassword').value;
+  var confirm = document.getElementById('cpConfirmPassword').value;
+  var errEl   = document.getElementById('cpErr');
+  errEl.classList.add('hidden');
+
+  if (!current || !newPw || !confirm) {
+    errEl.textContent = 'All fields are required.'; errEl.classList.remove('hidden'); return;
+  }
+  if (newPw.length < 8) {
+    errEl.textContent = 'New password must be at least 8 characters.'; errEl.classList.remove('hidden'); return;
+  }
+  if (newPw !== confirm) {
+    errEl.textContent = 'Passwords do not match.'; errEl.classList.remove('hidden'); return;
+  }
+
+  var btn = document.querySelector('#changePasswordPanel .login-btn');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+
+  var data = await api('POST', '/coaches/change-password', { current_password: current, new_password: newPw });
+
+  btn.textContent = 'Save & Continue'; btn.disabled = false;
+
+  if (data && data.success) {
+    _token = data.token;
+    _coach = data.coach;
     sessionStorage.setItem('coachToken', _token);
     sessionStorage.setItem('coachData', JSON.stringify(_coach));
     showApp();
   } else {
-    errEl.textContent = (data && data.error) ? data.error : 'Login failed. Please check your credentials.';
+    errEl.textContent = (data && data.error) ? data.error : 'Failed to update password.';
     errEl.classList.remove('hidden');
   }
 }

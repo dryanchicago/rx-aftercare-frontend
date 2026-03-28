@@ -162,6 +162,20 @@
       font-size: 12px;
     }
     .btn-delete:hover { background: #fef0ee; }
+    .btn-invite {
+      background: none; color: #1a6e34;
+      border: 1px solid #1a6e34;
+      padding: 6px 12px; border-radius: 6px;
+      font-size: 12px; cursor: pointer;
+    }
+    .btn-invite:hover { background: #edf7f0; }
+    .status-badge {
+      display: inline-block; font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 10px; margin-left: 6px;
+    }
+    .status-badge.pending  { background: #fff3cd; color: #856404; }
+    .status-badge.invited  { background: #cfe2ff; color: #084298; }
+    .status-badge.active   { background: #d1e7dd; color: #155724; }
 
     .table-empty {
       text-align: center;
@@ -447,6 +461,7 @@
       </div>
       <div style="display:flex;gap:10px;">
         <button class="btn-secondary" onclick="openImportModal()">↑ Import CSV</button>
+        <button class="btn-secondary" id="bulkInviteBtn" onclick="sendAllPendingInvites()">✉ Send Pending Invites</button>
         <button class="btn-primary" onclick="openCoachModal(null)">+ Add Coach</button>
       </div>
     </div>
@@ -492,10 +507,10 @@
           <input type="text" id="cm-role" placeholder="e.g. Senior Coach">
         </div>
       </div>
-      <div class="field">
-        <label>Password <span id="cm-pw-required">*</span></label>
-        <input type="password" id="cm-password" placeholder="Minimum 8 characters">
-        <div class="field-hint" id="cm-pw-hint">Required for new accounts.</div>
+      <div class="field" id="cm-pw-row">
+        <label>Password <span id="cm-pw-required"></span></label>
+        <input type="password" id="cm-password" placeholder="Leave blank to keep current">
+        <div class="field-hint" id="cm-pw-hint">For new coaches, a temporary password is auto-generated and sent via invite.</div>
       </div>
     </div>
     <div class="modal-footer">
@@ -747,9 +762,24 @@ function renderCoachTable() {
     var meta = [c.client, c.title].filter(Boolean).join(' · ');
     var safeName = esc(c.name).replace(/'/g, "\\'");
 
+    // Status badge
+    var statusBadge = '';
+    if (!c.invite_sent_at) {
+      statusBadge = '<span class="status-badge pending">Invite Pending</span>';
+    } else if (c.must_change_password) {
+      statusBadge = '<span class="status-badge invited">Invited</span>';
+    } else {
+      statusBadge = '<span class="status-badge active">Active</span>';
+    }
+
+    // Send Invite button — only show if not yet invited
+    var inviteBtn = !c.invite_sent_at
+      ? '<button class="btn-invite" onclick="sendInvite(' + c.id + ')">✉ Send Invite</button>'
+      : '';
+
     return '<tr>' +
       '<td>' +
-        '<div class="coach-name">' + esc(c.name) + '</div>' +
+        '<div class="coach-name">' + esc(c.name) + statusBadge + '</div>' +
         '<div class="coach-email">' + esc(c.email) + '</div>' +
         (meta ? '<div class="coach-meta">' + esc(meta) + '</div>' : '') +
       '</td>' +
@@ -758,6 +788,7 @@ function renderCoachTable() {
         '<div class="row-actions">' +
           '<button class="btn-edit"     onclick="openCoachModal(' + c.id + ')">Edit</button>' +
           '<button class="btn-students" onclick="openStudentModal(' + c.id + ')">Students</button>' +
+          inviteBtn +
           '<button class="btn-delete"   onclick="deleteCoach(' + c.id + ',\'' + safeName + '\')">Delete</button>' +
         '</div>' +
       '</td>' +
@@ -795,14 +826,12 @@ function openCoachModal(coachId) {
       document.getElementById('cm-role').value   = c.title  || '';
     }
     document.getElementById('coachModalTitle').textContent = 'Edit Coach';
+    document.getElementById('cm-pw-row').style.display     = '';
     document.getElementById('cm-password').placeholder     = 'Leave blank to keep current password';
-    document.getElementById('cm-pw-required').textContent  = '';
     document.getElementById('cm-pw-hint').textContent      = 'Optional — only fill in to change the password.';
   } else {
     document.getElementById('coachModalTitle').textContent = 'Add Coach';
-    document.getElementById('cm-password').placeholder     = 'Minimum 8 characters';
-    document.getElementById('cm-pw-required').textContent  = '*';
-    document.getElementById('cm-pw-hint').textContent      = 'Required for new accounts.';
+    document.getElementById('cm-pw-row').style.display     = 'none'; // hidden for new — temp password auto-generated
   }
 
   document.getElementById('coachModal').classList.add('open');
@@ -829,11 +858,6 @@ async function saveCoach() {
     msgEl.className = 'form-msg err';
     return;
   }
-  if (!id && password.length < 8) {
-    msgEl.textContent = 'Password must be at least 8 characters.';
-    msgEl.className = 'form-msg err';
-    return;
-  }
   if (id && password && password.length < 8) {
     msgEl.textContent = 'New password must be at least 8 characters.';
     msgEl.className = 'form-msg err';
@@ -847,7 +871,7 @@ async function saveCoach() {
     if (password) payload.password = password;
     res = await apiCall('PUT', '/coaches/' + id, payload);
   } else {
-    payload.password = password;
+    // New coach — no password needed; temp password auto-generated server-side
     res = await apiCall('POST', '/coaches', payload);
   }
 
@@ -872,6 +896,40 @@ async function deleteCoach(coachId, name) {
     await loadCoaches();
   } else {
     alert('Could not delete: ' + (res && res.error ? res.error : 'Unknown error'));
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// COACH INVITES
+// ════════════════════════════════════════════════════════════════
+async function sendInvite(coachId) {
+  var coach = _coaches.find(function(c) { return c.id === coachId; });
+  if (!coach) return;
+  if (!confirm('Send invite to ' + coach.name + ' (' + coach.email + ')?\n\nThis will generate a temporary password and email them login instructions.')) return;
+  var res = await apiCall('POST', '/coaches/' + coachId + '/send-invite');
+  if (res && res.success) {
+    alert('✓ Invite sent to ' + coach.email);
+    await loadCoaches();
+  } else {
+    alert('Failed: ' + (res && res.error ? res.error : 'Unknown error'));
+  }
+}
+
+async function sendAllPendingInvites() {
+  var pending = _coaches.filter(function(c) { return !c.invite_sent_at; });
+  if (!pending.length) { alert('No pending invites — all coaches have already been invited.'); return; }
+  if (!confirm('Send invites to ' + pending.length + ' coach' + (pending.length !== 1 ? 'es' : '') + ' with pending status?\n\n' + pending.map(function(c) { return c.name + ' (' + c.email + ')'; }).join('\n'))) return;
+  var btn = document.getElementById('bulkInviteBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  var res = await apiCall('POST', '/coaches/send-pending-invites');
+  btn.disabled = false; btn.textContent = '✉ Send Pending Invites';
+  if (res && res.success) {
+    var msg = '✓ ' + res.sent.length + ' invite' + (res.sent.length !== 1 ? 's' : '') + ' sent.';
+    if (res.failed && res.failed.length) msg += '\n\n⚠ Failed: ' + res.failed.join(', ');
+    alert(msg);
+    await loadCoaches();
+  } else {
+    alert('Failed: ' + (res && res.error ? res.error : 'Unknown error'));
   }
 }
 
