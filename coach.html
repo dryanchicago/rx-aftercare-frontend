@@ -1250,7 +1250,7 @@ function renderGoals(goals, overallPct) {
   list.innerHTML = activeGoals.map(function(g) {
     var pct     = g.progress_pct;
     var fillCls = pct === 0 ? 'zero' : pct === 100 ? 'full' : pct >= 60 ? 'high' : pct >= 25 ? 'mid' : 'low';
-    var isOpen  = pct > 0 && pct < 100;
+    var isOpen  = false;
 
     // Only show committed activities
     var committedActs = g.activities.filter(function(a) { return a.status !== null; });
