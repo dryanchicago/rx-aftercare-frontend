@@ -653,6 +653,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       </div>
       <div style="display:flex;align-items:center;gap:10px">
         <button onclick="downloadScheduleXlsx()" style="background:#1a6b3a;color:#fff;border:2px solid #27ae60;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:0.78rem;font-weight:700">⬇ Download Schedule</button>
+        <button id="sc-show-deleted-btn" onclick="toggleShowDeleted()" style="background:none;color:#8a9bb8;border:1px solid #2a4570;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:0.78rem;font-weight:700">Show Deleted</button>
         <button onclick="deleteAllSlots()" style="background:none;color:#f07070;border:1px solid #f07070;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:0.78rem;font-weight:700">🗑 Delete All Slots</button>
         <button class="sc-close" onclick="closeSchedule()">✕</button>
       </div>
@@ -678,6 +679,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <div class="sc-slot-list" id="sc-slot-list">
         <div class="sc-empty">No emails scheduled yet. Add your first one below.</div>
       </div>
+      <div id="sc-deleted-list"></div>
       <div class="sc-add-form">
         <h4>+ Add Email to Schedule</h4>
         <div class="sc-add-grid">
@@ -1803,7 +1805,7 @@ async function executeFindReplace(){
 }
 
 
-var _scClassId=null, _scClassName="", _scStartDate=null;
+var _scClassId=null, _scClassName="", _scStartDate=null, _scShowDeleted=false;
 var _scSlotMap={}; // keyed by slot id — avoids JSON.stringify in onclick
 
 async function openSchedule(classId){
@@ -1819,7 +1821,13 @@ async function openSchedule(classId){
   await loadSchedule();
   document.getElementById("scheduleModal").classList.add("open");
 }
-function closeSchedule(){document.getElementById("scheduleModal").classList.remove("open");_scClassId=null;}
+function closeSchedule(){
+  document.getElementById("scheduleModal").classList.remove("open");
+  _scClassId=null;
+  _scShowDeleted=false;
+  var btn=document.getElementById("sc-show-deleted-btn"); if(btn) btn.textContent="Show Deleted";
+  var dl=document.getElementById("sc-deleted-list"); if(dl) dl.innerHTML="";
+}
 document.getElementById("scheduleModal").addEventListener("click",function(e){if(e.target===this)closeSchedule();});
 
 async function downloadScheduleXlsx() {
@@ -1874,6 +1882,8 @@ async function loadSchedule(){
   document.getElementById("sc-start-input").value=data.start_date?data.start_date.slice(0,10):"";
   _scStartDate=data.start_date||null;
   renderSlotList(data.slots||[], data.start_date);
+  if(_scShowDeleted) await loadDeletedSlots();
+  else { var dl=document.getElementById("sc-deleted-list"); if(dl) dl.innerHTML=""; }
 }
 
 function renderSlotList(slots, startDateStr){
@@ -1975,6 +1985,44 @@ async function deleteSlot(slotId){
   var res=await apiCall("DELETE","/classes/"+_scClassId+"/schedule/"+slotId);
   if(res&&res.success) await loadSchedule();
   else alert("Could not delete slot.");
+}
+
+async function toggleShowDeleted(){
+  _scShowDeleted=!_scShowDeleted;
+  var btn=document.getElementById("sc-show-deleted-btn");
+  if(btn) btn.textContent=_scShowDeleted?"Hide Deleted":"Show Deleted";
+  if(_scShowDeleted) await loadDeletedSlots();
+  else { var dl=document.getElementById("sc-deleted-list"); if(dl) dl.innerHTML=""; }
+}
+
+async function loadDeletedSlots(){
+  var data=await apiCall("GET","/classes/"+_scClassId+"/schedule/deleted");
+  var container=document.getElementById("sc-deleted-list"); if(!container) return;
+  if(!data||!data.success||!(data.slots||[]).length){
+    container.innerHTML='<div style="border-top:1px dashed #2a4570;margin-top:8px;padding:12px 0 4px;font-size:0.82rem;color:#8a9bb8">No deleted slots.</div>';
+    return;
+  }
+  var html='<div style="border-top:1px dashed #2a4570;margin-top:8px;padding-top:12px">'
+    +'<div style="font-size:0.72rem;font-weight:700;color:#8a9bb8;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">Deleted Slots</div>';
+  data.slots.forEach(function(s){
+    var dayLabel=s.day_override?"Day "+s.day_override:"Week "+s.week_number;
+    var subject=s.subject_override||s.template_subject;
+    html+='<div class="sc-slot" style="opacity:0.55;border-color:#2a3555;margin-bottom:8px"><div class="sc-slot-row">'
+      +'<div class="sc-slot-day"><strong>'+dayLabel+'</strong></div>'
+      +'<div class="sc-slot-info"><div class="sc-slot-name">'+esc(s.template_name)+'</div><div class="sc-slot-subject">'+esc(subject||"")+'</div></div>'
+      +'<div class="sc-slot-actions">'
+      +'<button class="sc-btn-sm" style="background:none;border:1px solid #27ae60;color:#27ae60;padding:5px 12px;font-size:0.75rem" onclick="restoreSlot('+s.id+')">↩ Restore</button>'
+      +'</div></div></div>';
+  });
+  html+='</div>';
+  container.innerHTML=html;
+}
+
+async function restoreSlot(slotId){
+  if(!confirm("Restore this slot back to the active schedule?")) return;
+  var res=await apiCall("PATCH","/classes/"+_scClassId+"/schedule/"+slotId+"/restore");
+  if(res&&res.success){ toast("✅ Slot restored"); await loadSchedule(); }
+  else alert("Could not restore slot.");
 }
 
 async function resendFailed(slotId){
