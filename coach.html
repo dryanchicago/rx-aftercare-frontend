@@ -919,14 +919,14 @@
 
       <div class="card">
         <div class="card-header">
-          <h3>Goal Summary</h3>
+          <h3>Activity Summary</h3>
           <span class="card-meta" id="gEnrolled">—</span>
         </div>
         <div class="card-body">
           <div class="three-stats">
             <div class="mini-stat">
               <div class="val" id="gTotal">—</div>
-              <div class="lbl">Total</div>
+              <div class="lbl">Committed</div>
             </div>
             <div class="mini-stat">
               <div class="val" id="gDone">—</div>
@@ -1264,9 +1264,11 @@ async function showDetail(studentId) {
   document.getElementById('gLeft').textContent    = data.total - data.completed;
   document.getElementById('gEnrolled').textContent =
     s.enrolled_at ? 'Enrolled ' + fmtDate(s.enrolled_at) : '';
-  document.getElementById('gFootnote').textContent =
-    pct === 100 ? '✓ All activities complete' :
-    pct === 0   ? 'No activities completed yet' : '';
+  var goalCount = (data.goals || []).filter(function(g) { return g.committed > 0; }).length;
+  var footnote = goalCount ? 'Across ' + goalCount + ' goal' + (goalCount !== 1 ? 's' : '') : '';
+  if (pct === 100) footnote = '✓ All activities complete';
+  else if (data.total === 0) footnote = 'No activities committed yet';
+  document.getElementById('gFootnote').textContent = footnote;
 
   document.getElementById('nudgeStudentId').value = studentId;
 
