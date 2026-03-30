@@ -75,7 +75,7 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
 #autosave-info.pulse{background:#0a5c36;color:#fff}
 #bottomBar.sticky{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:1100px;z-index:200;background:#fff;box-shadow:0 -3px 12px rgba(0,0,0,.18);padding-top:4px}
 #bottomBar.sticky .summary{margin:0;border-radius:0}
-body.checkin-active{padding-bottom:240px}
+body.checkin-active{padding-bottom:360px}
 </style>
 </head>
 <body>
@@ -289,6 +289,11 @@ function initCheckin(){
   document.getElementById('autosave-info').style.display='block';
   document.getElementById('bottomBar').classList.add('sticky');
   document.body.classList.add('checkin-active');
+  // Dynamically pad body so last goal card is never hidden behind the fixed bar
+  setTimeout(function(){
+    var bar=document.getElementById('bottomBar');
+    if(bar) document.body.style.paddingBottom=(bar.offsetHeight+32)+'px';
+  },50);
   updCheckin();
 }
 
