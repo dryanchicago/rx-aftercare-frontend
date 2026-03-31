@@ -1653,7 +1653,7 @@ function refreshEpPreview() {
   }
 }
 async function sendTestEmail(templateId) {
-  var to = prompt("Send test email to:", localStorage.getItem("adminEmail") || "dryan@graymattersgroup.com");
+  var to = prompt("Send test email to:", "dryan@graymattersgroup.com");
   if (!to) return;
   toast("📧 Fetching template…");
   var data = await apiCall("GET", "/email-templates/" + templateId);
@@ -1678,7 +1678,7 @@ async function sendTestSlotEmail(slotId) {
   var slot = _scSlotMap[slotId];
   if (!slot) { toast("❌ Slot not found"); return; }
 
-  var to = prompt("Send test email to:", localStorage.getItem("adminEmail") || "dryan@graymattersgroup.com");
+  var to = prompt("Send test email to:", "dryan@graymattersgroup.com");
   if (!to) return;
 
   toast("📧 Loading email content…");
