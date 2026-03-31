@@ -789,9 +789,27 @@ function renderCoachTable() {
 
   var rows = filtered.map(function(c) {
     var count = c.student_count || 0;
-    var studentCell = count
-      ? '<span class="pill">' + count + ' student' + (count !== 1 ? 's' : '') + '</span>'
-      : '<span class="pill-none">None assigned</span>';
+
+    // When a class is selected, show student names for that class inline
+    var studentCell;
+    if (filterClassId) {
+      var classStudents = (c.students || []).filter(function(s) {
+        return String(s.class_id) === filterClassId;
+      });
+      if (classStudents.length) {
+        studentCell = '<div style="display:flex;flex-direction:column;gap:3px">' +
+          classStudents.map(function(s) {
+            return '<span style="font-size:12px;color:#1e3c72;font-weight:500">• ' + esc(s.name) + '</span>';
+          }).join('') +
+        '</div>';
+      } else {
+        studentCell = '<span class="pill-none">None in this class</span>';
+      }
+    } else {
+      studentCell = count
+        ? '<span class="pill">' + count + ' student' + (count !== 1 ? 's' : '') + '</span>'
+        : '<span class="pill-none">None assigned</span>';
+    }
 
     var meta = [c.client, c.title].filter(Boolean).join(' · ');
     var safeName = esc(c.name).replace(/'/g, "\\'");
@@ -841,7 +859,7 @@ function renderCoachTable() {
     '<table>' +
       '<thead><tr>' +
         '<th>Coach</th>' +
-        '<th>Assigned Students</th>' +
+        '<th>' + (filterClassId ? 'Students in This Class' : 'Assigned Students') + '</th>' +
         '<th style="width:220px">Actions</th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
