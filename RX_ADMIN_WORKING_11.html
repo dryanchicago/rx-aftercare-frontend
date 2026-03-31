@@ -786,6 +786,7 @@ function logout() {
   if (confirm("Log out of the admin panel?")) {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminEmail");
+    localStorage.removeItem("testEmailAddr"); // clean up legacy key
     window.location.href = "admin-login.html";
   }
 }
@@ -1652,9 +1653,8 @@ function refreshEpPreview() {
   }
 }
 async function sendTestEmail(templateId) {
-  var to = prompt("Send test email to:", localStorage.getItem("testEmailAddr") || "dryan@graymattersgroup.com");
+  var to = prompt("Send test email to:", localStorage.getItem("adminEmail") || "dryan@graymattersgroup.com");
   if (!to) return;
-  localStorage.setItem("testEmailAddr", to);
   toast("📧 Fetching template…");
   var data = await apiCall("GET", "/email-templates/" + templateId);
   if (!data || !data.success || !data.template) { toast("❌ Could not load template"); return; }
@@ -1678,9 +1678,8 @@ async function sendTestSlotEmail(slotId) {
   var slot = _scSlotMap[slotId];
   if (!slot) { toast("❌ Slot not found"); return; }
 
-  var to = prompt("Send test email to:", localStorage.getItem("testEmailAddr") || "dryan@graymattersgroup.com");
+  var to = prompt("Send test email to:", localStorage.getItem("adminEmail") || "dryan@graymattersgroup.com");
   if (!to) return;
-  localStorage.setItem("testEmailAddr", to);
 
   toast("📧 Loading email content…");
 
