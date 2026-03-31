@@ -783,11 +783,47 @@
     </div>
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-err hidden" id="loginErr"></div>
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" onclick="showForgotPassword();return false;" style="font-size:13px;color:#8a9bb8;text-decoration:none;">Forgot your password?</a>
+    </div>
 
     <div class="login-status">
       <div class="status-dot" id="statusDot"></div>
       <span id="statusText">Checking connection…</span>
     </div>
+  </div>
+
+  <!-- Panel 3: Forgot Password -->
+  <div class="login-card hidden" id="forgotPasswordPanel">
+    <h1>Reset Password</h1>
+    <p class="login-org">Gray Matters Group</p>
+    <p style="font-size:13px;color:#8a9bb8;margin:0 0 20px;line-height:1.5;">Enter your email address and we'll send you a reset link.</p>
+    <div class="login-field">
+      <label>Email Address</label>
+      <input type="email" id="fpEmail" placeholder="your@email.com" autocomplete="email">
+    </div>
+    <button class="login-btn" onclick="doForgotPassword()">Send Reset Link</button>
+    <div class="login-err hidden" id="fpErr"></div>
+    <div style="text-align:center;margin-top:14px">
+      <a href="#" onclick="showLoginPanel();return false;" style="font-size:13px;color:#8a9bb8;text-decoration:none;">← Back to Sign In</a>
+    </div>
+  </div>
+
+  <!-- Panel 4: Reset Password (from email link ?coach_reset=TOKEN) -->
+  <div class="login-card hidden" id="resetPasswordPanel">
+    <h1>Set New Password</h1>
+    <p class="login-org">Gray Matters Group</p>
+    <p style="font-size:13px;color:#8a9bb8;margin:0 0 20px;line-height:1.5;">Enter your new password below.</p>
+    <div class="login-field">
+      <label>New Password</label>
+      <input type="password" id="rpNewPassword" placeholder="Minimum 8 characters">
+    </div>
+    <div class="login-field">
+      <label>Confirm New Password</label>
+      <input type="password" id="rpConfirmPassword" placeholder="Repeat new password">
+    </div>
+    <button class="login-btn" onclick="doCoachResetPassword()">Save &amp; Sign In</button>
+    <div class="login-err hidden" id="rpErr"></div>
   </div>
 
   <!-- Panel 2: Set New Password (first login) -->
@@ -1037,6 +1073,13 @@ window.addEventListener('DOMContentLoaded', async function() {
     } catch(e) { /* fall through to normal session check */ }
   }
 
+  // ── Coach password reset link (?coach_reset=TOKEN) ────────────────────
+  var _resetToken = new URLSearchParams(window.location.search).get('coach_reset');
+  if (_resetToken) {
+    document.getElementById('loginPanel').classList.add('hidden');
+    document.getElementById('resetPasswordPanel').classList.remove('hidden');
+  }
+
   // Check backend connectivity
   checkBackend();
 
@@ -1076,6 +1119,71 @@ async function checkBackend() {
 // ════════════════════════════════════════════════════════════════
 // AUTH
 // ════════════════════════════════════════════════════════════════
+function showLoginPanel() {
+  ['loginPanel','forgotPasswordPanel','resetPasswordPanel','changePasswordPanel'].forEach(function(id) {
+    document.getElementById(id).classList.add('hidden');
+  });
+  document.getElementById('loginPanel').classList.remove('hidden');
+}
+
+function showForgotPassword() {
+  ['loginPanel','forgotPasswordPanel','resetPasswordPanel','changePasswordPanel'].forEach(function(id) {
+    document.getElementById(id).classList.add('hidden');
+  });
+  document.getElementById('forgotPasswordPanel').classList.remove('hidden');
+  document.getElementById('fpEmail').focus();
+}
+
+async function doForgotPassword() {
+  var email = document.getElementById('fpEmail').value.trim();
+  var errEl = document.getElementById('fpErr');
+  errEl.classList.add('hidden');
+  if (!email) { errEl.textContent = 'Please enter your email address.'; errEl.classList.remove('hidden'); return; }
+
+  var btn = document.querySelector('#forgotPasswordPanel .login-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  await api('POST', '/auth/coach/forgot-password', { email });
+
+  btn.disabled = false; btn.textContent = 'Send Reset Link';
+  // Always show success — don't reveal whether email exists
+  errEl.style.color = '#1a7a4a';
+  errEl.textContent = '✓ If that email is registered, a reset link is on its way. Check your inbox.';
+  errEl.classList.remove('hidden');
+}
+
+async function doCoachResetPassword() {
+  var newPw   = document.getElementById('rpNewPassword').value;
+  var confirm = document.getElementById('rpConfirmPassword').value;
+  var errEl   = document.getElementById('rpErr');
+  errEl.classList.add('hidden');
+
+  if (!newPw || !confirm) { errEl.textContent = 'Both fields are required.'; errEl.classList.remove('hidden'); return; }
+  if (newPw.length < 8)   { errEl.textContent = 'Password must be at least 8 characters.'; errEl.classList.remove('hidden'); return; }
+  if (newPw !== confirm)  { errEl.textContent = 'Passwords do not match.'; errEl.classList.remove('hidden'); return; }
+
+  var token = new URLSearchParams(window.location.search).get('coach_reset');
+  if (!token) { errEl.textContent = 'Reset token missing. Please use the link from your email.'; errEl.classList.remove('hidden'); return; }
+
+  var btn = document.querySelector('#resetPasswordPanel .login-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  var data = await api('POST', '/auth/coach/reset-password', { token, new_password: newPw });
+  btn.disabled = false; btn.textContent = 'Save & Sign In';
+
+  if (data && data.token) {
+    _token = data.token;
+    _coach = data.coach;
+    sessionStorage.setItem('coachToken', _token);
+    sessionStorage.setItem('coachData',  JSON.stringify(_coach));
+    window.history.replaceState({}, '', window.location.pathname);
+    showApp();
+  } else {
+    errEl.textContent = (data && data.error) ? data.error : 'Reset failed. The link may have expired.';
+    errEl.classList.remove('hidden');
+  }
+}
+
 async function doLogin() {
   var email    = document.getElementById('loginEmail').value.trim();
   var password = document.getElementById('loginPassword').value;
