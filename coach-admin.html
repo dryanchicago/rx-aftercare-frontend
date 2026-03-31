@@ -799,7 +799,7 @@ function renderCoachTable() {
       if (classStudents.length) {
         studentCell = '<div style="display:flex;flex-direction:column;gap:3px">' +
           classStudents.map(function(s) {
-            return '<span style="font-size:12px;color:#1e3c72;font-weight:500">• ' + esc(s.name) + '</span>';
+            return '<span style="font-size:12px;color:#1e3c72;font-weight:500">• ' + esc((s.first_name || '') + ' ' + (s.last_name || '')).trim() + '</span>';
           }).join('') +
         '</div>';
       } else {
