@@ -1020,7 +1020,23 @@ async function api(method, path, body) {
 // ════════════════════════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', function() {
+window.addEventListener('DOMContentLoaded', async function() {
+  // ── Magic link auto-login ──────────────────────────────────────────────
+  var _params = new URLSearchParams(window.location.search);
+  var _magic  = _params.get('magic');
+  if (_magic) {
+    try {
+      var _r = await fetch('https://rx-aftercare-backend-production.up.railway.app/api/auth/magic-login?token=' + encodeURIComponent(_magic) + '&type=coach');
+      var _d = await _r.json();
+      if (_d.success && _d.token) {
+        sessionStorage.setItem('coachToken', _d.token);
+        sessionStorage.setItem('coachData',  JSON.stringify(_d.coach));
+        var _clean = window.location.pathname + (window.location.search.replace(/[?&]magic=[^&]*/, '').replace(/^&/, '?') || '');
+        window.history.replaceState({}, '', _clean);
+      }
+    } catch(e) { /* fall through to normal session check */ }
+  }
+
   // Check backend connectivity
   checkBackend();
 

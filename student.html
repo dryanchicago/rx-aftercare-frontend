@@ -134,6 +134,23 @@ function getClassId(){
 }
 
 window.onload=async function(){
+  // ── Magic link auto-login ──────────────────────────────────────────────
+  var _params=new URLSearchParams(window.location.search);
+  var _magic=_params.get('magic');
+  if(_magic){
+    try{
+      var _r=await fetch('https://rx-aftercare-backend-production.up.railway.app/api/auth/magic-login?token='+encodeURIComponent(_magic)+'&type=student');
+      var _d=await _r.json();
+      if(_d.success&&_d.token){
+        localStorage.setItem('student_token',_d.token);
+        localStorage.setItem('student_data',JSON.stringify(_d.student));
+        // Remove magic param from URL without reloading
+        var _clean=window.location.pathname+(window.location.search.replace(/[?&]magic=[^&]*/,'').replace(/^&/,'?')||'');
+        window.history.replaceState({},'',_clean);
+      }
+    }catch(e){ /* fall through to normal auth check */ }
+  }
+
   // ── Auth check ────────────────────────────────────────────────────────
   studentToken=localStorage.getItem('student_token');
   if(!studentToken){window.location.href='student-login.html';return;}
