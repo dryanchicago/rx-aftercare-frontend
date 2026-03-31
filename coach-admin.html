@@ -976,12 +976,31 @@ async function sendInvite(coachId) {
 }
 
 async function sendAllPendingInvites() {
-  var pending = _coaches.filter(function(c) { return !c.invite_sent_at; });
-  if (!pending.length) { alert('No pending invites — all coaches have already been invited.'); return; }
-  if (!confirm('Send invites to ' + pending.length + ' coach' + (pending.length !== 1 ? 'es' : '') + ' with pending status?\n\n' + pending.map(function(c) { return c.name + ' (' + c.email + ')'; }).join('\n'))) return;
+  var filterClassId = document.getElementById('classFilter').value;
+  var filterClassName = filterClassId
+    ? document.getElementById('classFilter').options[document.getElementById('classFilter').selectedIndex].text
+    : null;
+
+  var pending = _coaches.filter(function(c) {
+    if (c.invite_sent_at) return false;
+    if (filterClassId) {
+      return (c.students || []).some(function(s) { return String(s.class_id) === filterClassId; });
+    }
+    return true;
+  });
+
+  if (!pending.length) {
+    alert('No pending invites' + (filterClassName ? ' for ' + filterClassName : '') + ' — all coaches have already been invited.');
+    return;
+  }
+
+  var scope = filterClassName ? 'coaches in ' + filterClassName : 'all coaches';
+  if (!confirm('Send invites to ' + pending.length + ' ' + scope + ' with pending status?\n\n' + pending.map(function(c) { return c.name + ' (' + c.email + ')'; }).join('\n'))) return;
+
   var btn = document.getElementById('bulkInviteBtn');
   btn.disabled = true; btn.textContent = 'Sending…';
-  var res = await apiCall('POST', '/coaches/send-pending-invites');
+  var body = filterClassId ? { class_id: parseInt(filterClassId, 10) } : {};
+  var res = await apiCall('POST', '/coaches/send-pending-invites', body);
   btn.disabled = false; btn.textContent = '✉ Send Pending Invites';
   if (res && res.success) {
     var msg = '✓ ' + res.sent.length + ' invite' + (res.sent.length !== 1 ? 's' : '') + ' sent.';
