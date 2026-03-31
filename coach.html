@@ -891,6 +891,16 @@
       </div>
     </div>
 
+    <!-- Messages inbox -->
+    <div id="messagesSection" style="display:none;margin:0 0 20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div class="section-label" style="margin:0;">Messages from Students</div>
+        <span id="unreadBadge" style="display:none;background:#9b2020;color:#fff;font-size:11px;
+              font-weight:700;padding:2px 8px;border-radius:10px;"></span>
+      </div>
+      <div id="messagesList"></div>
+    </div>
+
     <div class="roster-toolbar">
       <h2>My Students</h2>
       <select class="sort-select" id="sortSelect" onchange="renderRoster()">
@@ -1277,6 +1287,68 @@ function showApp() {
   document.getElementById('appShell').style.display     = 'flex';
   document.getElementById('navCoachName').textContent   = _coach.name || '';
   loadRoster();
+  loadMessages();
+}
+
+// ════════════════════════════════════════════════════════════════
+// MESSAGES
+// ════════════════════════════════════════════════════════════════
+async function loadMessages() {
+  var data = await api('GET', '/students/messages');
+  if (!data || !data.messages) return;
+  var msgs = data.messages;
+  if (!msgs.length) return;
+
+  var unread = msgs.filter(function(m) { return !m.read_at; });
+  var section = document.getElementById('messagesSection');
+  var badge   = document.getElementById('unreadBadge');
+  var list    = document.getElementById('messagesList');
+
+  section.style.display = 'block';
+
+  if (unread.length) {
+    badge.textContent = unread.length + ' new';
+    badge.style.display = 'inline-block';
+  }
+
+  list.innerHTML = msgs.map(function(m) {
+    var isUnread = !m.read_at;
+    var dateStr  = new Date(m.sent_at).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'
+    });
+    return '<div id="msg-' + m.id + '" onclick="markRead(' + m.id + ')" style="' +
+      'background:' + (isUnread ? '#f0f4ff' : '#f9fafc') + ';' +
+      'border:1.5px solid ' + (isUnread ? '#1e3c72' : '#e0e4ed') + ';' +
+      'border-radius:8px;padding:14px 16px;margin-bottom:8px;cursor:' + (isUnread ? 'pointer' : 'default') + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">' +
+        '<span style="font-size:13px;font-weight:700;color:#1a2744;">' +
+          m.first_name + ' ' + m.last_name +
+          ' <span style="font-weight:400;color:#888;font-size:12px;">· ' + m.class_name + '</span>' +
+        '</span>' +
+        '<span style="font-size:11px;color:#aaa;white-space:nowrap;margin-left:12px;">' + dateStr + '</span>' +
+      '</div>' +
+      '<p style="margin:0;font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap;">' + esc(m.message) + '</p>' +
+      (isUnread ? '<p style="margin:6px 0 0;font-size:11px;color:#1e3c72;font-weight:600;">Click to mark as read</p>' : '') +
+    '</div>';
+  }).join('');
+}
+
+async function markRead(msgId) {
+  var el = document.getElementById('msg-' + msgId);
+  if (!el || el.style.borderColor === 'rgb(224, 228, 237)') return; // already read
+  await api('PATCH', '/students/messages/' + msgId + '/read', {});
+  // Update UI
+  el.style.background   = '#f9fafc';
+  el.style.border       = '1.5px solid #e0e4ed';
+  el.style.cursor       = 'default';
+  var hint = el.querySelector('p:last-child');
+  if (hint && hint.textContent.includes('mark as read')) hint.remove();
+  // Update badge
+  var badge   = document.getElementById('unreadBadge');
+  var current = parseInt(badge.textContent) || 0;
+  var remaining = current - 1;
+  if (remaining <= 0) { badge.style.display = 'none'; }
+  else { badge.textContent = remaining + ' new'; }
 }
 
 // ════════════════════════════════════════════════════════════════

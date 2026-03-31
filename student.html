@@ -71,6 +71,8 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
 .btn-s{background:white;color:#1e3c72;border:2px solid #1e3c72}
 .btn-logout{background:none;border:2px solid #aaa;color:#888;font-size:15px;font-weight:700;padding:13px 32px;border-radius:8px;cursor:pointer;font-family:inherit}
 .btn-logout:hover{background:#f5f5f5;color:#555}
+.btn-msg{background:#fff;color:#1e3c72;border:1.5px solid #1e3c72;font-weight:600;font-size:13px;}
+.btn-msg:hover{background:#f0f4ff;}
 #autosave-info{display:none;background:#d1e7dd;border:1.5px solid #a3cfbb;color:#0a5c36;padding:13px 20px;margin:0 28px 6px;border-radius:10px;font-size:13px;font-weight:600;text-align:center;transition:background .25s,color .25s}
 #autosave-info.pulse{background:#0a5c36;color:#fff}
 #bottomBar.sticky{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:1100px;z-index:200;background:#fff;box-shadow:0 -3px 12px rgba(0,0,0,.18);padding-top:4px}
@@ -112,7 +114,33 @@ body.checkin-active{padding-bottom:360px}
     <div class="abuts">
       <button class="btn btn-s" id="resetBtn" onclick="resetAll()">Reset</button>
       <button class="btn btn-p" onclick="savePDF()">🖨️ Print / Save PDF</button>
+      <button class="btn btn-msg" id="msgCoachBtn" onclick="openMsgModal()" style="display:none">💬 Ask My Coach</button>
       <button class="btn btn-logout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ask My Coach modal -->
+<div id="msgModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;
+     align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:12px;padding:28px 28px 24px;width:100%;max-width:480px;
+              margin:20px;box-shadow:0 8px 32px rgba(0,0,0,.22);">
+    <h3 style="margin:0 0 6px;color:#1e3c72;font-size:17px;">Ask My Coach</h3>
+    <p style="margin:0 0 16px;font-size:13px;color:#666;line-height:1.5;">
+      Type your question or request below. Your coach will receive an email notification right away.
+    </p>
+    <textarea id="msgText" rows="5" placeholder="What would you like to ask or share with your coach?"
+      style="width:100%;box-sizing:border-box;border:1.5px solid #d0d7e8;border-radius:8px;
+             padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;
+             outline:none;color:#222;"></textarea>
+    <div id="msgStatus" style="font-size:12px;margin:6px 0 0;min-height:16px;"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+      <button onclick="closeMsgModal()"
+        style="padding:9px 20px;border:1.5px solid #ccc;border-radius:7px;background:#fff;
+               font-size:13px;color:#555;cursor:pointer;">Cancel</button>
+      <button id="msgSendBtn" onclick="sendMsgToCoach()"
+        style="padding:9px 20px;border:none;border-radius:7px;background:#1e3c72;
+               color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Send Message</button>
     </div>
   </div>
 </div>
@@ -304,6 +332,7 @@ function initCheckin(){
   document.getElementById('resetBtn').style.display='none';
   document.getElementById('instrBox').style.display='none';
   document.getElementById('autosave-info').style.display='block';
+  document.getElementById('msgCoachBtn').style.display='inline-flex';
   document.getElementById('bottomBar').classList.add('sticky');
   document.body.classList.add('checkin-active');
   // Dynamically pad body so last goal card is never hidden behind the fixed bar
@@ -504,5 +533,48 @@ function saveCheckinPDF(){
 }
 function resetAll(){if(confirm("Reset all selections?")){sG.clear();sA={};cA={};init()}}
 function doLogout(){localStorage.removeItem('student_token');localStorage.removeItem('student_data');window.location.href='student-login.html';}
+
+function openMsgModal(){
+  document.getElementById('msgText').value='';
+  document.getElementById('msgStatus').textContent='';
+  document.getElementById('msgSendBtn').disabled=false;
+  document.getElementById('msgSendBtn').textContent='Send Message';
+  document.getElementById('msgModal').style.display='flex';
+  document.getElementById('msgText').focus();
+}
+function closeMsgModal(){document.getElementById('msgModal').style.display='none';}
+
+async function sendMsgToCoach(){
+  var msg=document.getElementById('msgText').value.trim();
+  var statusEl=document.getElementById('msgStatus');
+  var btn=document.getElementById('msgSendBtn');
+  statusEl.style.color='#888';
+  if(!msg){statusEl.textContent='Please enter a message before sending.';statusEl.style.color='#9b2020';return;}
+  btn.disabled=true;btn.textContent='Sending…';statusEl.textContent='';
+  try{
+    var r=await fetch('https://rx-aftercare-backend-production.up.railway.app/api/students/me/message-coach',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+studentToken},
+      body:JSON.stringify({message:msg})
+    });
+    var d=await r.json();
+    if(d.success){
+      statusEl.textContent=d.coachCount>0
+        ?'✓ Message sent to your coach!'
+        :'✓ Message saved — a coach will be assigned soon.';
+      statusEl.style.color='#1a5c35';
+      btn.textContent='Sent!';
+      setTimeout(closeMsgModal,1800);
+    }else{
+      statusEl.textContent='Could not send: '+(d.error||'Unknown error');
+      statusEl.style.color='#9b2020';
+      btn.disabled=false;btn.textContent='Send Message';
+    }
+  }catch(e){
+    statusEl.textContent='Network error — please try again.';
+    statusEl.style.color='#9b2020';
+    btn.disabled=false;btn.textContent='Send Message';
+  }
+}
 </script>
 </body></html>
