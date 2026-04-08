@@ -78,6 +78,21 @@ body{font-family:Segoe UI,sans-serif;background:linear-gradient(135deg,#1e3c72,#
 #bottomBar.sticky{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:1100px;z-index:200;background:#fff;box-shadow:0 -3px 12px rgba(0,0,0,.18);padding-top:4px}
 #bottomBar.sticky .summary{margin:0;border-radius:0}
 body.checkin-active{padding-bottom:360px}
+/* Resources Panel */
+#resourcesPanel{display:none;padding:24px 16px 32px;max-width:860px;margin:24px auto 0}
+#resourcesPanel h2{font-size:1.3rem;margin:0 0 16px;color:#2c3e50;border-bottom:2px solid #e0e0e0;padding-bottom:8px}
+.res-topic{border:1px solid #e0e0e0;border-radius:8px;margin-bottom:10px;overflow:hidden}
+.res-topic-hdr{width:100%;text-align:left;background:#f7f7f7;border:none;padding:12px 16px;font-size:0.95rem;font-weight:600;color:#2c3e50;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.res-topic-hdr:hover{background:#eef2f7}
+.res-topic-hdr .arrow{transition:transform 0.2s;font-style:normal}
+.res-topic.open .res-topic-hdr .arrow{transform:rotate(90deg)}
+.res-links{display:none;padding:8px 16px 12px;background:#fff}
+.res-topic.open .res-links{display:block}
+.res-link{display:block;padding:6px 0;color:#1a6fc4;text-decoration:none;font-size:0.9rem;border-bottom:1px solid #f0f0f0}
+.res-link:last-child{border-bottom:none}
+.res-link:hover{text-decoration:underline}
+.btn-res{background:#6c757d;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:0.9rem}
+.btn-res.active{background:#2c3e50}
 </style>
 </head>
 <body>
@@ -104,6 +119,153 @@ body.checkin-active{padding-bottom:360px}
     </ul>
   </div>
   <div class="content" id="gc"><div class="loading">⏳ Loading your program...</div></div>
+
+  <div id="resourcesPanel">
+    <h2 onclick="toggleResources()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+      <span>📚 Resources &amp; Tools</span>
+      <span id="resPanelArrow" style="font-size:0.85rem;color:#666;">▲ Collapse</span>
+    </h2>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Why Relationships &amp; The Rx Program</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/boosters/why-activate-service-professionals-to-support-revenue-growth" target="_blank" rel="noopener">Why Activate Service Professionals to Support Revenue Growth</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020_Intro_to_Aftercare.mp3" target="_blank" rel="noopener">Intro to the Rx Aftercare Experience</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020_Relationship_Strength.mp3" target="_blank" rel="noopener">Measuring Relationship Strength</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020_Building_Trust.mp3" target="_blank" rel="noopener">A Formula for Building Trust</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Personal Awareness</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Personal_Awareness.mp3" target="_blank" rel="noopener">Building Professional Intimacy</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Elevator Speech</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Elevator_Speech.mp3" target="_blank" rel="noopener">Elevator Speech — Get Clear on Your Talk Tracks!</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Deepening Business Relationships</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Care-Can_1_Client_Can.mp3" target="_blank" rel="noopener">Understanding your Client's "Care"</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Can-Care_2_Client_Can.mp3" target="_blank" rel="noopener">Understanding your Client's "Can"</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Guess-Know.mp3" target="_blank" rel="noopener">Am I Guessing or Do I Know?</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Research / Doing Your Homework</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Research-Homework_on_Clients.mp3" target="_blank" rel="noopener">It pays to do your homework on your client!</a>
+        <a class="res-link" href="https://www.graymattersgroup.com/boosters/research-homework-on-own-firm" target="_blank" rel="noopener">It pays to do your homework on your own firm!</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Gaining Access &amp; Qualifying</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Gaining_Access.mp3" target="_blank" rel="noopener">Getting In Front of the Right People</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Qualifying_NUTS.mp3" target="_blank" rel="noopener">Qualifying Opportunities</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Qualifying-Compelling_Event.mp3" target="_blank" rel="noopener">Your Client's Opportunity: Finding One Compelling Event</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Networking Fundamentals</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Networking-You_Never_Know.mp3" target="_blank" rel="noopener">Every Interaction Matters</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Networking-Info_Exchange.mp3" target="_blank" rel="noopener">Personalizing Your Info Exchange</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Networking_Connectors.mp3" target="_blank" rel="noopener">Diversify Your Network with Connectors</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Networking_Staying_Top_of_Mind.mp3" target="_blank" rel="noopener">Keep In Touch</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Meeting Preparation</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Meeting_Prep1.mp3" target="_blank" rel="noopener">Preparation is Everything</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020MeetingPrep2_End_In_Mind.mp3" target="_blank" rel="noopener">Visualizing your Ideal Result</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Meeting Management</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Managing_Interactions.mp3" target="_blank" rel="noopener">The First Five Minutes</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Listening Keys</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Active_Listening.mp3" target="_blank" rel="noopener">Listen With All Your Senses</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Listening_More_Talk_Less.mp3" target="_blank" rel="noopener">Listen More, Talk Less</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Questioning Fundamentals</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Questioning-Impact_of_High_Quality_Qs.mp3" target="_blank" rel="noopener">Have a Questioning Strategy</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Questioning-End_in_Mind_Be_Curious.mp3" target="_blank" rel="noopener">Questioning: Start With the End in Mind</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Questioning_RISE.mp3" target="_blank" rel="noopener">Steps to 'Killer' Questions</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Questioning-Telegraphing_Value.mp3" target="_blank" rel="noopener">Your questions will help Benefit your Client</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Questioning-Open_and_Closed_Qs.mp3" target="_blank" rel="noopener">When to Employ Open vs Closed Questions</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Questioning-Cause_Change_Compare.mp3" target="_blank" rel="noopener">The Three Cs</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Questioning-Silos_Sequencing.mp3" target="_blank" rel="noopener">Sequence Your Silo-sized Questions</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Objection Handling</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Objections-Underlying_Condition.mp3" target="_blank" rel="noopener">Objections: Underlying Condition</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Objections-The_Process.mp3" target="_blank" rel="noopener">Objections: The Process</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Navigating the Decision Process</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Buyers_Journey1_MeetandGuide.mp3" target="_blank" rel="noopener">Think Like a Buyer</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Buyers_Journey2_5_Stops.mp3" target="_blank" rel="noopener">The Five Stops of a Buyer's Journey</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Navigating-Decisions_Formal_v_Informal.mp3" target="_blank" rel="noopener">Informal vs Formal Decision Making</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Navigating-Decisions_Influence_Authority.mp3" target="_blank" rel="noopener">Recognizing Clients Authority vs Influence</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Follow Up</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Follow_Up.mp3" target="_blank" rel="noopener">Play the Long Game and Stay Fresh</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Relationship Enhancement Planning &amp; Making Time</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Rx_Planning.mp3" target="_blank" rel="noopener">Dedicate Time to Form a Plan</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Making_Time1_Schedule_Time.mp3" target="_blank" rel="noopener">Dedicate Time to Expanding Your Relationships</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Making_Time2_UseSys.mp3" target="_blank" rel="noopener">Optimizing the Use of your Time</a>
+      </div>
+    </div>
+
+    <div class="res-topic">
+      <button class="res-topic-hdr" onclick="toggleResTopic(this)"><span>Building Your Personal Brand</span><span class="arrow">▶</span></button>
+      <div class="res-links">
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Personal_Branding.mp3" target="_blank" rel="noopener">Personal Branding</a>
+        <a class="res-link" href="http://www.graymattersgroup.com/images/GMG_Content/Audio/2020Converting_Personal_to_Business.mp3" target="_blank" rel="noopener">Converting Personal Relationships</a>
+      </div>
+    </div>
+
+  </div>
+
   <div id="bottomBar">
     <div class="summary" id="summaryBar"><h3>Your Commitments</h3><div class="stats">
       <div class="stat"><div class="snum" id="gs">0</div><div class="slbl">Goals</div></div>
@@ -115,6 +277,7 @@ body.checkin-active{padding-bottom:360px}
       <button class="btn btn-s" id="resetBtn" onclick="resetAll()">Reset</button>
       <button class="btn btn-p" onclick="savePDF()">🖨️ Print / Save PDF</button>
       <button class="btn btn-msg" id="msgCoachBtn" onclick="openMsgModal()" style="display:none">💬 Ask My Coach</button>
+      <button class="btn btn-res" onclick="toggleResources()">📚 Resources</button>
       <button class="btn btn-logout" onclick="doLogout()">Sign Out</button>
     </div>
   </div>
@@ -533,6 +696,20 @@ function saveCheckinPDF(){
 }
 function resetAll(){if(confirm("Reset all selections?")){sG.clear();sA={};cA={};init()}}
 function doLogout(){localStorage.removeItem('student_token');localStorage.removeItem('student_data');window.location.href='student-login.html';}
+
+function toggleResources(){
+  var p=document.getElementById('resourcesPanel');
+  var btn=document.querySelector('.btn-res');
+  var arrow=document.getElementById('resPanelArrow');
+  var showing=p.style.display==='block';
+  p.style.display=showing?'none':'block';
+  if(btn){btn.classList.toggle('active',!showing);}
+  if(arrow){arrow.textContent=showing?'':'▲ Collapse';}
+  if(!showing){p.scrollIntoView({behavior:'smooth',block:'start'});}
+}
+function toggleResTopic(hdr){
+  hdr.parentElement.classList.toggle('open');
+}
 
 function openMsgModal(){
   document.getElementById('msgText').value='';
