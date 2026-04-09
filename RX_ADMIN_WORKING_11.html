@@ -427,9 +427,11 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
   <div id="sec-classes" class="section">
     <div class="sec-header">
       <h2>My Classes</h2>
+      <button id="classes-show-deleted-btn" onclick="toggleShowDeletedClasses()" style="background:none;color:#8a9bb8;border:1px solid #2a4570;padding:6px 14px;border-radius:5px;cursor:pointer;font-size:0.78rem;font-weight:700">Show Deleted</button>
     </div>
     <div id="classesLoading" class="loading-msg" style="display:none">Loading classes...</div>
     <div id="classesList"></div>
+    <div id="deletedClassesList"></div>
   </div>
 
   <!-- STUDENTS -->
@@ -1088,13 +1090,47 @@ async function saveClass(){
 // ============================================================
 async function deleteClass(classId){
   var c=CLASSES.find(function(x){return x.id===classId;}); if(!c) return;
-  var msg="This will permanently delete the class and ALL its schedule slots." +
-    "\n\nType the exact class name to confirm deletion:\n\n" + c.name;
+  var msg="This will archive the class. Students and progress data are preserved and the class can be restored later." +
+    "\n\nType the exact class name to confirm:\n\n" + c.name;
   var entered=window.prompt(msg);
   if(entered===null) return;
   if(entered.trim()!==c.name.trim()){ alert("Class name did not match. Deletion cancelled."); return; }
   var result=await apiCall("DELETE","/classes/"+classId);
-  if(result!==null){toast("Class deleted.");if(editingClassId===classId)cancelEdit();await refreshClasses();}
+  if(result!==null){toast("Class archived.");if(editingClassId===classId)cancelEdit();await refreshClasses();}
+}
+var _showDeletedClasses=false;
+async function toggleShowDeletedClasses(){
+  _showDeletedClasses=!_showDeletedClasses;
+  var btn=document.getElementById("classes-show-deleted-btn");
+  if(btn) btn.textContent=_showDeletedClasses?"Hide Deleted":"Show Deleted";
+  if(_showDeletedClasses) await loadDeletedClasses();
+  else { var el=document.getElementById("deletedClassesList"); if(el) el.innerHTML=""; }
+}
+async function loadDeletedClasses(){
+  var data=await apiCall("GET","/classes/deleted");
+  var el=document.getElementById("deletedClassesList"); if(!el) return;
+  if(!data||!data.success||!(data.classes||[]).length){
+    el.innerHTML='<div style="border-top:1px dashed #2a4570;margin-top:8px;padding:12px 0 4px;font-size:0.82rem;color:#8a9bb8">No deleted classes.</div>';
+    return;
+  }
+  var html='<div style="border-top:1px dashed #2a4570;margin-top:12px;padding-top:12px">'
+    +'<div style="font-size:0.72rem;font-weight:700;color:#8a9bb8;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px">Archived Classes</div>';
+  data.classes.forEach(function(c){
+    html+='<div class="class-card" style="opacity:0.55;border-color:#2a3555"><div class="class-card-inner"><div>'
+      +'<div class="class-name">'+esc(c.name)+'</div>'
+      +'<div class="class-meta"><span>📍 '+esc(c.client||"No client")+'</span><span>Archived: '+new Date(c.deleted_at).toLocaleDateString()+'</span></div>'
+      +'</div><div class="class-actions">'
+      +'<button class="btn-sm btn-outline" style="border-color:#27ae60;color:#27ae60" onclick="restoreClass('+c.id+')">↩ Restore</button>'
+      +'</div></div></div>';
+  });
+  html+='</div>';
+  el.innerHTML=html;
+}
+async function restoreClass(classId){
+  if(!confirm("Restore this class? It will reappear in the active class list.")) return;
+  var res=await apiCall("PATCH","/classes/"+classId+"/restore");
+  if(res&&res.success){ toast("✅ Class restored"); await refreshClasses(); await loadDeletedClasses(); }
+  else alert("Could not restore class.");
 }
 async function duplicateClass(classId){
   var result=await apiCall("POST","/classes/"+classId+"/duplicate");
