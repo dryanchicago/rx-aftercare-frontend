@@ -331,6 +331,42 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 .cert-badge.do-not-certify{background:#4a1a1a;color:#f07070}
 .cert-badge.borderline{background:#3a2a4a;color:#c090f0}
 .cert-empty{color:#5a7a9a;font-size:0.88rem;padding:32px 0;text-align:center}
+/* Cert import panel */
+.cert-import-toggle{background:none;border:1px solid #2a4a7f;color:#8a9bb8;padding:7px 16px;border-radius:6px;font-size:0.85rem;cursor:pointer;margin-top:22px;display:inline-flex;align-items:center;gap:6px;transition:border-color .15s,color .15s}
+.cert-import-toggle:hover{border-color:#c9a227;color:#c9a227}
+.cert-import-panel{margin-top:14px;background:#0d1a2e;border:1px solid #2a4a7f;border-radius:8px;padding:20px 22px}
+.cert-import-panel textarea{width:100%;box-sizing:border-box;background:#060f1e;border:1px solid #2a4a7f;color:#d0d8e8;padding:12px 14px;border-radius:6px;font-size:0.82rem;font-family:monospace;resize:vertical;min-height:180px;line-height:1.5;outline:none}
+.cert-import-panel textarea:focus{border-color:#c9a227}
+.cert-import-actions{display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap}
+.cert-import-btn-dry{background:none;border:1px solid #5a8abf;color:#7ab3f5;padding:8px 20px;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer;transition:background .15s,border-color .15s}
+.cert-import-btn-dry:hover{background:rgba(90,138,191,0.15)}
+.cert-import-btn-live{background:#1e3c72;border:1px solid #2a5aaa;color:#fff;padding:8px 20px;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer;transition:background .15s,opacity .15s}
+.cert-import-btn-live:hover:not(:disabled){background:#2a4e8a}
+.cert-import-btn-live:disabled{opacity:0.4;cursor:not-allowed}
+.cert-import-results{margin-top:18px;display:none}
+.cert-import-summary{border-radius:7px;padding:14px 18px;margin-bottom:12px}
+.cert-import-summary.ok{background:#0d2a18;border:1px solid #2a5a30}
+.cert-import-summary.has-errors{background:#2a0e0e;border:1px solid #5a2020}
+.cert-import-summary-title{font-size:0.95rem;font-weight:700;color:#e8e8e8;margin-bottom:8px}
+.cert-import-summary-stats{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.cert-import-stat{font-size:0.85rem;font-weight:700}
+.cert-import-stat.ok{color:#7fd67f}
+.cert-import-stat.fail{color:#f07070}
+.cert-import-notice{font-size:0.82rem;padding:7px 10px;border-radius:4px;margin-top:4px}
+.cert-import-notice.ok{background:rgba(127,214,127,0.1);color:#7fd67f}
+.cert-import-notice.error{background:rgba(240,112,112,0.1);color:#f07070}
+.cert-import-rows{display:flex;flex-direction:column;gap:5px;max-height:320px;overflow-y:auto}
+.cert-import-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:7px 10px;border-radius:5px;font-size:0.82rem}
+.cert-import-row.ok{background:#0d1f10}
+.cert-import-row.warning{background:#1f1a08}
+.cert-import-row.error{background:#1f0808}
+.cert-import-row-num{color:#5a7a9a;font-weight:700;min-width:38px}
+.cert-import-row-email{color:#c0d0e8;font-weight:600}
+.cert-import-row-label{color:#7a8a9a;font-style:italic}
+.cert-import-row-msg{display:block;width:100%;margin-top:2px}
+.cert-import-row-msg.ok{color:#7fd67f}
+.cert-import-row-msg.error{color:#f07070}
+.cert-import-row-msg.warning{color:#f0c070}
 /* Cert review modal */
 .cert-modal-overlay{display:none;position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,0.72);align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px}
 .cert-modal-overlay.open{display:flex}
@@ -565,6 +601,37 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
     </div>
     <div id="certTableWrap">
       <div class="cert-empty">Select a class to view certification submissions.</div>
+    </div>
+
+    <!-- Import Submissions panel -->
+    <button id="certImportToggleBtn" class="cert-import-toggle" onclick="toggleCertImport()">▶ Import Submissions</button>
+    <div id="certImportPanel" class="cert-import-panel" style="display:none;">
+      <p style="margin:0 0 10px;font-size:0.82rem;color:#8a9bb8;line-height:1.6;">
+        Paste a JSON array of submission objects below. Each object requires <code style="background:#0a1628;padding:1px 5px;border-radius:3px;color:#c9a227">student_email</code>, <code style="background:#0a1628;padding:1px 5px;border-radius:3px;color:#c9a227">class_id</code>, and <code style="background:#0a1628;padding:1px 5px;border-radius:3px;color:#c9a227">examples</code> (1–3 items with six fields each). Run <strong>Dry Run</strong> first — <strong>Import Live</strong> unlocks only after a clean dry run.
+      </p>
+      <textarea id="certImportJson" oninput="onCertImportChange()" placeholder='[
+  {
+    "student_email": "student@example.com",
+    "class_id": 9,
+    "submission_label": "Cohort 1 – April 2026",
+    "examples": [
+      {
+        "situation_background": "...",
+        "key_observation_insight": "...",
+        "actions_taken": "...",
+        "outcome_impact": "...",
+        "estimated_value": "...",
+        "reflection": "..."
+      }
+    ]
+  }
+]'></textarea>
+      <div class="cert-import-actions">
+        <button id="certImportDryBtn" class="cert-import-btn-dry" onclick="runCertImport(true)">🔍 Dry Run</button>
+        <button id="certImportLiveBtn" class="cert-import-btn-live" onclick="runCertImport(false)" disabled title="Run a clean Dry Run first">⬆ Import Live</button>
+        <span style="font-size:0.78rem;color:#5a7a9a;margin-left:4px" id="certImportLiveHint">Run a clean Dry Run to unlock Import Live.</span>
+      </div>
+      <div id="certImportResults" class="cert-import-results"></div>
     </div>
   </div>
 
@@ -3090,6 +3157,152 @@ async function loadCertifications(classId) {
     renderCertTable(Array.isArray(rows) ? rows : []);
   } catch(e) {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty" style="color:#f07070">Error loading certifications.</div>';
+  }
+}
+
+// ── Cert import panel ─────────────────────────────────────────────────────────
+
+var _certImportLiveEnabled = false;
+
+function toggleCertImport() {
+  var panel = document.getElementById('certImportPanel');
+  var btn   = document.getElementById('certImportToggleBtn');
+  var open  = panel.style.display !== 'none';
+  if (open) {
+    panel.style.display = 'none';
+    btn.textContent = '▶ Import Submissions';
+  } else {
+    panel.style.display = 'block';
+    btn.textContent = '▼ Import Submissions';
+  }
+}
+
+function onCertImportChange() {
+  // Reset live-import lock whenever the JSON is edited
+  _certImportLiveEnabled = false;
+  var liveBtn  = document.getElementById('certImportLiveBtn');
+  var liveHint = document.getElementById('certImportLiveHint');
+  liveBtn.disabled = true;
+  liveBtn.title    = 'Run a clean Dry Run first';
+  liveHint.textContent = 'Run a clean Dry Run to unlock Import Live.';
+  liveHint.style.color = '#5a7a9a';
+  var results = document.getElementById('certImportResults');
+  results.style.display = 'none';
+  results.innerHTML = '';
+}
+
+async function runCertImport(dryRun) {
+  var raw = (document.getElementById('certImportJson').value || '').trim();
+  if (!raw) { alert('Paste a JSON array before running.'); return; }
+
+  var payload;
+  try { payload = JSON.parse(raw); }
+  catch (e) { alert('Invalid JSON — ' + e.message); return; }
+
+  if (!Array.isArray(payload) || payload.length === 0) {
+    alert('JSON must be a non-empty array of submission objects.');
+    return;
+  }
+
+  var dryBtn  = document.getElementById('certImportDryBtn');
+  var liveBtn = document.getElementById('certImportLiveBtn');
+  dryBtn.disabled  = true;
+  liveBtn.disabled = true;
+  dryBtn.textContent  = dryRun ? 'Running…' : '🔍 Dry Run';
+  liveBtn.textContent = dryRun ? '⬆ Import Live' : 'Importing…';
+
+  var url  = '/certifications/import' + (dryRun ? '?dry_run=true' : '');
+  var data = await apiCall('POST', url, payload);
+
+  dryBtn.disabled     = false;
+  dryBtn.textContent  = '🔍 Dry Run';
+  liveBtn.textContent = '⬆ Import Live';
+  // live button re-enabled inside renderImportResults based on outcome
+
+  if (!data) {
+    var el = document.getElementById('certImportResults');
+    el.style.display = 'block';
+    el.innerHTML = '<div class="cert-import-summary has-errors"><div class="cert-import-summary-title">Request failed</div><div class="cert-import-notice error">Could not reach the server. Check your session or network.</div></div>';
+    return;
+  }
+
+  renderImportResults(data, dryRun);
+}
+
+function renderImportResults(data, dryRun) {
+  var totalOk   = dryRun ? (data.would_import || 0) : (data.imported || 0);
+  var totalFail = dryRun ? (data.would_fail   || 0) : (data.failed   || 0);
+  var allClean  = totalFail === 0;
+
+  var html = '';
+
+  // Summary block
+  html += '<div class="cert-import-summary ' + (allClean ? 'ok' : 'has-errors') + '">';
+  html += '<div class="cert-import-summary-title">' + (dryRun ? '🔍 Dry Run Results' : '✅ Import Complete') + '</div>';
+  html += '<div class="cert-import-summary-stats">';
+  html += '<span class="cert-import-stat ok">✓ ' + totalOk + ' ' + (dryRun ? 'would import' : 'imported') + '</span>';
+  if (totalFail > 0) html += '<span class="cert-import-stat fail">✕ ' + totalFail + ' ' + (dryRun ? 'would fail' : 'failed') + '</span>';
+  html += '</div>';
+
+  if (dryRun && allClean) {
+    html += '<div class="cert-import-notice ok">All rows validated clean. Click <strong>Import Live</strong> to proceed.</div>';
+  } else if (dryRun && !allClean) {
+    html += '<div class="cert-import-notice error">Fix the errors below before importing live.</div>';
+  } else if (!dryRun) {
+    html += '<div class="cert-import-notice ok">Import complete. Submissions are now pending AI grading and should move to graded within 5 minutes.</div>';
+  }
+  html += '</div>';
+
+  // Per-row list
+  var results = data.results || [];
+  if (results.length > 0) {
+    html += '<div class="cert-import-rows">';
+    results.forEach(function(r) {
+      var hasWarnings = r.warnings && r.warnings.length > 0;
+      var rowClass    = r.status === 'error' ? 'error' : (hasWarnings ? 'warning' : 'ok');
+      html += '<div class="cert-import-row ' + rowClass + '">';
+      html += '<span class="cert-import-row-num">Row ' + r.row + '</span>';
+      html += '<span class="cert-import-row-email">' + escHtml(r.student_email || '—') + '</span>';
+      if (r.submission_label) html += '<span class="cert-import-row-label">' + escHtml(r.submission_label) + '</span>';
+      if (r.status === 'error') {
+        html += '<span class="cert-import-row-msg error">✕ ' + escHtml(r.reason || 'Unknown error') + '</span>';
+      } else {
+        var okMsg = dryRun ? 'OK — ' + (r.example_count || '?') + ' example(s)' : 'Imported — submission id: ' + r.submission_id + ', ' + (r.example_count || '?') + ' example(s)';
+        html += '<span class="cert-import-row-msg ok">✓ ' + okMsg + '</span>';
+        if (hasWarnings) {
+          r.warnings.forEach(function(w) {
+            html += '<span class="cert-import-row-msg warning">⚠ ' + escHtml(w) + '</span>';
+          });
+        }
+      }
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  var resultsEl = document.getElementById('certImportResults');
+  resultsEl.innerHTML = html;
+  resultsEl.style.display = 'block';
+
+  // Unlock live import only after a fully clean dry run
+  var liveBtn  = document.getElementById('certImportLiveBtn');
+  var liveHint = document.getElementById('certImportLiveHint');
+  if (dryRun && allClean) {
+    _certImportLiveEnabled = true;
+    liveBtn.disabled   = false;
+    liveBtn.title      = '';
+    liveHint.textContent = '✓ Dry run clean — ready to import live.';
+    liveHint.style.color = '#7fd67f';
+  } else if (dryRun && !allClean) {
+    liveBtn.disabled   = true;
+    liveHint.textContent = 'Fix errors above before importing live.';
+    liveHint.style.color = '#f07070';
+  }
+
+  // After a successful live import, refresh the submissions table
+  if (!dryRun && totalOk > 0) {
+    var classId = document.getElementById('certClassSelect').value;
+    if (classId) loadCertifications(classId);
   }
 }
 
