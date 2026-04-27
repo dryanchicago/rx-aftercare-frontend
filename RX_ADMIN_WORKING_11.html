@@ -412,6 +412,8 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 .cert-btn-cancel{background:none;border:1px solid #2a4a7f;color:#8a9bb8;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:0.84rem}
 .cert-btn-cancel:hover{border-color:#5a8abf;color:#c8d8f0}
 .cert-decision-msg{font-size:0.85rem;padding:10px 0}
+.cert-btn-delete{background:none;border:1px solid #4a2020;color:#a06060;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:0.78rem;transition:all .15s}
+.cert-btn-delete:hover{background:#3a1010;border-color:#7a2020;color:#f07070}
 </style>
 </head>
 <body>
@@ -3438,6 +3440,19 @@ function closeCertModal() {
   document.getElementById('certModal').classList.remove('open');
 }
 
+async function deleteCertSubmission(id) {
+  if (!confirm('Permanently delete this submission and all its examples?\n\nThis cannot be undone.')) return;
+  try {
+    await apiCall('DELETE', '/certifications/' + id);
+    closeCertModal();
+    // Refresh the table
+    var classId = document.getElementById('certClassSelect').value;
+    if (classId) loadCertifications(classId);
+  } catch(e) {
+    alert('Delete failed: ' + (e.message || e));
+  }
+}
+
 function renderCertModal(s) {
   var ai = s.ai_result || {};
   var summary = ai.submission_summary || {};
@@ -3545,6 +3560,13 @@ function renderCertModal(s) {
       '<button class="cert-btn-reject" onclick="certShowDecision(' + s.id + ',\'reject\')">❌ Reject</button>' +
       '</div>' +
       '<div id="certConfirmBox"></div>' +
+      '</div>';
+  }
+
+  // Delete button — available on any non-certified submission
+  if (s.status !== 'certified') {
+    html += '<div style="margin-top:20px;padding-top:14px;border-top:1px solid #0f2040;text-align:right">' +
+      '<button class="cert-btn-delete" onclick="deleteCertSubmission(' + s.id + ')">🗑 Delete Submission</button>' +
       '</div>';
   }
 
