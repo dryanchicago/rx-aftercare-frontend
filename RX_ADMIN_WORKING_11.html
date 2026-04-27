@@ -597,6 +597,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <label style="color:#8a9bb8;font-size:0.85rem">Class:</label>
       <select id="certClassSelect" onchange="loadCertifications(this.value)"></select>
       <button class="btn-outline" onclick="loadCertifications(document.getElementById('certClassSelect').value)">↻ Refresh</button>
+      <button class="btn-outline" id="runGradingBtn" onclick="runGradingNow()" style="background:#1a5c35;color:#fff;border-color:#1a5c35;">▶ Run Grading Now</button>
       <span class="cert-last-updated" id="certLastUpdated"></span>
     </div>
     <div id="certTableWrap">
@@ -3217,6 +3218,25 @@ function loadCertTab() {
     loadCertifications(sel.value);
   } else {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No classes found.</div>';
+  }
+}
+
+async function runGradingNow() {
+  const btn = document.getElementById('runGradingBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Grading…';
+  try {
+    const result = await apiCall('POST', '/certifications/run-grading');
+    const msg = `Grading complete. Pending before: ${result.pending_ai_before}, after: ${result.pending_ai_after}. Total graded: ${result.total_graded}.`;
+    alert(msg);
+    // Auto-refresh the cert table
+    const classId = document.getElementById('certClassSelect').value;
+    if (classId) loadCertifications(classId);
+  } catch(e) {
+    alert('Grading job failed: ' + (e.message || e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Run Grading Now';
   }
 }
 
