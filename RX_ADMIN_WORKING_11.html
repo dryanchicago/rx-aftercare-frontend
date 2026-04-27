@@ -3407,8 +3407,11 @@ function renderCertTable(rows) {
     '<th>Student</th><th>Submitted</th><th>Status</th><th>AI Decision</th><th>Confidence</th><th>Human Review</th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(r) {
+    var certLabel = (r.admin_notes && r.admin_notes.startsWith('[import] ')) ? r.admin_notes.slice(9) : null;
     html += '<tr data-cert-id="' + r.id + '" onclick="openCertModal(' + r.id + ')">' +
-      '<td>' + escHtml(r.first_name + ' ' + r.last_name) + '<br><span style="color:#5a7a9a;font-size:0.75rem">' + escHtml(r.email||'') + '</span></td>' +
+      '<td>' + escHtml(r.first_name + ' ' + r.last_name) +
+      (certLabel ? '<br><span style="color:#c9a84c;font-size:0.75rem;font-style:italic">' + escHtml(certLabel) + '</span>' : '') +
+      '<br><span style="color:#5a7a9a;font-size:0.75rem">' + escHtml(r.email||'') + '</span></td>' +
       '<td>' + certFmtDate(r.submitted_at) + '</td>' +
       '<td>' + certStatusBadge(r.status) + '</td>' +
       '<td>' + (r.recommended_decision ? certDecisionBadge(r.recommended_decision) : '<span style="color:#5a7a9a">—</span>') + '</td>' +
@@ -3447,8 +3450,9 @@ function renderCertModal(s) {
     html += '<div class="cert-hr-banner">⚑ This submission is flagged for human review — AI confidence is limited or a borderline pattern was detected.</div>';
   }
 
+  var modalLabel = (s.admin_notes && s.admin_notes.startsWith('[import] ')) ? s.admin_notes.slice(9) : null;
   html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:18px">' +
-    '<div><div style="font-size:1.1rem;font-weight:700;color:#fff">' + escHtml((s.first_name||'') + ' ' + (s.last_name||'')) + '</div>' +
+    '<div><div style="font-size:1.1rem;font-weight:700;color:#fff">' + escHtml(modalLabel || ((s.first_name||'') + ' ' + (s.last_name||''))) + '</div>' +
     '<div style="font-size:0.82rem;color:#5a7a9a">' + escHtml(s.email||'') + ' · Submission #' + s.id + '</div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + certStatusBadge(s.status) +
     (s.recommended_decision ? certDecisionBadge(s.recommended_decision) : '') + '</div></div>';
