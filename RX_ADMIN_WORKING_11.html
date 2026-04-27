@@ -414,6 +414,12 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 .cert-decision-msg{font-size:0.85rem;padding:10px 0}
 .cert-btn-delete{background:none;border:1px solid #4a2020;color:#a06060;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:0.78rem;transition:all .15s}
 .cert-btn-delete:hover{background:#3a1010;border-color:#7a2020;color:#f07070}
+.cert-band{display:inline-block;font-size:0.7rem;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:5px;letter-spacing:.3px}
+.cert-band-strong{background:#1a3a1a;color:#7fd67f;border:1px solid #2a6a2a}
+.cert-band-pass{background:#1a2e1a;color:#a8e0a8;border:1px solid #2a5a2a}
+.cert-band-borderline{background:#3a2e10;color:#e0c070;border:1px solid #6a5020}
+.cert-band-fail{background:#3a1010;color:#e07070;border:1px solid #6a2020}
+.cert-score{font-size:0.7rem;color:#5a7a9a;margin-left:4px}
 </style>
 </head>
 <body>
@@ -3400,6 +3406,16 @@ function renderImportResults(data, dryRun) {
   }
 }
 
+function certScoreBandBadge(band, score) {
+  if (!band) return '';
+  var cls = band === 'Strong Pass' ? 'cert-band-strong'
+          : band === 'Pass'        ? 'cert-band-pass'
+          : band === 'Borderline'  ? 'cert-band-borderline'
+          :                          'cert-band-fail';
+  var scoreStr = (score !== null && score !== undefined) ? '<span class="cert-score">(' + parseFloat(score).toFixed(2) + ')</span>' : '';
+  return '<span class="cert-band ' + cls + '">' + escHtml(band) + '</span>' + scoreStr;
+}
+
 function renderCertTable(rows) {
   if (rows.length === 0) {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No certification submissions yet for this class.</div>';
@@ -3416,7 +3432,8 @@ function renderCertTable(rows) {
       '<br><span style="color:#5a7a9a;font-size:0.75rem">' + escHtml(r.email||'') + '</span></td>' +
       '<td>' + certFmtDate(r.submitted_at) + '</td>' +
       '<td>' + certStatusBadge(r.status) + '</td>' +
-      '<td>' + (r.recommended_decision ? certDecisionBadge(r.recommended_decision) : '<span style="color:#5a7a9a">—</span>') + '</td>' +
+      '<td>' + (r.recommended_decision ? certDecisionBadge(r.recommended_decision) : '<span style="color:#5a7a9a">—</span>') +
+        (r.score_band ? '<br>' + certScoreBandBadge(r.score_band, r.overall_score) : '') + '</td>' +
       '<td>' + (r.grading_confidence ? '<span class="cert-badge">' + r.grading_confidence + '</span>' : '<span style="color:#5a7a9a">—</span>') + '</td>' +
       '<td>' + (r.requires_human_review ? '<span class="cert-badge hr-flag">⚑ Yes</span>' : '<span style="color:#5a7a9a">—</span>') + '</td>' +
       '</tr>';
@@ -3470,7 +3487,9 @@ function renderCertModal(s) {
     '<div><div style="font-size:1.1rem;font-weight:700;color:#fff">' + escHtml(modalLabel || ((s.first_name||'') + ' ' + (s.last_name||''))) + '</div>' +
     '<div style="font-size:0.82rem;color:#5a7a9a">' + escHtml(s.email||'') + ' · Submission #' + s.id + '</div></div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' + certStatusBadge(s.status) +
-    (s.recommended_decision ? certDecisionBadge(s.recommended_decision) : '') + '</div></div>';
+    (s.recommended_decision ? certDecisionBadge(s.recommended_decision) : '') +
+    (s.score_band ? certScoreBandBadge(s.score_band, s.overall_score) : '') +
+    '</div></div>';
 
   if (summary && Object.keys(summary).length > 0) {
     html += '<div class="cert-section-label">AI Summary</div><div class="cert-ai-box">';
