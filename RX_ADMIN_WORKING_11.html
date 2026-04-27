@@ -1485,6 +1485,7 @@ function renderStudents(){
       +'<div class="student-meta"><span>✉️ '+esc(s.email||'')+'</span><span>📋 '+esc(className)+'</span>'
       +(s.completed_activities!=null?'<span>✅ '+s.completed_activities+'/'+s.total_activities+' activities</span>':'')
       +'</div></div><div class="class-actions" style="display:flex;gap:6px">'
+      +'<button class="btn-sm btn-edit" onclick="openEditStudent('+s.id+')" style="background:#1a3a5f;color:#7ab3f5;border:1px solid #2a5a8f;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">✏️ Edit</button>'
       +'<button class="btn-sm" style="background:#2a5298;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resendWelcome('+s.id+')">📧 Resend Email</button>'
       +'<button class="btn-sm btn-del" onclick="removeStudent('+s.id+')">🗑 Remove</button></div></div></div>';
   }).join("");
@@ -1494,6 +1495,77 @@ async function removeStudent(studentId){
   if(!confirm('Remove student "'+(s.name||s.email)+'"?\n\nThis cannot be undone.')) return;
   var result=await apiCall("DELETE","/students/"+studentId);
   if(result!==null){toast("✅ Student removed.");await loadStudents();}
+}
+
+function openEditStudent(studentId) {
+  var s = STUDENTS.find(function(x){ return x.id === studentId; });
+  if (!s) return;
+  document.getElementById('editStudentId').value    = studentId;
+  document.getElementById('editStudentFirst').value = s.first_name || '';
+  document.getElementById('editStudentLast').value  = s.last_name  || '';
+  document.getElementById('editStudentEmail').value = s.email      || '';
+  document.getElementById('editStudentError').style.display = 'none';
+  document.getElementById('editStudentError').textContent   = '';
+  document.getElementById('editStudentSaveBtn').disabled    = false;
+  document.getElementById('editStudentSaveBtn').textContent = 'Save Changes';
+  document.getElementById('editStudentModal').style.display = 'flex';
+  document.getElementById('editStudentFirst').focus();
+}
+
+function closeEditStudent() {
+  document.getElementById('editStudentModal').style.display = 'none';
+}
+
+async function saveEditStudent() {
+  var studentId = parseInt(document.getElementById('editStudentId').value);
+  var firstName = document.getElementById('editStudentFirst').value.trim();
+  var lastName  = document.getElementById('editStudentLast').value.trim();
+  var email     = document.getElementById('editStudentEmail').value.trim();
+
+  // Client-side validation
+  var errEl = document.getElementById('editStudentError');
+  if (!email) {
+    errEl.textContent = 'Email is required.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = 'Please enter a valid email address.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  var btn = document.getElementById('editStudentSaveBtn');
+  btn.disabled    = true;
+  btn.textContent = 'Saving…';
+  errEl.style.display = 'none';
+
+  var result = await apiCall('PUT', '/students/' + studentId, {
+    firstName: firstName,
+    lastName:  lastName,
+    email:     email
+  });
+
+  btn.disabled    = false;
+  btn.textContent = 'Save Changes';
+
+  if (!result || !result.success) {
+    var msg = (result && result.error) ? result.error : 'Save failed — please try again.';
+    errEl.textContent   = msg;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  // Update the in-memory STUDENTS array and re-render without a full reload
+  var s = STUDENTS.find(function(x){ return x.id === studentId; });
+  if (s) {
+    s.first_name = firstName;
+    s.last_name  = lastName;
+    s.email      = email;
+  }
+  closeEditStudent();
+  renderStudents();
+  toast('✅ Student updated.');
 }
 
 // ---- INVITE MODAL ----
@@ -3583,6 +3655,30 @@ function escHtml(str) {
 
 </script>
 <!-- EDIT SCHEDULE SLOT MODAL -->
+<!-- Edit Student Modal -->
+<div id="editStudentModal" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
+  <div style="background:#1a2a45;border:1px solid #2a4a7f;border-radius:12px;padding:28px 32px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,0.5);margin:16px;">
+    <h3 style="color:#fff;font-size:1.1rem;margin:0 0 20px;font-weight:700;">✏️ Edit Student</h3>
+    <input type="hidden" id="editStudentId">
+
+    <label style="display:block;font-size:0.8rem;color:#c9a227;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">First Name</label>
+    <input id="editStudentFirst" type="text" style="width:100%;box-sizing:border-box;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.95rem;margin-bottom:14px;">
+
+    <label style="display:block;font-size:0.8rem;color:#c9a227;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Last Name</label>
+    <input id="editStudentLast" type="text" style="width:100%;box-sizing:border-box;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.95rem;margin-bottom:14px;">
+
+    <label style="display:block;font-size:0.8rem;color:#c9a227;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;">Email</label>
+    <input id="editStudentEmail" type="email" style="width:100%;box-sizing:border-box;background:#0f1e3c;border:1px solid #2a4a7f;color:#fff;padding:9px 12px;border-radius:6px;font-size:0.95rem;margin-bottom:6px;">
+
+    <div id="editStudentError" style="display:none;font-size:0.82rem;color:#f07070;background:rgba(240,112,112,0.1);border:1px solid rgba(240,112,112,0.3);border-radius:5px;padding:8px 12px;margin-bottom:14px;"></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+      <button onclick="closeEditStudent()" style="background:none;border:1px solid #2a4a7f;color:#8a9bb8;padding:9px 20px;border-radius:6px;cursor:pointer;font-size:0.88rem;">Cancel</button>
+      <button id="editStudentSaveBtn" onclick="saveEditStudent()" style="background:#1e3c72;color:#fff;border:none;padding:9px 24px;border-radius:6px;cursor:pointer;font-size:0.88rem;font-weight:700;">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <!-- Resend-All Modal -->
 <div id="resend-all-modal" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
   <div style="background:#1a2a45;border:1px solid #2a4a7f;border-radius:12px;padding:28px 32px;width:100%;max-width:500px;box-shadow:0 24px 60px rgba(0,0,0,0.5);margin:16px;">
