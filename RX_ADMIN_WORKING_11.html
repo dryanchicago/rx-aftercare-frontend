@@ -606,6 +606,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <select id="certClassSelect" onchange="loadCertifications(this.value)"></select>
       <button class="btn-outline" onclick="loadCertifications(document.getElementById('certClassSelect').value)">↻ Refresh</button>
       <button class="btn-outline" id="runGradingBtn" onclick="runGradingNow()" style="background:#1a5c35;color:#fff;border-color:#1a5c35;">▶ Run Grading Now</button>
+      <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
       <span class="cert-last-updated" id="certLastUpdated"></span>
     </div>
     <div id="certTableWrap">
@@ -3417,16 +3418,22 @@ function certScoreBandBadge(band, score) {
 }
 
 function renderCertTable(rows) {
+  // Reset bulk delete button whenever table re-renders
+  var bulkBtn = document.getElementById('certBulkDeleteBtn');
+  if (bulkBtn) bulkBtn.style.display = 'none';
+
   if (rows.length === 0) {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No certification submissions yet for this class.</div>';
     return;
   }
   var html = '<table class="cert-table"><thead><tr>' +
+    '<th style="width:36px;text-align:center"><input type="checkbox" id="certSelectAll" title="Select all" onchange="certToggleAll(this.checked)"></th>' +
     '<th>Student</th><th>Submitted</th><th>Status</th><th>AI Decision</th><th>Confidence</th><th>Human Review</th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(r) {
     var certLabel = (r.admin_notes && r.admin_notes.startsWith('[import] ')) ? r.admin_notes.slice(9) : null;
     html += '<tr data-cert-id="' + r.id + '" onclick="openCertModal(' + r.id + ')">' +
+      '<td style="text-align:center" onclick="event.stopPropagation()"><input type="checkbox" class="cert-row-check" value="' + r.id + '" onchange="certUpdateBulkBtn()"></td>' +
       '<td>' + escHtml(r.first_name + ' ' + r.last_name) +
       (certLabel ? '<br><span style="color:#c9a84c;font-size:0.75rem;font-style:italic">' + escHtml(certLabel) + '</span>' : '') +
       '<br><span style="color:#5a7a9a;font-size:0.75rem">' + escHtml(r.email||'') + '</span></td>' +
@@ -3462,11 +3469,50 @@ async function deleteCertSubmission(id) {
   try {
     await apiCall('DELETE', '/certifications/' + id);
     closeCertModal();
-    // Refresh the table
     var classId = document.getElementById('certClassSelect').value;
     if (classId) loadCertifications(classId);
   } catch(e) {
     alert('Delete failed: ' + (e.message || e));
+  }
+}
+
+function certToggleAll(checked) {
+  document.querySelectorAll('.cert-row-check').forEach(function(cb) { cb.checked = checked; });
+  certUpdateBulkBtn();
+}
+
+function certUpdateBulkBtn() {
+  var all     = document.querySelectorAll('.cert-row-check');
+  var checked = document.querySelectorAll('.cert-row-check:checked');
+  var btn     = document.getElementById('certBulkDeleteBtn');
+  var countEl = document.getElementById('certSelectedCount');
+  var selAll  = document.getElementById('certSelectAll');
+  if (countEl) countEl.textContent = checked.length;
+  if (btn)     btn.style.display = checked.length > 0 ? '' : 'none';
+  if (selAll) {
+    selAll.indeterminate = checked.length > 0 && checked.length < all.length;
+    selAll.checked       = all.length > 0 && checked.length === all.length;
+  }
+}
+
+async function certBulkDelete() {
+  var checked = Array.from(document.querySelectorAll('.cert-row-check:checked'));
+  if (checked.length === 0) return;
+  var noun = checked.length === 1 ? '1 submission' : checked.length + ' submissions';
+  if (!confirm('Permanently delete ' + noun + ' and all their examples?\n\nCertified submissions will be skipped. This cannot be undone.')) return;
+  var ids    = checked.map(function(cb) { return cb.value; });
+  var failed = [];
+  for (var i = 0; i < ids.length; i++) {
+    try {
+      await apiCall('DELETE', '/certifications/' + ids[i]);
+    } catch(e) {
+      failed.push(ids[i]);
+    }
+  }
+  var classId = document.getElementById('certClassSelect').value;
+  if (classId) await loadCertifications(classId);
+  if (failed.length > 0) {
+    alert(failed.length + ' submission(s) could not be deleted (certified submissions are protected).');
   }
 }
 
