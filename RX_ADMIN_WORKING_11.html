@@ -3628,6 +3628,17 @@ function renderCertModal(s) {
       '</div>';
   }
 
+  // Send Certificate button — certified submissions only
+  if (s.status === 'certified') {
+    var lastSentHtml = s.certificate_sent_at
+      ? '<span id="certSendStatus" style="font-size:0.82rem;color:#7fd67f">✅ Last sent: ' + escHtml(new Date(s.certificate_sent_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})) + '</span>'
+      : '<span id="certSendStatus" style="font-size:0.82rem;color:#8a9bb8"></span>';
+    html += '<div style="margin-top:20px;padding-top:14px;border-top:1px solid #0f2040;display:flex;justify-content:flex-end;gap:10px;align-items:center">' +
+      lastSentHtml +
+      '<button id="certSendBtn" onclick="sendCertificateEmail(' + s.id + ')" style="background:#1a3a5c;color:#7ab3f5;border:1px solid #2a5a8c;padding:8px 18px;border-radius:6px;cursor:pointer;font-weight:700;font-size:0.85rem">📄 Send Certificate</button>' +
+      '</div>';
+  }
+
   // Delete button — available on any non-certified submission
   if (s.status !== 'certified') {
     html += '<div style="margin-top:20px;padding-top:14px;border-top:1px solid #0f2040;text-align:right">' +
@@ -3710,6 +3721,21 @@ function certCancelDecision() {
   if (box) box.innerHTML = '';
 }
 
+async function sendCertificateEmail(id) {
+  var btn    = document.getElementById('certSendBtn');
+  var status = document.getElementById('certSendStatus');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  if (status) status.textContent = '';
+  try {
+    await apiCall('POST', '/certifications/' + id + '/send-certificate', {});
+    if (btn) { btn.textContent = '✅ Sent'; btn.style.color = '#7fd67f'; btn.style.borderColor = '#2a6a2a'; }
+    if (status) { status.textContent = 'Certificate emailed successfully.'; status.style.color = '#7fd67f'; }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '📄 Send Certificate'; }
+    if (status) { status.textContent = '❌ ' + (e.message || 'Send failed'); status.style.color = '#f07070'; }
+  }
+}
+
 async function submitCertDecision(id, decision) {
   var notes = (document.getElementById('certNotesArea') || {}).value || '';
   var box = document.getElementById('certConfirmBox');
@@ -3741,9 +3767,9 @@ async function submitCertDecision(id, decision) {
       // Hide decision panel — decision is final
       var panel = document.getElementById('certDecisionPanel');
       if (panel) {
+        var extraMsg = result.cert_token ? ' · Certificate email sending…' : '';
         panel.innerHTML = '<div class="cert-decision-msg" style="color:#7fd67f">✅ Decision recorded: <strong>' +
-          result.status.replace(/_/g,' ') + '</strong>' +
-          (result.cert_token ? ' · Cert token issued' : '') + '</div>';
+          result.status.replace(/_/g,' ') + '</strong>' + extraMsg + '</div>';
       }
     } else {
       if (box) box.innerHTML = '<div class="cert-decision-msg" style="color:#f07070">❌ Error saving decision. Please try again.</div>';
