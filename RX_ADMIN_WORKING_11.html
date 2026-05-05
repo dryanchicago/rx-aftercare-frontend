@@ -606,6 +606,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <select id="certClassSelect" onchange="loadCertifications(this.value)"></select>
       <button class="btn-outline" onclick="loadCertifications(document.getElementById('certClassSelect').value)">↻ Refresh</button>
       <button class="btn-outline" id="runGradingBtn" onclick="runGradingNow()" style="background:#1a5c35;color:#fff;border-color:#1a5c35;">▶ Run Grading Now</button>
+      <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
       <span class="cert-last-updated" id="certLastUpdated"></span>
     </div>
@@ -3418,9 +3419,11 @@ function certScoreBandBadge(band, score) {
 }
 
 function renderCertTable(rows) {
-  // Reset bulk delete button whenever table re-renders
+  // Reset bulk buttons whenever table re-renders
   var bulkBtn = document.getElementById('certBulkDeleteBtn');
   if (bulkBtn) bulkBtn.style.display = 'none';
+  var bulkSendBtn = document.getElementById('certBulkSendBtn');
+  if (bulkSendBtn) bulkSendBtn.style.display = 'none';
 
   if (rows.length === 0) {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No certification submissions yet for this class.</div>';
@@ -3432,7 +3435,7 @@ function renderCertTable(rows) {
     '</tr></thead><tbody>';
   rows.forEach(function(r) {
     var certLabel = (r.admin_notes && r.admin_notes.startsWith('[import] ')) ? r.admin_notes.slice(9) : null;
-    html += '<tr data-cert-id="' + r.id + '" onclick="openCertModal(' + r.id + ')">' +
+    html += '<tr data-cert-id="' + r.id + '" data-cert-status="' + escHtml(r.status||'') + '" onclick="openCertModal(' + r.id + ')">' +
       '<td style="text-align:center" onclick="event.stopPropagation()"><input type="checkbox" class="cert-row-check" value="' + r.id + '" onchange="certUpdateBulkBtn()"></td>' +
       '<td>' + escHtml(r.first_name + ' ' + r.last_name) +
       (certLabel ? '<br><span style="color:#c9a84c;font-size:0.75rem;font-style:italic">' + escHtml(certLabel) + '</span>' : '') +
@@ -3482,13 +3485,25 @@ function certToggleAll(checked) {
 }
 
 function certUpdateBulkBtn() {
-  var all     = document.querySelectorAll('.cert-row-check');
-  var checked = document.querySelectorAll('.cert-row-check:checked');
-  var btn     = document.getElementById('certBulkDeleteBtn');
-  var countEl = document.getElementById('certSelectedCount');
-  var selAll  = document.getElementById('certSelectAll');
-  if (countEl) countEl.textContent = checked.length;
-  if (btn)     btn.style.display = checked.length > 0 ? '' : 'none';
+  var all      = document.querySelectorAll('.cert-row-check');
+  var checked  = document.querySelectorAll('.cert-row-check:checked');
+  var btn      = document.getElementById('certBulkDeleteBtn');
+  var sendBtn  = document.getElementById('certBulkSendBtn');
+  var countEl  = document.getElementById('certSelectedCount');
+  var sendCntEl= document.getElementById('certSendSelectedCount');
+  var selAll   = document.getElementById('certSelectAll');
+
+  // Count how many checked rows are certified
+  var certifiedCount = 0;
+  checked.forEach(function(cb) {
+    var tr = cb.closest('tr');
+    if (tr && tr.getAttribute('data-cert-status') === 'certified') certifiedCount++;
+  });
+
+  if (countEl)   countEl.textContent    = checked.length;
+  if (sendCntEl) sendCntEl.textContent  = certifiedCount;
+  if (btn)       btn.style.display      = checked.length > 0 ? '' : 'none';
+  if (sendBtn)   sendBtn.style.display  = certifiedCount > 0 ? '' : 'none';
   if (selAll) {
     selAll.indeterminate = checked.length > 0 && checked.length < all.length;
     selAll.checked       = all.length > 0 && checked.length === all.length;
@@ -3514,6 +3529,54 @@ async function certBulkDelete() {
   if (failed.length > 0) {
     alert(failed.length + ' submission(s) could not be deleted (certified submissions are protected).');
   }
+}
+
+async function certBulkSend() {
+  var checked = Array.from(document.querySelectorAll('.cert-row-check:checked'));
+  var certified = checked.filter(function(cb) {
+    var tr = cb.closest('tr');
+    return tr && tr.getAttribute('data-cert-status') === 'certified';
+  });
+  if (certified.length === 0) return;
+
+  var noun = certified.length === 1 ? '1 certificate' : certified.length + ' certificates';
+  if (!confirm('Send ' + noun + ' now? Each student will receive an email with their PDF certificate attached.')) return;
+
+  var btn = document.getElementById('certBulkSendBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+
+  var sent = 0, failed = 0, failedNames = [];
+  for (var i = 0; i < certified.length; i++) {
+    var cb = certified[i];
+    var id = cb.value;
+    var tr = cb.closest('tr');
+    var name = tr ? (tr.querySelector('td:nth-child(2)')?.firstChild?.textContent || id) : id;
+    try {
+      await apiCall('POST', '/certifications/' + id + '/send-certificate', {});
+      sent++;
+    } catch(e) {
+      failed++;
+      failedNames.push(name);
+    }
+    if (btn) btn.textContent = 'Sending… (' + (sent + failed) + '/' + certified.length + ')';
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    if (failed === 0) {
+      btn.textContent = '✅ Sent ' + sent;
+      btn.style.color = '#7fd67f';
+      btn.style.borderColor = '#2a6a2a';
+    } else {
+      btn.textContent = '⚠ ' + sent + ' sent, ' + failed + ' failed';
+      btn.style.color = '#f0c070';
+      alert('Failed to send to:\n' + failedNames.join('\n'));
+    }
+  }
+
+  // Reload table so certificate_sent_at shows in modals
+  var classId = document.getElementById('certClassSelect').value;
+  if (classId) await loadCertifications(classId);
 }
 
 function renderCertModal(s) {
