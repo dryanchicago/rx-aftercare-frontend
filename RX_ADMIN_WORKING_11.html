@@ -606,6 +606,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <select id="certClassSelect" onchange="loadCertifications(this.value)"></select>
       <button class="btn-outline" onclick="loadCertifications(document.getElementById('certClassSelect').value)">↻ Refresh</button>
       <button class="btn-outline" id="runGradingBtn" onclick="runGradingNow()" style="background:#1a5c35;color:#fff;border-color:#1a5c35;">▶ Run Grading Now</button>
+      <button class="btn-outline" id="certNotifyCoachesBtn" onclick="certNotifyCoaches()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">🎓 Notify Coaches</button>
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
       <span class="cert-last-updated" id="certLastUpdated"></span>
@@ -3424,6 +3425,9 @@ function renderCertTable(rows) {
   if (bulkBtn) bulkBtn.style.display = 'none';
   var bulkSendBtn = document.getElementById('certBulkSendBtn');
   if (bulkSendBtn) bulkSendBtn.style.display = 'none';
+  // Show Notify Coaches whenever there are any certified rows in this class
+  var notifyBtn = document.getElementById('certNotifyCoachesBtn');
+  if (notifyBtn) notifyBtn.style.display = rows.some(function(r) { return r.status === 'certified'; }) ? '' : 'none';
 
   if (rows.length === 0) {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No certification submissions yet for this class.</div>';
@@ -3528,6 +3532,26 @@ async function certBulkDelete() {
   if (classId) await loadCertifications(classId);
   if (failed.length > 0) {
     alert(failed.length + ' submission(s) could not be deleted (certified submissions are protected).');
+  }
+}
+
+async function certNotifyCoaches() {
+  var classId = document.getElementById('certClassSelect').value;
+  if (!classId) return alert('Please select a class first.');
+  var btn = document.getElementById('certNotifyCoachesBtn');
+  if (!confirm('Send one summary email to each coach whose students have received their RxCP™ certificate?\n\nEach coach will see their certified students listed and a preview of the certificate.')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    var result = await apiCall('POST', '/certifications/notify-coaches', { class_id: parseInt(classId) });
+    var msg = result.coaches_notified === 0
+      ? 'No coaches to notify — make sure certificates have been sent first.'
+      : result.coaches_notified + ' coach' + (result.coaches_notified === 1 ? '' : 'es') + ' notified successfully.' +
+        (result.coaches_failed > 0 ? '\n⚠ ' + result.coaches_failed + ' failed to send.' : '');
+    alert(msg);
+    if (btn) { btn.textContent = '✅ Coaches Notified'; btn.style.color = '#7fd67f'; btn.style.borderColor = '#2a6a32'; }
+  } catch(e) {
+    alert('❌ Error: ' + (e.message || 'Could not notify coaches.'));
+    if (btn) { btn.disabled = false; btn.textContent = '🎓 Notify Coaches'; }
   }
 }
 
