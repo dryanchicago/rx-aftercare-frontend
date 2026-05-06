@@ -607,7 +607,13 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <button class="btn-outline" onclick="loadCertifications(document.getElementById('certClassSelect').value)">↻ Refresh</button>
       <button class="btn-outline" id="runGradingBtn" onclick="runGradingNow()" style="background:#1a5c35;color:#fff;border-color:#1a5c35;">▶ Run Grading Now</button>
       <button class="btn-outline" id="certUploadPdfBtn" onclick="openUploadPdfModal()" style="background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📤 Upload PDF</button>
-      <button class="btn-outline" id="certCheatSheetBtn" onclick="generateCheatSheet()" style="background:#2a1a4a;color:#c090f0;border-color:#4a2a7c;">📋 Cheat Sheet</button>
+      <div style="position:relative;display:inline-block" id="certCheatSheetWrap">
+        <button class="btn-outline" id="certCheatSheetBtn" onclick="toggleCheatSheetMenu(event)" style="background:#2a1a4a;color:#c090f0;border-color:#4a2a7c;">📋 Cheat Sheet ▾</button>
+        <div id="certCheatSheetMenu" style="display:none;position:absolute;top:calc(100% + 3px);left:0;z-index:200;background:#0d1f3c;border:1px solid #4a2a7c;border-radius:6px;min-width:210px;box-shadow:0 4px 14px rgba(0,0,0,.6)">
+          <div onclick="generateCheatSheet(true)" style="padding:10px 16px;font-size:0.85rem;color:#c090f0;cursor:pointer;border-bottom:1px solid #2a1a4a;border-radius:6px 6px 0 0" onmouseover="this.style.background='#1a0a30'" onmouseout="this.style.background='transparent'">📋 With Discussion Prompts</div>
+          <div onclick="generateCheatSheet(false)" style="padding:10px 16px;font-size:0.85rem;color:#c090f0;cursor:pointer;border-radius:0 0 6px 6px" onmouseover="this.style.background='#1a0a30'" onmouseout="this.style.background='transparent'">📄 Without Discussion Prompts</div>
+        </div>
+      </div>
       <button class="btn-outline" id="certNotifyCoachesBtn" onclick="certNotifyCoaches()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">🎓 Notify Coaches</button>
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
@@ -617,36 +623,6 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <div class="cert-empty">Select a class to view certification submissions.</div>
     </div>
 
-    <!-- Import Submissions panel -->
-    <button id="certImportToggleBtn" class="cert-import-toggle" onclick="toggleCertImport()">▶ Import Submissions</button>
-    <div id="certImportPanel" class="cert-import-panel" style="display:none;">
-      <p style="margin:0 0 10px;font-size:0.82rem;color:#8a9bb8;line-height:1.6;">
-        Paste a JSON array of submission objects below. Each object requires <code style="background:#0a1628;padding:1px 5px;border-radius:3px;color:#c9a227">student_email</code>, <code style="background:#0a1628;padding:1px 5px;border-radius:3px;color:#c9a227">class_id</code>, and <code style="background:#0a1628;padding:1px 5px;border-radius:3px;color:#c9a227">examples</code> (1–3 items with six fields each). Run <strong>Dry Run</strong> first — <strong>Import Live</strong> unlocks only after a clean dry run.
-      </p>
-      <textarea id="certImportJson" oninput="onCertImportChange()" placeholder='[
-  {
-    "student_email": "student@example.com",
-    "class_id": 9,
-    "submission_label": "Cohort 1 – April 2026",
-    "examples": [
-      {
-        "situation_background": "...",
-        "key_observation_insight": "...",
-        "actions_taken": "...",
-        "outcome_impact": "...",
-        "estimated_value": "...",
-        "reflection": "..."
-      }
-    ]
-  }
-]'></textarea>
-      <div class="cert-import-actions">
-        <button id="certImportDryBtn" class="cert-import-btn-dry" onclick="runCertImport(true)">🔍 Dry Run</button>
-        <button id="certImportLiveBtn" class="cert-import-btn-live" onclick="runCertImport(false)" disabled title="Run a clean Dry Run first">⬆ Import Live</button>
-        <span style="font-size:0.78rem;color:#5a7a9a;margin-left:4px" id="certImportLiveHint">Run a clean Dry Run to unlock Import Live.</span>
-      </div>
-      <div id="certImportResults" class="cert-import-results"></div>
-    </div>
   </div>
 
 </div><!-- /.main -->
@@ -3427,21 +3403,39 @@ async function importAllPdfs() {
 }
 
 // ── Cheat Sheet ───────────────────────────────────────────────────────────────
-async function generateCheatSheet() {
+function toggleCheatSheetMenu(e) {
+  if (e) e.stopPropagation();
+  var menu = document.getElementById('certCheatSheetMenu');
+  var open = menu.style.display !== 'none';
+  menu.style.display = open ? 'none' : 'block';
+  if (!open) {
+    // close when clicking anywhere outside
+    setTimeout(function() {
+      document.addEventListener('click', function _close() {
+        menu.style.display = 'none';
+        document.removeEventListener('click', _close);
+      });
+    }, 0);
+  }
+}
+
+async function generateCheatSheet(discussion) {
+  document.getElementById('certCheatSheetMenu').style.display = 'none';
   var classId = document.getElementById('certClassSelect').value;
   if (!classId) { alert('Please select a class first.'); return; }
   var btn = document.getElementById('certCheatSheetBtn');
   btn.disabled = true;
   btn.innerHTML = '⏳ Generating…';
+  var qs = (discussion === false) ? '?discussion=false' : '';
   try {
-    var res = await fetch(API_BASE + '/certifications/class/' + classId + '/facilitator-report', {
+    var res = await fetch(API_BASE + '/certifications/class/' + classId + '/facilitator-report' + qs, {
       headers: { 'Authorization': 'Bearer ' + getToken() }
     });
     if (res.status === 401) { window.location.href = 'admin-login.html'; return; }
     if (!res.ok) {
       var err = await res.json().catch(function(){ return { error: 'Unknown error' }; });
       alert('Cheat sheet failed: ' + (err.error || 'Unknown error'));
-      btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet'; return;
+      btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet ▾'; return;
     }
     var blob     = await res.blob();
     var disp     = res.headers.get('Content-Disposition') || '';
@@ -3452,10 +3446,10 @@ async function generateCheatSheet() {
     a.href = url; a.download = filename; a.click();
     URL.revokeObjectURL(url);
     btn.innerHTML = '✅ Downloaded';
-    setTimeout(function(){ btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet'; }, 3000);
+    setTimeout(function(){ btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet ▾'; }, 3000);
   } catch(e) {
     alert('Error: ' + e.message);
-    btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet';
+    btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet ▾';
   }
 }
 
@@ -3471,151 +3465,6 @@ async function loadCertifications(classId) {
   }
 }
 
-// ── Cert import panel ─────────────────────────────────────────────────────────
-
-var _certImportLiveEnabled = false;
-
-function toggleCertImport() {
-  var panel = document.getElementById('certImportPanel');
-  var btn   = document.getElementById('certImportToggleBtn');
-  var open  = panel.style.display !== 'none';
-  if (open) {
-    panel.style.display = 'none';
-    btn.textContent = '▶ Import Submissions';
-  } else {
-    panel.style.display = 'block';
-    btn.textContent = '▼ Import Submissions';
-  }
-}
-
-function onCertImportChange() {
-  // Reset live-import lock whenever the JSON is edited
-  _certImportLiveEnabled = false;
-  var liveBtn  = document.getElementById('certImportLiveBtn');
-  var liveHint = document.getElementById('certImportLiveHint');
-  liveBtn.disabled = true;
-  liveBtn.title    = 'Run a clean Dry Run first';
-  liveHint.textContent = 'Run a clean Dry Run to unlock Import Live.';
-  liveHint.style.color = '#5a7a9a';
-  var results = document.getElementById('certImportResults');
-  results.style.display = 'none';
-  results.innerHTML = '';
-}
-
-async function runCertImport(dryRun) {
-  var raw = (document.getElementById('certImportJson').value || '').trim();
-  if (!raw) { alert('Paste a JSON array before running.'); return; }
-
-  var payload;
-  try { payload = JSON.parse(raw); }
-  catch (e) { alert('Invalid JSON — ' + e.message); return; }
-
-  if (!Array.isArray(payload) || payload.length === 0) {
-    alert('JSON must be a non-empty array of submission objects.');
-    return;
-  }
-
-  var dryBtn  = document.getElementById('certImportDryBtn');
-  var liveBtn = document.getElementById('certImportLiveBtn');
-  dryBtn.disabled  = true;
-  liveBtn.disabled = true;
-  dryBtn.textContent  = dryRun ? 'Running…' : '🔍 Dry Run';
-  liveBtn.textContent = dryRun ? '⬆ Import Live' : 'Importing…';
-
-  var url  = '/certifications/import' + (dryRun ? '?dry_run=true' : '');
-  var data = await apiCall('POST', url, payload);
-
-  dryBtn.disabled     = false;
-  dryBtn.textContent  = '🔍 Dry Run';
-  liveBtn.textContent = '⬆ Import Live';
-  // live button re-enabled inside renderImportResults based on outcome
-
-  if (!data) {
-    var el = document.getElementById('certImportResults');
-    el.style.display = 'block';
-    el.innerHTML = '<div class="cert-import-summary has-errors"><div class="cert-import-summary-title">Request failed</div><div class="cert-import-notice error">Could not reach the server. Check your session or network.</div></div>';
-    return;
-  }
-
-  renderImportResults(data, dryRun);
-}
-
-function renderImportResults(data, dryRun) {
-  var totalOk   = dryRun ? (data.would_import || 0) : (data.imported || 0);
-  var totalFail = dryRun ? (data.would_fail   || 0) : (data.failed   || 0);
-  var allClean  = totalFail === 0;
-
-  var html = '';
-
-  // Summary block
-  html += '<div class="cert-import-summary ' + (allClean ? 'ok' : 'has-errors') + '">';
-  html += '<div class="cert-import-summary-title">' + (dryRun ? '🔍 Dry Run Results' : '✅ Import Complete') + '</div>';
-  html += '<div class="cert-import-summary-stats">';
-  html += '<span class="cert-import-stat ok">✓ ' + totalOk + ' ' + (dryRun ? 'would import' : 'imported') + '</span>';
-  if (totalFail > 0) html += '<span class="cert-import-stat fail">✕ ' + totalFail + ' ' + (dryRun ? 'would fail' : 'failed') + '</span>';
-  html += '</div>';
-
-  if (dryRun && allClean) {
-    html += '<div class="cert-import-notice ok">All rows validated clean. Click <strong>Import Live</strong> to proceed.</div>';
-  } else if (dryRun && !allClean) {
-    html += '<div class="cert-import-notice error">Fix the errors below before importing live.</div>';
-  } else if (!dryRun) {
-    html += '<div class="cert-import-notice ok">Import complete. Submissions are now pending AI grading and should move to graded within 5 minutes.</div>';
-  }
-  html += '</div>';
-
-  // Per-row list
-  var results = data.results || [];
-  if (results.length > 0) {
-    html += '<div class="cert-import-rows">';
-    results.forEach(function(r) {
-      var hasWarnings = r.warnings && r.warnings.length > 0;
-      var rowClass    = r.status === 'error' ? 'error' : (hasWarnings ? 'warning' : 'ok');
-      html += '<div class="cert-import-row ' + rowClass + '">';
-      html += '<span class="cert-import-row-num">Row ' + r.row + '</span>';
-      html += '<span class="cert-import-row-email">' + escHtml(r.student_email || '—') + '</span>';
-      if (r.submission_label) html += '<span class="cert-import-row-label">' + escHtml(r.submission_label) + '</span>';
-      if (r.status === 'error') {
-        html += '<span class="cert-import-row-msg error">✕ ' + escHtml(r.reason || 'Unknown error') + '</span>';
-      } else {
-        var okMsg = dryRun ? 'OK — ' + (r.example_count || '?') + ' example(s)' : 'Imported — submission id: ' + r.submission_id + ', ' + (r.example_count || '?') + ' example(s)';
-        html += '<span class="cert-import-row-msg ok">✓ ' + okMsg + '</span>';
-        if (hasWarnings) {
-          r.warnings.forEach(function(w) {
-            html += '<span class="cert-import-row-msg warning">⚠ ' + escHtml(w) + '</span>';
-          });
-        }
-      }
-      html += '</div>';
-    });
-    html += '</div>';
-  }
-
-  var resultsEl = document.getElementById('certImportResults');
-  resultsEl.innerHTML = html;
-  resultsEl.style.display = 'block';
-
-  // Unlock live import only after a fully clean dry run
-  var liveBtn  = document.getElementById('certImportLiveBtn');
-  var liveHint = document.getElementById('certImportLiveHint');
-  if (dryRun && allClean) {
-    _certImportLiveEnabled = true;
-    liveBtn.disabled   = false;
-    liveBtn.title      = '';
-    liveHint.textContent = '✓ Dry run clean — ready to import live.';
-    liveHint.style.color = '#7fd67f';
-  } else if (dryRun && !allClean) {
-    liveBtn.disabled   = true;
-    liveHint.textContent = 'Fix errors above before importing live.';
-    liveHint.style.color = '#f07070';
-  }
-
-  // After a successful live import, refresh the submissions table
-  if (!dryRun && totalOk > 0) {
-    var classId = document.getElementById('certClassSelect').value;
-    if (classId) loadCertifications(classId);
-  }
-}
 
 function certScoreBandBadge(band, score) {
   if (!band) return '';
