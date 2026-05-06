@@ -616,6 +616,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       </div>
       <button class="btn-outline" id="certNotifyCoachesBtn" onclick="certNotifyCoaches()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">🎓 Notify Coaches</button>
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
+      <button class="btn-outline" id="certBulkRegradeBtn" onclick="certBulkRegrade()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">♻ Re-grade Selected (<span id="certRegradeCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
       <span class="cert-last-updated" id="certLastUpdated"></span>
     </div>
@@ -3482,6 +3483,8 @@ function renderCertTable(rows) {
   if (bulkBtn) bulkBtn.style.display = 'none';
   var bulkSendBtn = document.getElementById('certBulkSendBtn');
   if (bulkSendBtn) bulkSendBtn.style.display = 'none';
+  var bulkRegradeBtn = document.getElementById('certBulkRegradeBtn');
+  if (bulkRegradeBtn) bulkRegradeBtn.style.display = 'none';
   // Show Notify Coaches whenever there are any certified rows in this class
   var notifyBtn = document.getElementById('certNotifyCoachesBtn');
   if (notifyBtn) notifyBtn.style.display = rows.some(function(r) { return r.status === 'certified'; }) ? '' : 'none';
@@ -3561,10 +3564,15 @@ function certUpdateBulkBtn() {
     if (tr && tr.getAttribute('data-cert-status') === 'certified') certifiedCount++;
   });
 
-  if (countEl)   countEl.textContent    = checked.length;
-  if (sendCntEl) sendCntEl.textContent  = certifiedCount;
-  if (btn)       btn.style.display      = checked.length > 0 ? '' : 'none';
-  if (sendBtn)   sendBtn.style.display  = certifiedCount > 0 ? '' : 'none';
+  var regradeBtn    = document.getElementById('certBulkRegradeBtn');
+  var regradeCntEl  = document.getElementById('certRegradeCount');
+
+  if (countEl)      countEl.textContent    = checked.length;
+  if (sendCntEl)    sendCntEl.textContent  = certifiedCount;
+  if (regradeCntEl) regradeCntEl.textContent = checked.length;
+  if (btn)          btn.style.display      = checked.length > 0 ? '' : 'none';
+  if (sendBtn)      sendBtn.style.display  = certifiedCount > 0 ? '' : 'none';
+  if (regradeBtn)   regradeBtn.style.display = checked.length > 0 ? '' : 'none';
   if (selAll) {
     selAll.indeterminate = checked.length > 0 && checked.length < all.length;
     selAll.checked       = all.length > 0 && checked.length === all.length;
@@ -3589,6 +3597,25 @@ async function certBulkDelete() {
   if (classId) await loadCertifications(classId);
   if (failed.length > 0) {
     alert(failed.length + ' submission(s) could not be deleted (certified submissions are protected).');
+  }
+}
+
+async function certBulkRegrade() {
+  var checked = Array.from(document.querySelectorAll('.cert-row-check:checked'));
+  if (checked.length === 0) return;
+  var noun = checked.length === 1 ? '1 submission' : checked.length + ' submissions';
+  if (!confirm('Re-grade ' + noun + ' with the current scoring system?\n\nAI scores and recommendations will be reset and recalculated. Your certification decisions (Certified/Not Certified) will NOT be changed.\n\nUpdated scores appear within ~5 minutes.')) return;
+  var ids = checked.map(function(cb) { return parseInt(cb.value); });
+  var btn = document.getElementById('certBulkRegradeBtn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Queuing…'; }
+  try {
+    var result = await apiCall('POST', '/certifications/bulk-regrade', { ids: ids });
+    var classId = document.getElementById('certClassSelect').value;
+    if (classId) await loadCertifications(classId);
+    alert('✅ ' + (result.regraded || 0) + ' submission(s) queued for re-grading. Updated scores will appear within ~5 minutes.');
+  } catch(e) {
+    alert('Re-grade failed: ' + (e.message || e));
+    if (btn) { btn.disabled = false; btn.innerHTML = '♻ Re-grade Selected (<span id="certRegradeCount">' + ids.length + '</span>)'; }
   }
 }
 
