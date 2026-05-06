@@ -606,6 +606,8 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <select id="certClassSelect" onchange="loadCertifications(this.value)"></select>
       <button class="btn-outline" onclick="loadCertifications(document.getElementById('certClassSelect').value)">↻ Refresh</button>
       <button class="btn-outline" id="runGradingBtn" onclick="runGradingNow()" style="background:#1a5c35;color:#fff;border-color:#1a5c35;">▶ Run Grading Now</button>
+      <button class="btn-outline" id="certUploadPdfBtn" onclick="openUploadPdfModal()" style="background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📤 Upload PDF</button>
+      <button class="btn-outline" id="certCheatSheetBtn" onclick="generateCheatSheet()" style="background:#2a1a4a;color:#c090f0;border-color:#4a2a7c;">📋 Cheat Sheet</button>
       <button class="btn-outline" id="certNotifyCoachesBtn" onclick="certNotifyCoaches()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">🎓 Notify Coaches</button>
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
@@ -656,6 +658,35 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
   <div class="cert-modal-box">
     <button class="cert-modal-close" onclick="closeCertModal()">✕</button>
     <div id="certModalContent"><div style="color:#8a9bb8;padding:40px;text-align:center">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     PDF UPLOAD MODAL
+═══════════════════════════════════════════════ -->
+<div id="certUploadPdfModal" class="cert-modal-overlay">
+  <div class="cert-modal-box" style="max-width:520px">
+    <button class="cert-modal-close" onclick="closeUploadPdfModal()">✕</button>
+    <h3 style="color:#e8e8e8;font-size:1.1rem;margin:0 0 10px">📤 Upload Success Story PDF</h3>
+    <p style="font-size:0.82rem;color:#8a9bb8;margin:0 0 20px;line-height:1.5">Claude will extract all fields from the PDF and create a <strong style="color:#7ab3f5">pending_ai</strong> submission. The student must already exist in the selected class — matched by email.</p>
+    <div style="margin-bottom:14px">
+      <label style="font-size:0.72rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;display:block;margin-bottom:5px">Student Email</label>
+      <input type="email" id="certUploadEmail" placeholder="student@example.com"
+        style="width:100%;box-sizing:border-box;background:#060f1e;border:1px solid #2a4a7f;color:#d0d8e8;padding:9px 12px;border-radius:6px;font-size:0.88rem;outline:none" />
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:0.72rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;display:block;margin-bottom:5px">PDF File</label>
+      <input type="file" id="certUploadFile" accept="application/pdf"
+        style="width:100%;box-sizing:border-box;background:#060f1e;border:1px solid #2a4a7f;color:#d0d8e8;padding:8px 12px;border-radius:6px;font-size:0.85rem;cursor:pointer" />
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button id="certUploadSubmitBtn" onclick="submitUploadPdf()"
+        style="background:#1a3a5c;color:#7ab3f5;border:1px solid #2a5a8c;padding:9px 22px;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer">⬆ Parse &amp; Import</button>
+      <button onclick="closeUploadPdfModal()"
+        style="background:none;border:1px solid #2a4a7f;color:#8a9bb8;padding:9px 16px;border-radius:6px;font-size:0.88rem;cursor:pointer">Cancel</button>
+    </div>
+    <div id="certUploadResult" style="display:none;margin-top:16px"></div>
+    <div id="certUploadParsed" style="display:none;margin-top:14px;background:#060f1e;border:1px solid #2a4a7f;border-radius:8px;overflow:hidden;max-height:320px;overflow-y:auto"></div>
   </div>
 </div>
 
@@ -3248,6 +3279,127 @@ async function runGradingNow() {
   } finally {
     btn.disabled = false;
     btn.textContent = '▶ Run Grading Now';
+  }
+}
+
+// ── PDF Upload ────────────────────────────────────────────────────────────────
+function openUploadPdfModal() {
+  var classId = document.getElementById('certClassSelect').value;
+  if (!classId) { alert('Please select a class first.'); return; }
+  document.getElementById('certUploadEmail').value = '';
+  document.getElementById('certUploadFile').value = '';
+  document.getElementById('certUploadResult').style.display = 'none';
+  document.getElementById('certUploadParsed').style.display = 'none';
+  document.getElementById('certUploadSubmitBtn').disabled = false;
+  document.getElementById('certUploadSubmitBtn').innerHTML = '⬆ Parse &amp; Import';
+  document.getElementById('certUploadPdfModal').classList.add('open');
+}
+
+function closeUploadPdfModal() {
+  document.getElementById('certUploadPdfModal').classList.remove('open');
+}
+
+async function submitUploadPdf() {
+  var classId  = document.getElementById('certClassSelect').value;
+  var email    = document.getElementById('certUploadEmail').value.trim();
+  var file     = document.getElementById('certUploadFile').files[0];
+  var btn      = document.getElementById('certUploadSubmitBtn');
+  var resultEl = document.getElementById('certUploadResult');
+  var parsedEl = document.getElementById('certUploadParsed');
+
+  if (!email) { alert('Please enter the student email.'); return; }
+  if (!file)  { alert('Please select a PDF file.'); return; }
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Parsing…';
+  resultEl.style.display = 'none';
+  parsedEl.style.display = 'none';
+
+  var form = new FormData();
+  form.append('file', file);
+  form.append('email', email);
+  form.append('class_id', classId);
+
+  try {
+    var res = await fetch(API_BASE + '/certifications/upload-pdf', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + getToken() },
+      body: form
+    });
+    if (res.status === 401) { window.location.href = 'admin-login.html'; return; }
+    var data = await res.json();
+
+    if (!res.ok) {
+      resultEl.innerHTML = '<div style="background:#2a0e0e;border:1px solid #5a2020;border-radius:6px;padding:12px 16px;color:#f07070;font-size:0.85rem">❌ ' + escHtml(data.error || 'Upload failed') + '</div>';
+      resultEl.style.display = 'block';
+      btn.disabled = false;
+      btn.innerHTML = '⬆ Parse &amp; Import';
+      return;
+    }
+
+    var warnHtml = (data.warnings && data.warnings.length)
+      ? '<div style="background:#1f1a08;border:1px solid #f0a040;border-radius:4px;padding:8px 12px;margin-top:8px;font-size:0.78rem;color:#f0c070">⚠️ ' + data.warnings.map(function(w){ return escHtml(w); }).join('<br>') + '</div>'
+      : '';
+    resultEl.innerHTML = '<div style="background:#0d2a18;border:1px solid #2a5a30;border-radius:6px;padding:12px 16px;color:#7fd67f;font-size:0.85rem">✅ Submission #' + data.submission_id + ' created for <strong>' + escHtml(data.student.name) + '</strong>. Status: pending_ai — ready for grading.' + warnHtml + '</div>';
+    resultEl.style.display = 'block';
+
+    var p = data.parsed;
+    var fields = [
+      ['Name', p.name], ['Practice Area', p.practice_area],
+      ['Situation / Background', p.situation_background],
+      ['Key Observations', p.key_observation_insight],
+      ['Actions Taken', p.actions_taken],
+      ['Outcome / Impact', p.outcome_impact],
+      ['Estimated Value', p.estimated_value],
+      ['Reflection', p.reflection]
+    ];
+    parsedEl.innerHTML = '<div style="padding:8px 14px;background:#0d1f3c;font-size:0.68rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;border-bottom:1px solid #1e3a5f">Parsed Fields — verify before grading</div>' +
+      fields.map(function(f){
+        return '<div style="padding:8px 14px;border-bottom:1px solid #0d1a2e"><div style="font-size:0.65rem;font-weight:700;letter-spacing:.4px;color:#5a7a9a;text-transform:uppercase;margin-bottom:2px">' + escHtml(f[0]) + '</div><div style="font-size:0.82rem;color:#c8d8f0;line-height:1.4;white-space:pre-wrap">' + escHtml(f[1] || '—') + '</div></div>';
+      }).join('');
+    parsedEl.style.display = 'block';
+
+    btn.innerHTML = '✅ Done';
+    loadCertifications(classId);
+
+  } catch(e) {
+    resultEl.innerHTML = '<div style="background:#2a0e0e;border:1px solid #5a2020;border-radius:6px;padding:12px 16px;color:#f07070;font-size:0.85rem">❌ Network error: ' + escHtml(e.message) + '</div>';
+    resultEl.style.display = 'block';
+    btn.disabled = false;
+    btn.innerHTML = '⬆ Parse &amp; Import';
+  }
+}
+
+// ── Cheat Sheet ───────────────────────────────────────────────────────────────
+async function generateCheatSheet() {
+  var classId = document.getElementById('certClassSelect').value;
+  if (!classId) { alert('Please select a class first.'); return; }
+  var btn = document.getElementById('certCheatSheetBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Generating…';
+  try {
+    var res = await fetch(API_BASE + '/certifications/class/' + classId + '/facilitator-report', {
+      headers: { 'Authorization': 'Bearer ' + getToken() }
+    });
+    if (res.status === 401) { window.location.href = 'admin-login.html'; return; }
+    if (!res.ok) {
+      var err = await res.json().catch(function(){ return { error: 'Unknown error' }; });
+      alert('Cheat sheet failed: ' + (err.error || 'Unknown error'));
+      btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet'; return;
+    }
+    var blob     = await res.blob();
+    var disp     = res.headers.get('Content-Disposition') || '';
+    var match    = disp.match(/filename="([^"]+)"/);
+    var filename = match ? match[1] : 'Facilitator_Cheat_Sheet.docx';
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    btn.innerHTML = '✅ Downloaded';
+    setTimeout(function(){ btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet'; }, 3000);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.innerHTML = '📋 Cheat Sheet';
   }
 }
 
