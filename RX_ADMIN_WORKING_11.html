@@ -665,28 +665,35 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
      PDF UPLOAD MODAL
 ═══════════════════════════════════════════════ -->
 <div id="certUploadPdfModal" class="cert-modal-overlay">
-  <div class="cert-modal-box" style="max-width:520px">
+  <div class="cert-modal-box" style="max-width:700px">
     <button class="cert-modal-close" onclick="closeUploadPdfModal()">✕</button>
-    <h3 style="color:#e8e8e8;font-size:1.1rem;margin:0 0 10px">📤 Upload Success Story PDF</h3>
-    <p style="font-size:0.82rem;color:#8a9bb8;margin:0 0 20px;line-height:1.5">Claude will extract all fields from the PDF and create a <strong style="color:#7ab3f5">pending_ai</strong> submission. The student must already exist in the selected class — matched by email.</p>
-    <div style="margin-bottom:14px">
-      <label style="font-size:0.72rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;display:block;margin-bottom:5px">Student Email</label>
-      <input type="email" id="certUploadEmail" placeholder="student@example.com"
-        style="width:100%;box-sizing:border-box;background:#060f1e;border:1px solid #2a4a7f;color:#d0d8e8;padding:9px 12px;border-radius:6px;font-size:0.88rem;outline:none" />
-    </div>
-    <div style="margin-bottom:20px">
-      <label style="font-size:0.72rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;display:block;margin-bottom:5px">PDF File</label>
-      <input type="file" id="certUploadFile" accept="application/pdf"
+    <h3 style="color:#e8e8e8;font-size:1.1rem;margin:0 0 10px">📤 Batch Upload Success Story PDFs</h3>
+    <p style="font-size:0.82rem;color:#8a9bb8;margin:0 0 16px;line-height:1.5">Select one or more PDFs. Assign each file to a student — Claude will extract all fields and create a <strong style="color:#7ab3f5">pending_ai</strong> submission for each. Students are matched by email and must already exist in the selected class.</p>
+    <div style="margin-bottom:16px">
+      <label style="font-size:0.72rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;display:block;margin-bottom:5px">Select PDF Files</label>
+      <input type="file" id="certUploadFiles" accept="application/pdf" multiple onchange="onCertUploadFilesChange()"
         style="width:100%;box-sizing:border-box;background:#060f1e;border:1px solid #2a4a7f;color:#d0d8e8;padding:8px 12px;border-radius:6px;font-size:0.85rem;cursor:pointer" />
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <button id="certUploadSubmitBtn" onclick="submitUploadPdf()"
-        style="background:#1a3a5c;color:#7ab3f5;border:1px solid #2a5a8c;padding:9px 22px;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer">⬆ Parse &amp; Import</button>
-      <button onclick="closeUploadPdfModal()"
-        style="background:none;border:1px solid #2a4a7f;color:#8a9bb8;padding:9px 16px;border-radius:6px;font-size:0.88rem;cursor:pointer">Cancel</button>
+    <div id="certUploadGrid" style="display:none;margin-bottom:16px">
+      <div style="font-size:0.72rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;margin-bottom:8px">File Assignments</div>
+      <div style="max-height:300px;overflow-y:auto;border:1px solid #1e3a5f;border-radius:6px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+          <thead>
+            <tr style="background:#0d1f3c">
+              <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-weight:700;font-size:0.7rem;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #1e3a5f">File</th>
+              <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-weight:700;font-size:0.7rem;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #1e3a5f">Student (Email)</th>
+              <th style="padding:8px 4px;text-align:center;color:#5a7a9a;font-weight:700;font-size:0.7rem;letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid #1e3a5f;width:70px">Status</th>
+            </tr>
+          </thead>
+          <tbody id="certUploadRows"></tbody>
+        </table>
+      </div>
     </div>
-    <div id="certUploadResult" style="display:none;margin-top:16px"></div>
-    <div id="certUploadParsed" style="display:none;margin-top:14px;background:#060f1e;border:1px solid #2a4a7f;border-radius:8px;overflow:hidden;max-height:320px;overflow-y:auto"></div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button id="certUploadSubmitBtn" onclick="importAllPdfs()" style="display:none;background:#1a3a5c;color:#7ab3f5;border:1px solid #2a5a8c;padding:9px 22px;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer">⬆ Import All</button>
+      <span id="certUploadSummary" style="font-size:0.82rem;color:#8a9bb8"></span>
+      <button onclick="closeUploadPdfModal()" style="background:none;border:1px solid #2a4a7f;color:#8a9bb8;padding:9px 16px;border-radius:6px;font-size:0.88rem;cursor:pointer;margin-left:auto">Close</button>
+    </div>
   </div>
 </div>
 
@@ -3283,91 +3290,140 @@ async function runGradingNow() {
 }
 
 // ── PDF Upload ────────────────────────────────────────────────────────────────
-function openUploadPdfModal() {
+var _certUploadStudents = [];
+
+async function openUploadPdfModal() {
   var classId = document.getElementById('certClassSelect').value;
   if (!classId) { alert('Please select a class first.'); return; }
-  document.getElementById('certUploadEmail').value = '';
-  document.getElementById('certUploadFile').value = '';
-  document.getElementById('certUploadResult').style.display = 'none';
-  document.getElementById('certUploadParsed').style.display = 'none';
-  document.getElementById('certUploadSubmitBtn').disabled = false;
-  document.getElementById('certUploadSubmitBtn').innerHTML = '⬆ Parse &amp; Import';
+  document.getElementById('certUploadFiles').value = '';
+  document.getElementById('certUploadGrid').style.display = 'none';
+  document.getElementById('certUploadRows').innerHTML = '';
+  var btn = document.getElementById('certUploadSubmitBtn');
+  btn.style.display = 'none';
+  btn.disabled = false;
+  btn.innerHTML = '⬆ Import All';
+  document.getElementById('certUploadSummary').textContent = 'Loading students…';
   document.getElementById('certUploadPdfModal').classList.add('open');
+  await loadCertUploadStudents(classId);
 }
 
 function closeUploadPdfModal() {
   document.getElementById('certUploadPdfModal').classList.remove('open');
 }
 
-async function submitUploadPdf() {
-  var classId  = document.getElementById('certClassSelect').value;
-  var email    = document.getElementById('certUploadEmail').value.trim();
-  var file     = document.getElementById('certUploadFile').files[0];
-  var btn      = document.getElementById('certUploadSubmitBtn');
-  var resultEl = document.getElementById('certUploadResult');
-  var parsedEl = document.getElementById('certUploadParsed');
-
-  if (!email) { alert('Please enter the student email.'); return; }
-  if (!file)  { alert('Please select a PDF file.'); return; }
-
-  btn.disabled = true;
-  btn.innerHTML = '⏳ Parsing…';
-  resultEl.style.display = 'none';
-  parsedEl.style.display = 'none';
-
-  var form = new FormData();
-  form.append('file', file);
-  form.append('email', email);
-  form.append('class_id', classId);
-
+async function loadCertUploadStudents(classId) {
   try {
-    var res = await fetch(API_BASE + '/certifications/upload-pdf', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + getToken() },
-      body: form
-    });
-    if (res.status === 401) { window.location.href = 'admin-login.html'; return; }
-    var data = await res.json();
-
-    if (!res.ok) {
-      resultEl.innerHTML = '<div style="background:#2a0e0e;border:1px solid #5a2020;border-radius:6px;padding:12px 16px;color:#f07070;font-size:0.85rem">❌ ' + escHtml(data.error || 'Upload failed') + '</div>';
-      resultEl.style.display = 'block';
-      btn.disabled = false;
-      btn.innerHTML = '⬆ Parse &amp; Import';
-      return;
-    }
-
-    var warnHtml = (data.warnings && data.warnings.length)
-      ? '<div style="background:#1f1a08;border:1px solid #f0a040;border-radius:4px;padding:8px 12px;margin-top:8px;font-size:0.78rem;color:#f0c070">⚠️ ' + data.warnings.map(function(w){ return escHtml(w); }).join('<br>') + '</div>'
-      : '';
-    resultEl.innerHTML = '<div style="background:#0d2a18;border:1px solid #2a5a30;border-radius:6px;padding:12px 16px;color:#7fd67f;font-size:0.85rem">✅ Submission #' + data.submission_id + ' created for <strong>' + escHtml(data.student.name) + '</strong>. Status: pending_ai — ready for grading.' + warnHtml + '</div>';
-    resultEl.style.display = 'block';
-
-    var p = data.parsed;
-    var fields = [
-      ['Name', p.name], ['Practice Area', p.practice_area],
-      ['Situation / Background', p.situation_background],
-      ['Key Observations', p.key_observation_insight],
-      ['Actions Taken', p.actions_taken],
-      ['Outcome / Impact', p.outcome_impact],
-      ['Estimated Value', p.estimated_value],
-      ['Reflection', p.reflection]
-    ];
-    parsedEl.innerHTML = '<div style="padding:8px 14px;background:#0d1f3c;font-size:0.68rem;font-weight:700;letter-spacing:.5px;color:#5a7a9a;text-transform:uppercase;border-bottom:1px solid #1e3a5f">Parsed Fields — verify before grading</div>' +
-      fields.map(function(f){
-        return '<div style="padding:8px 14px;border-bottom:1px solid #0d1a2e"><div style="font-size:0.65rem;font-weight:700;letter-spacing:.4px;color:#5a7a9a;text-transform:uppercase;margin-bottom:2px">' + escHtml(f[0]) + '</div><div style="font-size:0.82rem;color:#c8d8f0;line-height:1.4;white-space:pre-wrap">' + escHtml(f[1] || '—') + '</div></div>';
-      }).join('');
-    parsedEl.style.display = 'block';
-
-    btn.innerHTML = '✅ Done';
-    loadCertifications(classId);
-
+    var data = await apiCall('GET', '/students/class/' + classId);
+    _certUploadStudents = Array.isArray(data) ? data : (data.students || []);
+    document.getElementById('certUploadSummary').textContent = _certUploadStudents.length + ' students in class — select PDFs above';
   } catch(e) {
-    resultEl.innerHTML = '<div style="background:#2a0e0e;border:1px solid #5a2020;border-radius:6px;padding:12px 16px;color:#f07070;font-size:0.85rem">❌ Network error: ' + escHtml(e.message) + '</div>';
-    resultEl.style.display = 'block';
-    btn.disabled = false;
-    btn.innerHTML = '⬆ Parse &amp; Import';
+    document.getElementById('certUploadSummary').textContent = '⚠️ Could not load students: ' + e.message;
+    _certUploadStudents = [];
   }
+}
+
+function tryMatchStudentByFilename(filename, students) {
+  var base = filename.replace(/\.[^.]+$/, '').replace(/[_\-\.]/g, ' ').toLowerCase();
+  var best = null, bestScore = 0;
+  students.forEach(function(s) {
+    var full = ((s.first_name || '') + ' ' + (s.last_name || '')).toLowerCase();
+    var parts = full.split(' ').filter(Boolean);
+    var score = 0;
+    parts.forEach(function(p) { if (p.length > 1 && base.indexOf(p) !== -1) score++; });
+    if (score > bestScore) { bestScore = score; best = s; }
+  });
+  return bestScore >= 2 ? best : null;
+}
+
+function onCertUploadFilesChange() {
+  var files = document.getElementById('certUploadFiles').files;
+  var tbody = document.getElementById('certUploadRows');
+  tbody.innerHTML = '';
+  if (!files || !files.length) {
+    document.getElementById('certUploadGrid').style.display = 'none';
+    document.getElementById('certUploadSubmitBtn').style.display = 'none';
+    return;
+  }
+  var blankOpt = '<option value="">— select student —</option>';
+  var opts = _certUploadStudents.map(function(s) {
+    var label = ((s.first_name || '') + ' ' + (s.last_name || '')).trim() + ' — ' + s.email;
+    return '<option value="' + escHtml(s.email) + '">' + escHtml(label) + '</option>';
+  }).join('');
+
+  for (var i = 0; i < files.length; i++) {
+    var f = files[i];
+    var matched = tryMatchStudentByFilename(f.name, _certUploadStudents);
+    var selId = 'certUploadSel_' + i;
+    var sel = '<select id="' + selId + '" style="width:100%;background:#060f1e;border:1px solid #2a4a7f;color:#d0d8e8;padding:6px 8px;border-radius:4px;font-size:0.8rem">' + blankOpt + opts + '</select>';
+    var tr = document.createElement('tr');
+    tr.id = 'certUploadRow_' + i;
+    tr.style.borderBottom = '1px solid #0d1a2e';
+    tr.innerHTML =
+      '<td style="padding:8px 12px;color:#c8d8f0;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(f.name) + '">' + escHtml(f.name) + '</td>' +
+      '<td style="padding:6px 12px">' + sel + '</td>' +
+      '<td style="padding:6px 4px;text-align:center;font-size:1rem" id="certUploadStatus_' + i + '">—</td>';
+    tbody.appendChild(tr);
+    if (matched) {
+      document.getElementById(selId).value = matched.email;
+    }
+  }
+  document.getElementById('certUploadGrid').style.display = 'block';
+  document.getElementById('certUploadSubmitBtn').style.display = 'inline-block';
+  document.getElementById('certUploadSummary').textContent = files.length + ' file' + (files.length !== 1 ? 's' : '') + ' selected';
+}
+
+async function importAllPdfs() {
+  var classId = document.getElementById('certClassSelect').value;
+  var files   = document.getElementById('certUploadFiles').files;
+  var btn     = document.getElementById('certUploadSubmitBtn');
+  if (!files || !files.length) return;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Importing…';
+
+  var ok = 0, fail = 0;
+  for (var i = 0; i < files.length; i++) {
+    var statusEl = document.getElementById('certUploadStatus_' + i);
+    var selEl    = document.getElementById('certUploadSel_' + i);
+    var email    = selEl ? selEl.value : '';
+
+    if (!email) {
+      statusEl.innerHTML = '<span title="No student selected" style="color:#f0a040">⚠</span>';
+      fail++;
+      continue;
+    }
+    statusEl.innerHTML = '<span style="color:#7ab3f5">⏳</span>';
+
+    var form = new FormData();
+    form.append('file', files[i]);
+    form.append('email', email);
+    form.append('class_id', classId);
+
+    try {
+      var res = await fetch(API_BASE + '/certifications/upload-pdf', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + getToken() },
+        body: form
+      });
+      if (res.status === 401) { window.location.href = 'admin-login.html'; return; }
+      var data = await res.json();
+      if (res.ok) {
+        statusEl.innerHTML = '<span title="Submission #' + data.submission_id + ' created" style="color:#7fd67f">✅</span>';
+        ok++;
+      } else {
+        statusEl.innerHTML = '<span title="' + escHtml(data.error || 'Error') + '" style="color:#f07070">❌</span>';
+        fail++;
+      }
+    } catch(e) {
+      statusEl.innerHTML = '<span title="' + escHtml(e.message) + '" style="color:#f07070">❌</span>';
+      fail++;
+    }
+  }
+
+  var summary = ok + ' imported';
+  if (fail) summary += ', ' + fail + ' failed';
+  document.getElementById('certUploadSummary').textContent = summary;
+  btn.innerHTML = '✅ Done';
+  if (ok > 0) loadCertifications(classId);
 }
 
 // ── Cheat Sheet ───────────────────────────────────────────────────────────────
