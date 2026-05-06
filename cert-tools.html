@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rx Aftercare — Certification Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f7;
+      color: #222;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: #1a2744;
+      color: #fff;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar h1 { font-size: 18px; font-weight: 700; letter-spacing: .3px; }
+    .topbar span { font-size: 13px; opacity: .75; }
+    .btn-logout {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.3);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-logout:hover { background: rgba(255,255,255,.25); }
+
+    /* ── Layout ── */
+    .page { max-width: 860px; margin: 36px auto; padding: 0 20px; }
+
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 28px 32px;
+      margin-bottom: 28px;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a2744;
+      margin-bottom: 6px;
+    }
+    .card-sub {
+      font-size: 13px;
+      color: #666;
+      margin-bottom: 22px;
+      line-height: 1.5;
+    }
+
+    /* ── Form elements ── */
+    .form-row { margin-bottom: 16px; }
+    label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 5px; }
+    input[type="text"], input[type="email"], select {
+      width: 100%;
+      border: 1px solid #ccd0d8;
+      border-radius: 5px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: #222;
+      outline: none;
+      transition: border-color .15s;
+    }
+    input[type="text"]:focus, input[type="email"]:focus, select:focus {
+      border-color: #1a2744;
+    }
+
+    .file-drop {
+      border: 2px dashed #ccd0d8;
+      border-radius: 8px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+    .file-drop:hover, .file-drop.drag-over { border-color: #1a2744; background: #f5f7fb; }
+    .file-drop input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .file-drop-icon { font-size: 28px; margin-bottom: 8px; }
+    .file-drop-label { font-size: 14px; color: #555; }
+    .file-drop-label strong { color: #1a2744; }
+    .file-name { font-size: 13px; color: #1a2744; font-weight: 600; margin-top: 8px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 5px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:active { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: #1a2744; color: #fff; }
+    .btn-primary:hover:not(:disabled) { opacity: .88; }
+    .btn-green { background: #1e8a4a; color: #fff; }
+    .btn-green:hover:not(:disabled) { opacity: .88; }
+    .btn-outline { background: #fff; color: #1a2744; border: 2px solid #1a2744; }
+    .btn-outline:hover:not(:disabled) { background: #f0f2f7; }
+
+    /* ── Status / result ── */
+    .status-box {
+      margin-top: 18px;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-size: 13px;
+      line-height: 1.6;
+      display: none;
+    }
+    .status-box.show { display: block; }
+    .status-box.success { background: #e8f5ee; border: 1px solid #9fd4b3; color: #1e5c38; }
+    .status-box.error   { background: #fdecea; border: 1px solid #f5a8a0; color: #8b1a13; }
+    .status-box.info    { background: #e8eef7; border: 1px solid #9ab3d4; color: #1a2744; }
+    .status-box.warning { background: #fff8e1; border: 1px solid #ffe082; color: #7a5c00; }
+
+    .parsed-preview {
+      display: none;
+      margin-top: 20px;
+      border: 1px solid #dde3ee;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .parsed-preview.show { display: block; }
+    .preview-header {
+      background: #f5f7fb;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1a2744;
+      border-bottom: 1px solid #dde3ee;
+    }
+    .preview-field { padding: 10px 16px; border-bottom: 1px solid #f0f2f7; }
+    .preview-field:last-child { border-bottom: none; }
+    .preview-field-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #888; margin-bottom: 3px; }
+    .preview-field-value { font-size: 13px; color: #222; line-height: 1.5; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .divider { border: none; border-top: 1px solid #e5e8f0; margin: 8px 0 20px; }
+
+    /* ── Report section specifics ── */
+    .report-meta { font-size: 13px; color: #555; margin-top: 10px; }
+    .certified-count { display: inline-block; background: #e8f5ee; color: #1e5c38; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-left: 8px; }
+    .no-certified { display: inline-block; background: #fdecea; color: #8b1a13; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700; margin-left: 8px; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Rx Aftercare — Certification Tools</h1>
+  <button class="btn-logout" onclick="logout()">Log Out</button>
+</div>
+
+<div class="page">
+
+  <!-- ── Upload PDF ── -->
+  <div class="card">
+    <div class="card-title">Upload Success Story PDF</div>
+    <div class="card-sub">
+      Upload a completed Rx certification success story PDF. Claude will extract all fields and create a
+      <strong>pending_ai</strong> submission record ready for automated grading. The student must already exist
+      in the selected class — matched by email address.
+    </div>
+
+    <div class="form-row">
+      <label for="upload-class">Class</label>
+      <select id="upload-class" onchange="onUploadClassChange()">
+        <option value="">Loading classes…</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label for="upload-email">Student Email</label>
+      <input type="email" id="upload-email" placeholder="student@example.com" />
+    </div>
+
+    <div class="form-row">
+      <label>PDF File</label>
+      <div class="file-drop" id="file-drop" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <input type="file" id="pdf-file" accept="application/pdf" onchange="onFileChange(event)" />
+        <div class="file-drop-icon">📄</div>
+        <div class="file-drop-label">Drag &amp; drop a PDF here, or <strong>click to browse</strong></div>
+        <div class="file-name" id="file-name-display"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="upload-btn" onclick="uploadPdf()" disabled>
+      <span id="upload-btn-text">Upload &amp; Parse</span>
+    </button>
+
+    <div class="status-box" id="upload-status"></div>
+    <div class="parsed-preview" id="parsed-preview">
+      <div class="preview-header">Parsed Fields — verify before proceeding</div>
+      <div id="preview-fields"></div>
+    </div>
+  </div>
+
+  <!-- ── Facilitator Report ── -->
+  <div class="card">
+    <div class="card-title">Generate Facilitator Cheat Sheet</div>
+    <div class="card-sub">
+      Generates a Word document (.docx) with story, key Rx behavior, and discussion prompt for every
+      certified student in the selected class — sorted strongest to weakest. Uses Claude to synthesize
+      content from the raw submission data.
+    </div>
+
+    <div class="form-row">
+      <label for="report-class">Class</label>
+      <select id="report-class" onchange="onReportClassChange()">
+        <option value="">Loading classes…</option>
+      </select>
+    </div>
+
+    <div class="report-meta" id="report-meta"></div>
+
+    <br />
+
+    <button class="btn btn-green" id="report-btn" onclick="generateReport()" disabled>
+      <span id="report-btn-text">Generate &amp; Download Cheat Sheet</span>
+    </button>
+
+    <div class="status-box" id="report-status"></div>
+  </div>
+
+</div>
+
+<script>
+const API = 'https://rx-aftercare-backend-production.up.railway.app';
+let _token = null;
+let _classes = [];
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+(function init() {
+  _token = sessionStorage.getItem('adminToken') || localStorage.getItem('adminToken');
+  if (!_token) {
+    window.location.href = 'admin-login.html';
+    return;
+  }
+  loadClasses();
+})();
+
+function logout() {
+  localStorage.removeItem('adminToken');
+  sessionStorage.removeItem('adminToken');
+  window.location.href = 'admin-login.html';
+}
+
+function authHeaders(isJson = true) {
+  const h = { 'Authorization': 'Bearer ' + _token };
+  if (isJson) h['Content-Type'] = 'application/json';
+  return h;
+}
+
+// ── Load classes ─────────────────────────────────────────────────────────────
+async function loadClasses() {
+  try {
+    const res  = await fetch(API + '/api/classes', { headers: authHeaders() });
+    if (res.status === 401 || res.status === 403) { logout(); return; }
+    const data = await res.json();
+    _classes = Array.isArray(data) ? data : (data.classes || []);
+
+    const opts = '<option value="">— select a class —</option>' +
+      _classes.map(c => `<option value="${c.id}">${escHtml(c.name)}${c.client ? ' (' + escHtml(c.client) + ')' : ''}</option>`).join('');
+
+    document.getElementById('upload-class').innerHTML = opts;
+    document.getElementById('report-class').innerHTML = opts;
+  } catch (e) {
+    showStatus('upload-status', 'error', 'Failed to load classes: ' + e.message);
+  }
+}
+
+// ── Upload PDF ────────────────────────────────────────────────────────────────
+function onUploadClassChange() { checkUploadReady(); }
+
+function onFileChange(e) {
+  const file = e.target.files[0];
+  updateFileName(file);
+  checkUploadReady();
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  document.getElementById('file-drop').classList.add('drag-over');
+}
+function onDragLeave() {
+  document.getElementById('file-drop').classList.remove('drag-over');
+}
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('file-drop').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === 'application/pdf') {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('pdf-file').files = dt.files;
+    updateFileName(file);
+    checkUploadReady();
+  }
+}
+
+function updateFileName(file) {
+  document.getElementById('file-name-display').textContent = file ? file.name : '';
+}
+
+function checkUploadReady() {
+  const classId = document.getElementById('upload-class').value;
+  const email   = document.getElementById('upload-email').value.trim();
+  const file    = document.getElementById('pdf-file').files[0];
+  document.getElementById('upload-btn').disabled = !(classId && email && file);
+}
+
+document.getElementById('upload-email').addEventListener('input', checkUploadReady);
+
+async function uploadPdf() {
+  const classId = document.getElementById('upload-class').value;
+  const email   = document.getElementById('upload-email').value.trim();
+  const file    = document.getElementById('pdf-file').files[0];
+
+  if (!classId || !email || !file) return;
+
+  setUploadLoading(true);
+  hideParsed();
+  showStatus('upload-status', 'info', 'Uploading and parsing PDF with Claude — this takes a few seconds…');
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('email', email);
+  form.append('class_id', classId);
+
+  try {
+    const res  = await fetch(API + '/api/certifications/upload-pdf', {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + _token },
+      body:    form,
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showStatus('upload-status', 'error', data.error || 'Upload failed');
+      setUploadLoading(false);
+      return;
+    }
+
+    let msg = `✓ Submission #${data.submission_id} created for <strong>${escHtml(data.student.name)}</strong>. Status: <strong>pending_ai</strong> — ready for automated grading.`;
+    if (data.warnings && data.warnings.length) {
+      msg += `<br><br><strong>Warning:</strong> ${data.warnings.map(escHtml).join('<br>')}`;
+      showStatus('upload-status', 'warning', msg);
+    } else {
+      showStatus('upload-status', 'success', msg);
+    }
+
+    showParsed(data.parsed);
+    setUploadLoading(false);
+
+  } catch (e) {
+    showStatus('upload-status', 'error', 'Network error: ' + e.message);
+    setUploadLoading(false);
+  }
+}
+
+function setUploadLoading(loading) {
+  const btn  = document.getElementById('upload-btn');
+  const text = document.getElementById('upload-btn-text');
+  btn.disabled = loading;
+  text.innerHTML = loading
+    ? '<span class="spinner"></span> Parsing…'
+    : 'Upload &amp; Parse';
+}
+
+function showParsed(parsed) {
+  const fields = [
+    ['Name',                parsed.name],
+    ['Practice Area',       parsed.practice_area],
+    ['Situation / Background',     parsed.situation_background],
+    ['Key Observations / Insights', parsed.key_observation_insight],
+    ['Actions Taken',       parsed.actions_taken],
+    ['Outcome / Impact',    parsed.outcome_impact],
+    ['Estimated Value',     parsed.estimated_value],
+    ['Reflection',          parsed.reflection],
+  ];
+  document.getElementById('preview-fields').innerHTML = fields.map(([label, val]) => `
+    <div class="preview-field">
+      <div class="preview-field-label">${escHtml(label)}</div>
+      <div class="preview-field-value">${escHtml(val || '—')}</div>
+    </div>`).join('');
+  document.getElementById('parsed-preview').classList.add('show');
+}
+
+function hideParsed() {
+  document.getElementById('parsed-preview').classList.remove('show');
+}
+
+// ── Facilitator Report ────────────────────────────────────────────────────────
+async function onReportClassChange() {
+  const classId = document.getElementById('report-class').value;
+  const meta    = document.getElementById('report-meta');
+  const btn     = document.getElementById('report-btn');
+  meta.innerHTML = '';
+  btn.disabled = true;
+  clearStatus('report-status');
+
+  if (!classId) return;
+
+  try {
+    const res  = await fetch(API + `/api/certifications/class/${classId}`, { headers: authHeaders() });
+    const data = await res.json();
+    if (!res.ok) { meta.textContent = 'Could not load class data.'; return; }
+
+    const certified = data.filter(s => s.is_certified === true).length;
+    const total     = data.length;
+
+    if (certified === 0) {
+      meta.innerHTML = `${total} total submission${total !== 1 ? 's' : ''} <span class="no-certified">0 certified</span> — nothing to report`;
+    } else {
+      meta.innerHTML = `${total} total submission${total !== 1 ? 's' : ''} <span class="certified-count">${certified} certified</span>`;
+      btn.disabled = false;
+    }
+  } catch (e) {
+    meta.textContent = 'Error loading data: ' + e.message;
+  }
+}
+
+async function generateReport() {
+  const classId = document.getElementById('report-class').value;
+  if (!classId) return;
+
+  setReportLoading(true);
+  showStatus('report-status', 'info', 'Generating cheat sheet — Claude is synthesizing content for each participant. This may take 20–40 seconds…');
+
+  try {
+    const res = await fetch(API + `/api/certifications/class/${classId}/facilitator-report`, {
+      headers: { 'Authorization': 'Bearer ' + _token },
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      showStatus('report-status', 'error', err.error || 'Report generation failed');
+      setReportLoading(false);
+      return;
+    }
+
+    // Stream the file download
+    const blob      = await res.blob();
+    const disp      = res.headers.get('Content-Disposition') || '';
+    const match     = disp.match(/filename="([^"]+)"/);
+    const filename  = match ? match[1] : 'Facilitator_Cheat_Sheet.docx';
+    const url       = URL.createObjectURL(blob);
+    const a         = document.createElement('a');
+    a.href          = url;
+    a.download      = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showStatus('report-status', 'success', `✓ Cheat sheet downloaded: <strong>${escHtml(filename)}</strong>`);
+    setReportLoading(false);
+
+  } catch (e) {
+    showStatus('report-status', 'error', 'Network error: ' + e.message);
+    setReportLoading(false);
+  }
+}
+
+function setReportLoading(loading) {
+  const btn  = document.getElementById('report-btn');
+  const text = document.getElementById('report-btn-text');
+  btn.disabled = loading;
+  text.innerHTML = loading
+    ? '<span class="spinner"></span> Generating…'
+    : 'Generate &amp; Download Cheat Sheet';
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function showStatus(id, type, html) {
+  const el = document.getElementById(id);
+  el.className = `status-box ${type} show`;
+  el.innerHTML = html;
+}
+function clearStatus(id) {
+  const el = document.getElementById(id);
+  el.className = 'status-box';
+  el.innerHTML = '';
+}
+
+function escHtml(str) {
+  return String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
