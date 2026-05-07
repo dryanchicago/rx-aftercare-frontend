@@ -3539,7 +3539,7 @@ function renderCertTable(rows) {
       '<td onclick="event.stopPropagation()">' +
         (r.recommended_decision ? certDecisionBadge(r.recommended_decision) : '<span style="color:#5a7a9a">—</span>') +
         (r.score_band ? '<br>' + certScoreBandBadge(r.score_band, r.overall_score, r.facilitator_score) : '') +
-        (r.overall_score != null ? '<button class="cert-score-edit-btn" title="Override AI score" onclick="openScoreOverride(event,' + r.id + ',' + JSON.stringify(r.overall_score) + ',' + JSON.stringify(r.facilitator_score !== undefined ? r.facilitator_score : null) + ')">✎</button>' : '') +
+        (r.overall_score != null ? '<button class="cert-score-edit-btn" title="Override AI score" onclick="openScoreOverride(event,' + r.id + ',' + parseFloat(r.overall_score) + ',' + (r.facilitator_score != null ? parseFloat(r.facilitator_score) : 'null') + ')">✎</button>' : '') +
       '</td>' +
       '<td>' + (r.grading_confidence ? '<span class="cert-badge">' + r.grading_confidence + '</span>' : '<span style="color:#5a7a9a">—</span>') + '</td>' +
       '<td>' + (r.requires_human_review ? '<span class="cert-badge hr-flag">⚑ Yes</span>' : '<span style="color:#5a7a9a">—</span>') + '</td>' +
