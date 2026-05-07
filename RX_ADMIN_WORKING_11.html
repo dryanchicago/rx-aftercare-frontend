@@ -3493,6 +3493,20 @@ async function loadCertifications(classId) {
 }
 
 
+function certEffectiveBand(facScore) {
+  var s = parseFloat(facScore);
+  if (s >= 4.5) return 'Strong Pass';
+  if (s >= 2.5) return 'Pass';
+  if (s >= 1.5) return 'Borderline';
+  return 'Fail';
+}
+function certEffectiveDecision(facScore) {
+  var s = parseFloat(facScore);
+  if (s >= 2.5) return 'certify';
+  if (s >= 1.5) return 'request_resubmission';
+  return 'do_not_certify';
+}
+
 function certScoreBandBadge(band, score, facScore) {
   if (!band) return '';
   var cls = band === 'Strong Pass' ? 'cert-band-strong'
@@ -3528,7 +3542,10 @@ function renderCertTable(rows) {
     '<th>Student</th><th>Submitted</th><th>Status</th><th>AI Decision</th><th>Confidence</th><th>Human Review</th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(r) {
-    var certLabel = (r.admin_notes && r.admin_notes.startsWith('[import] ')) ? r.admin_notes.slice(9) : null;
+    var certLabel  = (r.admin_notes && r.admin_notes.startsWith('[import] ')) ? r.admin_notes.slice(9) : null;
+    var hasFac     = r.facilitator_score != null;
+    var dispBand   = hasFac ? certEffectiveBand(r.facilitator_score)     : r.score_band;
+    var dispDecision = hasFac ? certEffectiveDecision(r.facilitator_score) : r.recommended_decision;
     html += '<tr data-cert-id="' + r.id + '" data-cert-status="' + escHtml(r.status||'') + '" onclick="openCertModal(' + r.id + ')">' +
       '<td style="text-align:center" onclick="event.stopPropagation()"><input type="checkbox" class="cert-row-check" value="' + r.id + '" onchange="certUpdateBulkBtn()"></td>' +
       '<td>' + escHtml(r.first_name + ' ' + r.last_name) +
@@ -3537,8 +3554,8 @@ function renderCertTable(rows) {
       '<td>' + certFmtDate(r.submitted_at) + '</td>' +
       '<td>' + certStatusBadge(r.status) + '</td>' +
       '<td onclick="event.stopPropagation()">' +
-        (r.recommended_decision ? certDecisionBadge(r.recommended_decision) : '<span style="color:#5a7a9a">—</span>') +
-        (r.score_band ? '<br>' + certScoreBandBadge(r.score_band, r.overall_score, r.facilitator_score) : '') +
+        (dispDecision ? certDecisionBadge(dispDecision) : '<span style="color:#5a7a9a">—</span>') +
+        (dispBand ? '<br>' + certScoreBandBadge(dispBand, r.overall_score, r.facilitator_score) : '') +
         (r.overall_score != null ? '<button class="cert-score-edit-btn" title="Override AI score" onclick="openScoreOverride(event,' + r.id + ',' + parseFloat(r.overall_score) + ',' + (r.facilitator_score != null ? parseFloat(r.facilitator_score) : 'null') + ')">✎</button>' : '') +
       '</td>' +
       '<td>' + (r.grading_confidence ? '<span class="cert-badge">' + r.grading_confidence + '</span>' : '<span style="color:#5a7a9a">—</span>') + '</td>' +
