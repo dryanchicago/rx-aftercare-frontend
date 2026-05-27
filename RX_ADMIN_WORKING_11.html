@@ -571,7 +571,9 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <select id="studentClassFilter" onchange="renderStudents()">
         <option value="">All Classes</option>
       </select>
+      <button id="bulkResendBtn" class="btn-outline" onclick="bulkResendWelcome()" style="display:none;margin-left:12px">📨 Resend Invitations to All</button>
     </div>
+    <div id="bulkResendProgress" style="display:none;margin:8px 0;padding:10px 14px;background:#0d2040;border:1px solid #1e4080;border-radius:8px;color:#7ab3f5;font-size:0.9rem"></div>
     <div id="studentsLoading" class="loading-msg" style="display:none">Loading students…</div>
     <div id="studentsList"></div>
   </div>
@@ -1528,6 +1530,8 @@ function renderStudents(){
   var filterClassId=document.getElementById("studentClassFilter").value;
   filterClassId=filterClassId?parseInt(filterClassId):null;
   var list=filterClassId?STUDENTS.filter(function(s){return(s.class_id===filterClassId);}):STUDENTS;
+  var bulkBtn=document.getElementById("bulkResendBtn");
+  if(bulkBtn) bulkBtn.style.display=(filterClassId&&list.length)?'inline-block':'none';
   if(!list.length){el.innerHTML='<p class="empty-msg">'+(filterClassId?'No students in this class yet.':'No students yet. Use <strong>Invite Student</strong> to add one.')+'</p>';return;}
   el.innerHTML=list.map(function(s){
     var cls=CLASSES.find(function(c){return c.id===s.class_id;});
@@ -1654,9 +1658,40 @@ async function resendWelcome(studentId){
   if(!confirm(msg)) return;
   var result=await apiCall('POST','/students/'+studentId+'/resend-welcome');
   if(result&&result.success){
-    toast('Email resent to '+esc(st.email)+(result.didReset?' - password has been reset.':'.')); 
+    toast('Email resent to '+esc(st.email)+(result.didReset?' - password has been reset.':'.'));
     if(result.didReset) await loadStudents();
   }
+}
+async function bulkResendWelcome(){
+  var filterClassId=document.getElementById('studentClassFilter').value;
+  filterClassId=filterClassId?parseInt(filterClassId):null;
+  if(!filterClassId){toast('Please select a class first.');return;}
+  var cls=CLASSES.find(function(c){return c.id===filterClassId;});
+  var list=STUDENTS.filter(function(s){return s.class_id===filterClassId;});
+  if(!list.length){toast('No students in this class.');return;}
+  var clsName=cls?cls.name:'this class';
+  if(!confirm('Resend invitation emails to all '+list.length+' students in "'+clsName+'"?\n\nStudents who already set their own password will receive a NEW temporary password.\n\nContinue?')) return;
+  var progressEl=document.getElementById('bulkResendProgress');
+  var bulkBtn=document.getElementById('bulkResendBtn');
+  progressEl.style.display='block';
+  if(bulkBtn) bulkBtn.disabled=true;
+  var sent=0,failed=0,reset=0;
+  for(var i=0;i<list.length;i++){
+    var st=list[i];
+    progressEl.textContent='Sending '+(i+1)+' of '+list.length+': '+esc(st.email)+'…';
+    try{
+      var result=await apiCall('POST','/students/'+st.id+'/resend-welcome');
+      if(result&&result.success){sent++;if(result.didReset)reset++;}
+      else failed++;
+    }catch(e){failed++;}
+  }
+  progressEl.style.display='none';
+  if(bulkBtn) bulkBtn.disabled=false;
+  var summary='📨 Bulk send complete: '+sent+' sent';
+  if(reset>0) summary+=' ('+reset+' passwords reset)';
+  if(failed>0) summary+=', '+failed+' failed';
+  toast(summary);
+  if(reset>0) await loadStudents();
 }
 async function submitInvite(){
   hideInviteError();
