@@ -1544,6 +1544,7 @@ function renderStudents(){
       +'</div></div><div class="class-actions" style="display:flex;gap:6px">'
       +'<button class="btn-sm btn-edit" onclick="openEditStudent('+s.id+')" style="background:#1a3a5f;color:#7ab3f5;border:1px solid #2a5a8f;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">✏️ Edit</button>'
       +'<button class="btn-sm" style="background:#2a5298;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resendWelcome('+s.id+')">📧 Resend Email</button>'
+      +'<button class="btn-sm" style="background:#5c3200;color:#ffd080;border:1px solid #c97000;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resetStudentDemo(\''+esc(s.email)+'\')">🔄 Reset</button>'
       +'<button class="btn-sm btn-del" onclick="removeStudent('+s.id+')">🗑 Remove</button></div></div></div>';
   }).join("");
 }
@@ -1692,6 +1693,21 @@ async function bulkResendWelcome(){
   if(failed>0) summary+=', '+failed+' failed';
   toast(summary);
   if(reset>0) await loadStudents();
+}
+async function resetStudentDemo(email){
+  var enrollments=STUDENTS.filter(function(s){return s.email===email;});
+  var classNames=enrollments.map(function(s){
+    var c=CLASSES.find(function(cl){return cl.id===s.class_id;});
+    return c?c.name:'Unknown';
+  }).join(', ');
+  var msg='⚠️ Reset all goals and credentials for:\n\n'+email+'\n\nEnrollments: '+classNames
+    +'\n\nThis will:\n• Clear all selected goals and activity progress\n• Generate a new temporary password\n• Require them to change password on next login\n\nThis cannot be undone. Continue?';
+  if(!confirm(msg)) return;
+  var result=await apiCall('POST','/students/reset-by-email',{email:email});
+  if(result&&result.success){
+    toast('🔄 Reset complete: '+result.reset+' enrollment(s) cleared. New temp password: '+result.tempPassword);
+    await loadStudents();
+  }
 }
 async function submitInvite(){
   hideInviteError();
