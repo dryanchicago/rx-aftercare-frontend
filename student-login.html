@@ -403,6 +403,15 @@
     try {
       const p = JSON.parse(atob(tok.split('.')[1]));
       if (p.exp * 1000 > Date.now()) {
+        // If the URL specifies a classId and it doesn't match the cached token,
+        // the user clicked a link for a different class — clear the session so
+        // they log in fresh and land on the correct enrollment.
+        const urlClassId = params.get('classId');
+        if (urlClassId && parseInt(urlClassId) !== p.classId) {
+          localStorage.removeItem('student_token');
+          localStorage.removeItem('student_data');
+          return;
+        }
         window.location.href = 'student.html?classId=' + p.classId;
       } else {
         localStorage.removeItem('student_token');
