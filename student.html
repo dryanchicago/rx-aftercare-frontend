@@ -354,17 +354,23 @@ window.onload=async function(){
   }
 
   // ── Auth check ────────────────────────────────────────────────────────
+  // Helper: redirect to login, preserving classId so multi-class students
+  // always land on the intended enrollment after clicking a welcome email link.
+  function redirectToLogin(){
+    var cid=getClassId();
+    window.location.href='student-login.html'+(cid?'?classId='+cid:'');
+  }
   studentToken=localStorage.getItem('student_token');
-  if(!studentToken){window.location.href='student-login.html';return;}
+  if(!studentToken){redirectToLogin();return;}
   var payload;
   try{
     payload=JSON.parse(atob(studentToken.split('.')[1]));
     if(payload.exp*1000<Date.now()){
       localStorage.removeItem('student_token');localStorage.removeItem('student_data');
-      window.location.href='student-login.html';return;
+      redirectToLogin();return;
     }
     studentData=JSON.parse(localStorage.getItem('student_data')||'{}');
-  }catch(e){localStorage.removeItem('student_token');window.location.href='student-login.html';return;}
+  }catch(e){localStorage.removeItem('student_token');redirectToLogin();return;}
 
   var classId=payload.classId||getClassId();
   if(!classId){
