@@ -457,12 +457,15 @@
       return;
     }
 
+    // Pass classId hint from URL so multi-class students land on the right enrollment
+    const classIdHint = new URLSearchParams(window.location.search).get('classId');
+
     setLoading(btn, true);
     try {
       const res  = await fetch(`${API}/api/auth/student/login`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, password })
+        body:    JSON.stringify({ email, password, ...(classIdHint ? { classId: classIdHint } : {}) })
       });
       const data = await res.json();
 
