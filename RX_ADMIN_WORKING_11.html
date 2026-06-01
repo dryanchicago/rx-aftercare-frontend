@@ -3374,7 +3374,7 @@ async function sendHonoraryCert() {
   try {
     const r = await fetch(API_BASE + '/certifications/send-honorary', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') },
       body: JSON.stringify({ name, email })
     });
     const data = await r.json();
