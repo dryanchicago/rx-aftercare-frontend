@@ -623,6 +623,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
       <button class="btn-outline" id="certBulkRegradeBtn" onclick="certBulkRegrade()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">♻ Re-grade Selected (<span id="certRegradeCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
+      <button class="btn-outline" onclick="openHonoraryModal()" style="background:#3a1a5c;color:#c9a0f5;border-color:#6a3a9c;">🎖 Send Honorary Cert</button>
       <span class="cert-last-updated" id="certLastUpdated"></span>
     </div>
     <div id="certTableWrap">
@@ -699,6 +700,29 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <span id="certUploadSummary" style="font-size:0.82rem;color:#8a9bb8"></span>
       <button onclick="closeUploadPdfModal()" style="background:none;border:1px solid #2a4a7f;color:#8a9bb8;padding:9px 16px;border-radius:6px;font-size:0.88rem;cursor:pointer;margin-left:auto">Close</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     HONORARY CERT MODAL
+═══════════════════════════════════════════════ -->
+<div id="honoraryModal" class="modal-overlay" onclick="if(event.target===this)closeHonoraryModal()">
+  <div class="modal-box" style="max-width:440px">
+    <h3 style="margin:0 0 18px;color:#c9a227">🎖 Send Honorary Certification</h3>
+    <p style="margin:0 0 16px;color:#8a9bb8;font-size:0.88rem">Generates a personalized RxCP™ certificate and sends the full certification email — cert PDF, badge logo, and LinkedIn instructions — to any recipient outside the system.</p>
+    <div style="margin-bottom:14px">
+      <label style="display:block;color:#8a9bb8;font-size:0.82rem;margin-bottom:4px">Full Name</label>
+      <input id="honoraryName" type="text" placeholder="e.g. David Hanley" style="width:100%;box-sizing:border-box;background:#0d1f3c;border:1px solid #2a4a7f;color:#e8e8e8;padding:8px 10px;border-radius:5px;font-size:0.92rem">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="display:block;color:#8a9bb8;font-size:0.82rem;margin-bottom:4px">Email Address</label>
+      <input id="honoraryEmail" type="email" placeholder="e.g. david.hanley@firm.com" style="width:100%;box-sizing:border-box;background:#0d1f3c;border:1px solid #2a4a7f;color:#e8e8e8;padding:8px 10px;border-radius:5px;font-size:0.92rem">
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-outline" onclick="closeHonoraryModal()">Cancel</button>
+      <button id="honorarySendBtn" class="btn-outline" onclick="sendHonoraryCert()" style="background:#3a1a5c;color:#c9a0f5;border-color:#6a3a9c;">Send Certification Email</button>
+    </div>
+    <div id="honoraryStatus" style="margin-top:12px;font-size:0.85rem;display:none"></div>
   </div>
 </div>
 
@@ -3321,6 +3345,50 @@ function loadCertTab() {
     loadCertifications(sel.value);
   } else {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No classes found.</div>';
+  }
+}
+
+function openHonoraryModal() {
+  document.getElementById('honoraryName').value = '';
+  document.getElementById('honoraryEmail').value = '';
+  document.getElementById('honoraryStatus').style.display = 'none';
+  document.getElementById('honorarySendBtn').disabled = false;
+  document.getElementById('honorarySendBtn').textContent = 'Send Certification Email';
+  document.getElementById('honoraryModal').classList.add('open');
+}
+function closeHonoraryModal() {
+  document.getElementById('honoraryModal').classList.remove('open');
+}
+async function sendHonoraryCert() {
+  const name  = document.getElementById('honoraryName').value.trim();
+  const email = document.getElementById('honoraryEmail').value.trim();
+  const status = document.getElementById('honoraryStatus');
+  if (!name)  { status.style.display='block'; status.style.color='#f5a623'; status.textContent='Please enter a name.'; return; }
+  if (!email) { status.style.display='block'; status.style.color='#f5a623'; status.textContent='Please enter an email address.'; return; }
+
+  const btn = document.getElementById('honorarySendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  status.style.display = 'none';
+
+  try {
+    const r = await fetch(API_BASE + '/api/certifications/send-honorary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
+      body: JSON.stringify({ name, email })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Send failed');
+    status.style.display = 'block';
+    status.style.color = '#7fd67f';
+    status.textContent = '✓ Certification email sent to ' + data.sent_to;
+    btn.textContent = 'Sent!';
+  } catch (err) {
+    status.style.display = 'block';
+    status.style.color = '#f5a623';
+    status.textContent = 'Error: ' + err.message;
+    btn.disabled = false;
+    btn.textContent = 'Send Certification Email';
   }
 }
 
