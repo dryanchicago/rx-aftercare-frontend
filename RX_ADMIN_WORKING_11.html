@@ -3372,7 +3372,7 @@ async function sendHonoraryCert() {
   status.style.display = 'none';
 
   try {
-    const r = await fetch(API_BASE + '/api/certifications/send-honorary', {
+    const r = await fetch(API_BASE + '/certifications/send-honorary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('admin_token') },
       body: JSON.stringify({ name, email })
