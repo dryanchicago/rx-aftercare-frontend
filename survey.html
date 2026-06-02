@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rx Skills Assessment</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #0F1E3C;
+    --gold:   #C9A227;
+    --gold-lt:#E8C84A;
+    --blue:   #2A5298;
+    --white:  #FFFFFF;
+    --off:    #F4F6FA;
+    --muted:  #8A9BB8;
+    --error:  #C0392B;
+    --green:  #27AE60;
+  }
+
+  html, body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    min-height: 100%;
+  }
+
+  .bg {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%,  rgba(42,82,152,0.45) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 90%,  rgba(201,162,39,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, #0F1E3C 0%, #070E1E 100%);
+  }
+
+  .page {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px 80px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 680px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 20px;
+    padding: 48px 48px 44px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,162,39,0.08);
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Branding ── */
+  .brand { text-align: center; margin-bottom: 32px; }
+  .brand-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(201,162,39,0.12);
+    border: 1px solid rgba(201,162,39,0.30);
+    border-radius: 100px; padding: 6px 16px 6px 8px; margin-bottom: 20px;
+  }
+  .brand-dot {
+    width: 28px; height: 28px; background: var(--gold);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--navy);
+  }
+  .brand-badge span {
+    font-size: 12px; font-weight: 600; color: var(--gold);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .brand h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px; font-weight: 400; color: var(--white);
+    line-height: 1.2; margin-bottom: 6px;
+  }
+  .brand h1 em { font-style: italic; color: var(--gold); }
+  .brand p { font-size: 13px; color: var(--muted); font-weight: 300; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { margin-bottom: 32px; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--muted); margin-bottom: 8px;
+  }
+  .progress-bar {
+    height: 4px; background: rgba(255,255,255,0.08);
+    border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--gold);
+    border-radius: 2px; transition: width 0.4s ease;
+  }
+
+  /* ── Section heading ── */
+  .section-heading {
+    font-size: 13px; font-weight: 600; color: var(--gold);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .section-desc {
+    font-size: 14px; color: var(--muted); margin-bottom: 24px; line-height: 1.6;
+  }
+
+  /* ── Form fields ── */
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: block; font-size: 12px; font-weight: 500;
+    color: var(--muted); text-transform: uppercase;
+    letter-spacing: 0.06em; margin-bottom: 6px;
+  }
+  .form-group input, .form-group textarea {
+    width: 100%; padding: 12px 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; color: var(--white);
+    font-family: 'DM Sans', sans-serif; font-size: 15px;
+    outline: none; transition: border-color 0.2s;
+    resize: vertical;
+  }
+  .form-group input:focus, .form-group textarea:focus {
+    border-color: rgba(201,162,39,0.5);
+  }
+  .form-group textarea { min-height: 90px; }
+
+  /* ── Likert matrix ── */
+  .likert-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  .likert-table thead th {
+    font-size: 11px; font-weight: 600; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    padding: 6px 8px; text-align: center;
+  }
+  .likert-table thead th.q-col { text-align: left; width: 46%; }
+  .likert-table tbody tr { border-top: 1px solid rgba(255,255,255,0.06); }
+  .likert-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .likert-table td { padding: 10px 8px; vertical-align: middle; }
+  .likert-table td.q-text {
+    font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.45;
+  }
+  .likert-table td.q-radio { text-align: center; }
+  .likert-table input[type=radio] { accent-color: var(--gold); width: 16px; height: 16px; cursor: pointer; }
+
+  /* ── Numeric scale (activity questions) ── */
+  .scale-group { margin-bottom: 22px; }
+  .scale-group .q-label {
+    font-size: 13px; color: rgba(255,255,255,0.9);
+    line-height: 1.5; margin-bottom: 10px;
+  }
+  .scale-options {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .scale-options label {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 4px; cursor: pointer;
+  }
+  .scale-options input[type=radio] { display: none; }
+  .scale-btn {
+    min-width: 40px; padding: 7px 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; font-size: 13px; font-weight: 500;
+    color: rgba(255,255,255,0.7); text-align: center;
+    transition: all 0.15s;
+  }
+  .scale-options input[type=radio]:checked + .scale-btn {
+    background: rgba(201,162,39,0.2);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* ── Note box ── */
+  .note-box {
+    background: rgba(201,162,39,0.08);
+    border: 1px solid rgba(201,162,39,0.2);
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 13px; color: rgba(255,255,255,0.75);
+    line-height: 1.6; margin-bottom: 28px;
+  }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 28px 0; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; justify-content: space-between; align-items: center; margin-top: 32px; gap: 12px; }
+  .btn {
+    padding: 13px 28px; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--gold); color: var(--navy); flex: 1;
+  }
+  .btn-primary:hover { background: var(--gold-lt); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-back {
+    background: transparent; color: var(--muted);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .btn-back:hover { border-color: rgba(255,255,255,0.25); color: var(--white); }
+
+  /* ── Error / status ── */
+  .error-msg { color: #f5a623; font-size: 13px; margin-top: 12px; }
+  .success-card { text-align: center; padding: 20px 0; }
+  .success-icon { font-size: 52px; margin-bottom: 16px; }
+  .success-card h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px; margin-bottom: 10px; color: var(--white);
+  }
+  .success-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  /* ── Loading ── */
+  #loadingState { text-align: center; padding: 60px 0; color: var(--muted); }
+
+  /* ── Step panels ── */
+  .step { display: none; }
+  .step.active { display: block; }
+
+  @media (max-width: 540px) {
+    .card { padding: 32px 24px 28px; }
+    .likert-table thead th { font-size: 10px; padding: 4px 4px; }
+    .likert-table td.q-text { font-size: 12px; }
+    .scale-btn { min-width: 34px; font-size: 12px; padding: 6px 6px; }
+  }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="page">
+  <div class="card">
+
+    <!-- Loading -->
+    <div id="loadingState">Loading survey…</div>
+
+    <!-- Already completed -->
+    <div id="alreadyDone" class="step">
+      <div class="success-card">
+        <div class="success-icon">✅</div>
+        <h2>Survey Complete</h2>
+        <p id="alreadyDoneMsg">You've already submitted this survey. Thank you!</p>
+      </div>
+    </div>
+
+    <!-- Survey form -->
+    <div id="surveyForm" class="step">
+
+      <!-- Branding -->
+      <div class="brand">
+        <div class="brand-badge">
+          <div class="brand-dot">Rx</div>
+          <span id="surveyTypeLabel">Pre-Program Assessment</span>
+        </div>
+        <h1>Rx Skills <em>Assessment</em></h1>
+        <p>Your open and honest input is greatly appreciated.</p>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span id="stepLabel">Step 1 of 3</span>
+          <span id="stepPct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+
+      <!-- ── STEP 1: Profile + Skill Sets A/B/C ── -->
+      <div class="step active" id="step1">
+
+        <!-- Profile fields (pre only) -->
+        <div id="profileFields">
+          <div class="section-heading">Your Information</div>
+          <p class="section-desc">Please confirm or complete your profile details.</p>
+          <div class="form-group">
+            <label>Practice Area</label>
+            <input type="text" id="practiceArea" placeholder="e.g. Advisory, Tax, Consulting">
+          </div>
+          <div class="form-group">
+            <label>Manager's Name</label>
+            <input type="text" id="managerName" placeholder="Your direct manager">
+          </div>
+          <hr class="divider">
+        </div>
+
+        <!-- Skill Set A -->
+        <div class="section-heading">Skill Set A — Building &amp; Maintaining Relationships</div>
+        <p class="section-desc">Rate your <strong>current level</strong> of performance in the following skills.</p>
+        <table class="likert-table">
+          <thead>
+            <tr>
+              <th class="q-col"></th>
+              <th>Excellent</th><th>Very Good</th><th>Average</th><th>Below Avg</th><th>Poor</th>
+            </tr>
+          </thead>
+          <tbody id="skillA"></tbody>
+        </table>
+
+        <!-- Skill Set B -->
+        <div class="section-heading">Skill Set B — Preparing &amp; Managing Interactions</div>
+        <p class="section-desc">Rate your <strong>current level</strong> of performance in the following skills.</p>
+        <table class="likert-table">
+          <thead>
+            <tr>
+              <th class="q-col"></th>
+              <th>Excellent</th><th>Very Good</th><th>Average</th><th>Below Avg</th><th>Poor</th>
+            </tr>
+          </thead>
+          <tbody id="skillB"></tbody>
+        </table>
+
+        <!-- Skill Set C -->
+        <div class="section-heading">Skill Set C — Uncovering Opportunities &amp; Navigating Decisions</div>
+        <p class="section-desc">Rate your <strong>current level</strong> of performance in the following skills.</p>
+        <table class="likert-table">
+          <thead>
+            <tr>
+              <th class="q-col"></th>
+              <th>Excellent</th><th>Very Good</th><th>Average</th><th>Below Avg</th><th>Poor</th>
+            </tr>
+          </thead>
+          <tbody id="skillC"></tbody>
+        </table>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goStep(2)">Next →</button>
+        </div>
+        <div class="error-msg" id="err1"></div>
+      </div>
+
+      <!-- ── STEP 2: Activity Benchmark ── -->
+      <div class="step" id="step2">
+        <div class="section-heading">Relationship Activity Benchmark</div>
+        <div class="note-box">
+          When answering these questions, <strong>"proactively engaged and contacted in a significant way"</strong> means proactive efforts to connect — NOT passive (an email here and there) or random/happenstance efforts.
+        </div>
+
+        <div id="activityQuestions"></div>
+
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="goStep(1)">← Back</button>
+          <button class="btn btn-primary" onclick="goStep(3)">Next →</button>
+        </div>
+        <div class="error-msg" id="err2"></div>
+      </div>
+
+      <!-- ── STEP 3: POST-only questions (course eval + impact) ── -->
+      <!-- For PRE survey this step goes straight to submit -->
+      <div class="step" id="step3">
+
+        <!-- Course eval (post only) -->
+        <div id="courseEvalSection">
+          <div class="section-heading">Course Evaluation</div>
+          <p class="section-desc">Please rate the following aspects of the Rx program.</p>
+
+          <div id="courseEvalQuestions"></div>
+
+          <hr class="divider">
+
+          <div class="form-group">
+            <label>What did you find most beneficial about this program?</label>
+            <textarea id="q_most_beneficial" placeholder="Your thoughts…"></textarea>
+          </div>
+          <div class="form-group">
+            <label>What can you implement immediately?</label>
+            <textarea id="q_implement_immediately" placeholder="Your thoughts…"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Recommendations for improvement?</label>
+            <textarea id="q_improvements" placeholder="Your thoughts…"></textarea>
+          </div>
+
+          <hr class="divider">
+
+          <div class="section-heading">Impact Measurements</div>
+          <div class="form-group">
+            <label>Most important QUALITATIVE achievements from applying Rx learnings (new relationships, behaviors, breakthroughs, etc.)</label>
+            <textarea id="q_qualitative" placeholder="Your story…"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Most important QUANTITATIVE achievements (opportunities identified, business won, revenue impact, etc.)</label>
+            <textarea id="q_quantitative" placeholder="Your story…"></textarea>
+          </div>
+
+          <div class="section-heading" style="margin-top:24px">Overall Performance Impact</div>
+          <p class="section-desc">Comparing before vs. after Rx, rate the performance impact on your skills, comfort level, discipline and execution.</p>
+          <div class="scale-group">
+            <div class="scale-options" id="impactRating"></div>
+          </div>
+
+          <hr class="divider">
+
+          <div class="section-heading">Final Feedback</div>
+          <p class="section-desc">Rate the overall effectiveness of each component.</p>
+          <table class="likert-table">
+            <thead>
+              <tr>
+                <th class="q-col"></th>
+                <th>Excellent</th><th>Very Good</th><th>Average</th><th>Below Avg</th><th>Poor</th>
+              </tr>
+            </thead>
+            <tbody id="finalRatings"></tbody>
+          </table>
+
+          <div class="scale-group">
+            <div class="q-label">How would you rate Rx relative to other training programs you've participated in?</div>
+            <div class="scale-options" id="rxVsOthers"></div>
+          </div>
+
+          <div class="scale-group" style="margin-top:20px">
+            <div class="q-label">Overall, do you believe Rx has value and would you recommend it to colleagues?</div>
+            <div class="scale-options" id="recommend"></div>
+          </div>
+
+          <div class="form-group" style="margin-top:20px">
+            <label>Suggestions to enhance the Rx Workshop and overall experience?</label>
+            <textarea id="q_suggestions" placeholder="Your thoughts…"></textarea>
+          </div>
+          <div class="form-group">
+            <label>What additional support or skill development do you need?</label>
+            <textarea id="q_support_needed" placeholder="Your thoughts…"></textarea>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="goStep(2)">← Back</button>
+          <button class="btn btn-primary" id="submitBtn" onclick="submitSurvey()">Submit Survey</button>
+        </div>
+        <div class="error-msg" id="err3"></div>
+      </div>
+
+    </div><!-- /surveyForm -->
+
+    <!-- Success -->
+    <div id="successState" class="step">
+      <div class="success-card">
+        <div class="success-icon">🎉</div>
+        <h2>Thank You!</h2>
+        <p id="successMsg">Your survey has been submitted. We appreciate your honest feedback — it helps us continue improving the Rx program.</p>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /page -->
+
+<script>
+// ── Config ────────────────────────────────────────────────────────────────────
+var API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : 'https://rx-aftercare-backend-production.up.railway.app';
+
+// ── Question definitions ──────────────────────────────────────────────────────
+var SKILL_A = [
+  { key: 'skill_a_elevator_speech',    text: 'Confidently/succinctly deliver variations of your "elevator speech"' },
+  { key: 'skill_a_personal_awareness', text: 'Personal awareness — tuned into own "style" and those of others' },
+  { key: 'skill_a_adapt_style',        text: 'Regularly adapt my own "style" to match those of others' },
+  { key: 'skill_a_documented_plan',    text: 'Have a documented plan for personal networking/relationship development' },
+  { key: 'skill_a_execute_plan',       text: 'Consistently execute on your personal networking/relationship development plan' },
+  { key: 'skill_a_system',            text: 'Consistently use a "system" to manage contacts, interactions, info, follow up (Outlook, Salesforce, Excel, etc.)' },
+  { key: 'skill_a_earmark_time',       text: 'Earmark time to execute on networking/relationship advancement activities' },
+];
+
+var SKILL_B = [
+  { key: 'skill_b_client_knowledge',   text: 'Thoroughly researched and knowledgeable about clients you serve (financials, org chart, trends, issues, goals, etc.)' },
+  { key: 'skill_b_key_contacts',       text: 'Identify key contacts at current clients for relationship development' },
+  { key: 'skill_b_firm_capabilities',  text: 'Knowledgeable about your own firm\'s capabilities and services' },
+  { key: 'skill_b_prepare_meetings',   text: 'Regularly prepare in advance for meetings/interactions' },
+  { key: 'skill_b_manage_meetings',    text: 'Effectively manage time, flow, and expectations of meetings & interactions' },
+  { key: 'skill_b_followup',          text: 'Execute timely follow up on all internal/external interactions' },
+];
+
+var SKILL_C = [
+  { key: 'skill_c_gain_access',        text: 'Able to gain access to key client contacts, decision makers and influencers at clients I serve' },
+  { key: 'skill_c_qualify_opps',       text: 'Have a handle on how to "qualify" an opportunity to determine if it is real or not' },
+  { key: 'skill_c_decision_process',   text: 'Understand the subtleties of the Decision Making Process and can discern the difference between "Influence" and "Authority"' },
+  { key: 'skill_c_questioning',        text: 'Comfortable questioning clients about their needs and know when/how to use different questioning techniques' },
+  { key: 'skill_c_objections',         text: 'Comfortable handling objections from clients without getting defensive, emotional or anxious' },
+];
+
+var ACTIVITY_QS = [
+  { key: 'act_current_clients',   text: 'ADVANCING NEW RELATIONSHIPS AT CURRENT CLIENTS: Over the last 90 days at clients you are currently servicing, approximately how many net new contacts/relationships have you proactively engaged and contacted in a significant way? (beyond contacts you already work with)', scale: 11 },
+  { key: 'act_referral_sources',  text: 'ADVANCING RELATIONSHIPS WITH REFERRAL SOURCES / POTENTIAL NEW CLIENTS: Over the last 90 days, approximately how many net new contacts have you proactively engaged in a significant way?', scale: 11 },
+  { key: 'act_internal',         text: 'ADVANCING NEW RELATIONSHIPS WITH INTERNAL COLLEAGUES: Over the last 90 days, approximately how many net new internal contacts/relationships have you proactively engaged in a significant way?', scale: 11 },
+  { key: 'act_past_contacts',     text: 'RECONNECTING WITH PAST CONTACTS (classmates, former colleagues, other business acquaintances): Over the last 90 days, approximately how many have you proactively reengaged in a significant way?', scale: 11 },
+  { key: 'act_new_opps',          text: 'IDENTIFYING NEW OPPORTUNITIES/CLIENT NEEDS: Over the last 90 days, approximately how many new service delivery opportunities/client needs have you personally surfaced and communicated to appropriate internal colleagues?', scale: 7 },
+];
+
+var COURSE_EVAL_QS = [
+  { key: 'eval_objectives_met',    text: 'Were the stated objectives of the session met?' },
+  { key: 'eval_understood_before', text: 'To what extent did you understand the information/concepts presented PRIOR to this training?' },
+  { key: 'eval_understood_after',  text: 'To what extent do you understand the information/concepts presented AFTER completing this training?' },
+  { key: 'eval_will_apply',        text: 'Will you apply the information presented in this training to your current and/or anticipated job responsibilities?' },
+  { key: 'eval_facilitator',       text: 'How would you rate the overall effectiveness of the facilitator(s)?' },
+  { key: 'eval_handouts',          text: 'How would you rate the overall effectiveness of the handouts, tools and templates?' },
+  { key: 'eval_overall_satisfied', text: 'Overall, were you satisfied with the quality of this program and would you recommend it to a colleague?' },
+];
+
+var FINAL_RATINGS = [
+  { key: 'final_workshop_content',  text: 'Rx Workshop Content' },
+  { key: 'final_workshop_delivery', text: 'Rx Workshop Delivery Approach (Simple, Process Oriented, Scenario-based, Socratic)' },
+  { key: 'final_templates',         text: 'Rx Templates' },
+  { key: 'final_aftercare',         text: 'Rx Aftercare Experience (Audio Booster Shots, Activity Updates, Online Coaching, etc.)' },
+];
+
+var LIKERT_LABELS_5 = ['Excellent','Very Good','Average','Below Avg','Poor'];
+var LIKERT_LABELS_AGREE = ['Very Much So','For the Most Part','Somewhat','Only Slightly','Not at All'];
+var IMPACT_OPTIONS = ['Over 10%','+6–10%','+3–5%','+1–2%','0%'];
+var RX_VS_OTHERS   = ['Significantly Better','Better','Similar','Not on Par','Far Worse'];
+var RECOMMEND_OPTS = ['Yes, absolutely','Perhaps','Neutral','No'];
+
+// ── State ─────────────────────────────────────────────────────────────────────
+var surveyType = 'pre'; // 'pre' or 'post'
+var currentStep = 1;
+var totalSteps = 2; // pre=2, post=3
+var token = null;
+var classId = null;
+var answers = {};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  var params = new URLSearchParams(window.location.search);
+  surveyType = params.get('type') || null;
+  classId    = params.get('classId') || null;
+  token      = localStorage.getItem('student_token');
+
+  if (!token) {
+    // Redirect to login, preserving the survey URL for return
+    var returnUrl = encodeURIComponent(window.location.href);
+    window.location.href = 'student-login.html?redirect=' + returnUrl;
+    return;
+  }
+
+  // Check status from server — also auto-detect survey type if not in URL
+  try {
+    var r = await fetch(API_BASE + '/api/surveys/status', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (r.status === 401) {
+      window.location.href = 'student-login.html';
+      return;
+    }
+    var status = await r.json();
+
+    // Auto-detect survey type if not provided in URL
+    if (!surveyType) {
+      if (!status.pre)  surveyType = 'pre';
+      else if (!status.post) surveyType = 'post';
+      else {
+        showAlreadyDone('You\'ve completed both the pre and post surveys. Thank you!');
+        return;
+      }
+    }
+
+    // Block re-submission
+    if (surveyType === 'pre' && status.pre) {
+      showAlreadyDone('You\'ve already submitted your pre-program survey. Look for the post-program survey at the end of the aftercare program.');
+      return;
+    }
+    if (surveyType === 'post' && status.post) {
+      showAlreadyDone('You\'ve already submitted your post-program survey. Thank you for your participation!');
+      return;
+    }
+
+    // Pre-fill profile fields if available
+    if (status.student.practice_area) document.getElementById('practiceArea').value = status.student.practice_area;
+    if (status.student.manager_name)  document.getElementById('managerName').value  = status.student.manager_name;
+
+  } catch(e) {
+    // If status check fails, continue anyway — submit will catch auth issues
+  }
+
+  // Configure for survey type
+  totalSteps = (surveyType === 'post') ? 3 : 2;
+  document.getElementById('surveyTypeLabel').textContent =
+    surveyType === 'pre' ? 'Pre-Program Assessment' : 'Post-Program Assessment';
+
+  // Hide profile fields on post (already collected at pre)
+  if (surveyType === 'post') {
+    document.getElementById('profileFields').style.display = 'none';
+  }
+
+  // Hide course eval section on pre
+  if (surveyType === 'pre') {
+    document.getElementById('courseEvalSection').style.display = 'none';
+  }
+
+  // Render question tables
+  renderLikert('skillA', SKILL_A, LIKERT_LABELS_5);
+  renderLikert('skillB', SKILL_B, LIKERT_LABELS_5);
+  renderLikert('skillC', SKILL_C, LIKERT_LABELS_5);
+  renderActivityQuestions();
+  if (surveyType === 'post') {
+    renderLikert('courseEvalQuestions', COURSE_EVAL_QS, LIKERT_LABELS_AGREE, true);
+    renderLikert('finalRatings', FINAL_RATINGS, LIKERT_LABELS_5);
+    renderScaleGroup('impactRating', 'q_impact_pct', IMPACT_OPTIONS);
+    renderScaleGroup('rxVsOthers',   'q_rx_vs_others', RX_VS_OTHERS);
+    renderScaleGroup('recommend',    'q_recommend', RECOMMEND_OPTS);
+  }
+
+  updateProgress();
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('surveyForm').classList.add('active');
+})();
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function renderLikert(containerId, questions, labels, useDiv) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var html = '';
+  questions.forEach(function(q) {
+    html += '<tr><td class="q-text">' + escHtml(q.text) + '</td>';
+    labels.forEach(function(_, i) {
+      var val = labels.length - i; // Excellent=5 … Poor=1 (or last=1)
+      html += '<td class="q-radio"><input type="radio" name="' + q.key + '" value="' + val + '" onchange="setAnswer(\'' + q.key + '\',' + val + ')"></td>';
+    });
+    html += '</tr>';
+  });
+  container.innerHTML = html;
+}
+
+function renderActivityQuestions() {
+  var container = document.getElementById('activityQuestions');
+  var html = '';
+  ACTIVITY_QS.forEach(function(q) {
+    html += '<div class="scale-group">';
+    html += '<div class="q-label">' + escHtml(q.text) + '</div>';
+    html += '<div class="scale-options">';
+    var max = q.scale; // 11 = None+1-10, 7 = None+1-6+
+    for (var i = 0; i < max; i++) {
+      var label = i === 0 ? 'None' : (i === max - 1 ? (max === 7 ? '6+' : '10+') : String(i));
+      var val = i;
+      html += '<label><input type="radio" name="' + q.key + '" value="' + val + '" onchange="setAnswer(\'' + q.key + '\',' + val + ')"><span class="scale-btn">' + label + '</span></label>';
+    }
+    html += '</div></div>';
+  });
+  container.innerHTML = html;
+}
+
+function renderScaleGroup(containerId, key, options) {
+  var container = document.getElementById(containerId);
+  if (!container) return;
+  var html = '';
+  options.forEach(function(opt, i) {
+    html += '<label><input type="radio" name="' + key + '" value="' + (i+1) + '" onchange="setAnswer(\'' + key + '\',' + (i+1) + ')"><span class="scale-btn">' + escHtml(opt) + '</span></label>';
+  });
+  container.innerHTML = html;
+}
+
+function setAnswer(key, val) { answers[key] = val; }
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goStep(n) {
+  // Validate current step before advancing
+  if (n > currentStep) {
+    var err = validateStep(currentStep);
+    if (err) {
+      document.getElementById('err' + currentStep).textContent = err;
+      return;
+    }
+    document.getElementById('err' + currentStep).textContent = '';
+  }
+
+  // Collect text area values before leaving step 3
+  collectTextAnswers();
+
+  document.getElementById('step' + currentStep).classList.remove('active');
+  currentStep = n;
+  document.getElementById('step' + currentStep).classList.add('active');
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function updateProgress() {
+  var pct = Math.round(((currentStep - 1) / totalSteps) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('stepLabel').textContent = 'Step ' + currentStep + ' of ' + totalSteps;
+  document.getElementById('stepPct').textContent = pct + '%';
+}
+
+// ── Validation ────────────────────────────────────────────────────────────────
+function validateStep(step) {
+  if (step === 1) {
+    var allQs = SKILL_A.concat(SKILL_B).concat(SKILL_C);
+    for (var i = 0; i < allQs.length; i++) {
+      if (answers[allQs[i].key] === undefined) {
+        return 'Please answer all skill rating questions before continuing.';
+      }
+    }
+  }
+  if (step === 2) {
+    for (var j = 0; j < ACTIVITY_QS.length; j++) {
+      if (answers[ACTIVITY_QS[j].key] === undefined) {
+        return 'Please answer all activity questions before continuing.';
+      }
+    }
+  }
+  return null;
+}
+
+// ── Collect open-text answers ─────────────────────────────────────────────────
+function collectTextAnswers() {
+  var textFields = [
+    'q_most_beneficial','q_implement_immediately','q_improvements',
+    'q_qualitative','q_quantitative','q_suggestions','q_support_needed'
+  ];
+  textFields.forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && el.value.trim()) answers[id] = el.value.trim();
+  });
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+async function submitSurvey() {
+  // Final validation
+  var err = validateStep(currentStep);
+  if (err) { document.getElementById('err3').textContent = err; return; }
+  document.getElementById('err3').textContent = '';
+
+  collectTextAnswers();
+
+  // Build answers array
+  var answersArr = Object.keys(answers).map(function(key) {
+    var val = answers[key];
+    if (typeof val === 'number') return { question_key: key, answer_value: val };
+    return { question_key: key, answer_text: val };
+  });
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  // Collect profile fields (pre only)
+  var practiceArea = null, managerName = null;
+  if (surveyType === 'pre') {
+    practiceArea = document.getElementById('practiceArea').value.trim() || null;
+    managerName  = document.getElementById('managerName').value.trim()  || null;
+  }
+
+  try {
+    var r = await fetch(API_BASE + '/api/surveys/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({
+        survey_type:  surveyType,
+        answers:      answersArr,
+        practice_area: practiceArea,
+        manager_name:  managerName,
+      })
+    });
+    var data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Submission failed');
+
+    // Success
+    document.getElementById('surveyForm').classList.remove('active');
+    document.getElementById('successState').classList.add('active');
+    if (surveyType === 'pre') {
+      document.getElementById('successMsg').textContent =
+        'Your pre-program assessment has been submitted. You\'ll receive another survey at the end of the aftercare program to measure your progress.';
+    } else {
+      document.getElementById('successMsg').textContent =
+        'Your post-program assessment has been submitted. Thank you for your honest feedback — it helps us continue improving the Rx program.';
+    }
+  } catch(e) {
+    document.getElementById('err3').textContent = 'Error: ' + e.message;
+    btn.disabled = false;
+    btn.textContent = 'Submit Survey';
+  }
+}
+
+// ── Already done ──────────────────────────────────────────────────────────────
+function showAlreadyDone(msg) {
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('alreadyDoneMsg').textContent = msg;
+  document.getElementById('alreadyDone').classList.add('active');
+}
+</script>
+</body>
+</html>
