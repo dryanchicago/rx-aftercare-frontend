@@ -274,10 +274,26 @@
       <!-- ── STEP 1: Profile + Skill Sets A/B/C ── -->
       <div class="step active" id="step1">
 
-        <!-- Profile fields (pre only) -->
+        <!-- Identity fields — always shown, required on both pre and post -->
+        <div class="section-heading">Your Information</div>
+        <p class="section-desc">Please enter your name and email so we can match your before and after results.</p>
+        <div style="display:flex;gap:14px">
+          <div class="form-group" style="flex:1">
+            <label>First Name *</label>
+            <input type="text" id="firstName" placeholder="First name">
+          </div>
+          <div class="form-group" style="flex:1">
+            <label>Last Name *</label>
+            <input type="text" id="lastName" placeholder="Last name">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email Address *</label>
+          <input type="email" id="respondentEmail" placeholder="Your work email">
+        </div>
+
+        <!-- Extra profile fields (pre only) -->
         <div id="profileFields">
-          <div class="section-heading">Your Information</div>
-          <p class="section-desc">Please confirm or complete your profile details.</p>
           <div class="form-group">
             <label>Practice Area</label>
             <input type="text" id="practiceArea" placeholder="e.g. Advisory, Tax, Consulting">
@@ -286,8 +302,8 @@
             <label>Manager's Name</label>
             <input type="text" id="managerName" placeholder="Your direct manager">
           </div>
-          <hr class="divider">
         </div>
+        <hr class="divider">
 
         <!-- Skill Set A -->
         <div class="section-heading">Skill Set A — Building &amp; Maintaining Relationships</div>
@@ -518,62 +534,14 @@ var RECOMMEND_OPTS = ['Yes, absolutely','Perhaps','Neutral','No'];
 var surveyType = 'pre'; // 'pre' or 'post'
 var currentStep = 1;
 var totalSteps = 2; // pre=2, post=3
-var token = null;
 var classId = null;
 var answers = {};
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async function init() {
   var params = new URLSearchParams(window.location.search);
-  surveyType = params.get('type') || null;
+  surveyType = params.get('type') || 'pre';
   classId    = params.get('classId') || null;
-  token      = localStorage.getItem('student_token');
-
-  if (!token) {
-    // Redirect to login, preserving the survey URL for return
-    var returnUrl = encodeURIComponent(window.location.href);
-    window.location.href = 'student-login.html?redirect=' + returnUrl;
-    return;
-  }
-
-  // Check status from server — also auto-detect survey type if not in URL
-  try {
-    var r = await fetch(API_BASE + '/api/surveys/status', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
-    if (r.status === 401) {
-      window.location.href = 'student-login.html';
-      return;
-    }
-    var status = await r.json();
-
-    // Auto-detect survey type if not provided in URL
-    if (!surveyType) {
-      if (!status.pre)  surveyType = 'pre';
-      else if (!status.post) surveyType = 'post';
-      else {
-        showAlreadyDone('You\'ve completed both the pre and post surveys. Thank you!');
-        return;
-      }
-    }
-
-    // Block re-submission
-    if (surveyType === 'pre' && status.pre) {
-      showAlreadyDone('You\'ve already submitted your pre-program survey. Look for the post-program survey at the end of the aftercare program.');
-      return;
-    }
-    if (surveyType === 'post' && status.post) {
-      showAlreadyDone('You\'ve already submitted your post-program survey. Thank you for your participation!');
-      return;
-    }
-
-    // Pre-fill profile fields if available
-    if (status.student.practice_area) document.getElementById('practiceArea').value = status.student.practice_area;
-    if (status.student.manager_name)  document.getElementById('managerName').value  = status.student.manager_name;
-
-  } catch(e) {
-    // If status check fails, continue anyway — submit will catch auth issues
-  }
 
   // Configure for survey type
   totalSteps = (surveyType === 'post') ? 3 : 2;
@@ -690,6 +658,9 @@ function updateProgress() {
 // ── Validation ────────────────────────────────────────────────────────────────
 function validateStep(step) {
   if (step === 1) {
+    if (!document.getElementById('firstName').value.trim())       return 'Please enter your first name.';
+    if (!document.getElementById('lastName').value.trim())        return 'Please enter your last name.';
+    if (!document.getElementById('respondentEmail').value.trim()) return 'Please enter your email address.';
     var allQs = SKILL_A.concat(SKILL_B).concat(SKILL_C);
     for (var i = 0; i < allQs.length; i++) {
       if (answers[allQs[i].key] === undefined) {
@@ -739,23 +710,23 @@ async function submitSurvey() {
   btn.disabled = true;
   btn.textContent = 'Submitting…';
 
-  // Collect profile fields (pre only)
-  var practiceArea = null, managerName = null;
-  if (surveyType === 'pre') {
-    practiceArea = document.getElementById('practiceArea').value.trim() || null;
-    managerName  = document.getElementById('managerName').value.trim()  || null;
-  }
+  var firstName     = document.getElementById('firstName').value.trim();
+  var lastName      = document.getElementById('lastName').value.trim();
+  var email         = document.getElementById('respondentEmail').value.trim();
+  var practiceArea  = surveyType === 'pre' ? (document.getElementById('practiceArea').value.trim() || null) : null;
+  var managerName   = surveyType === 'pre' ? (document.getElementById('managerName').value.trim()  || null) : null;
 
   try {
     var r = await fetch(API_BASE + '/api/surveys/submit', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        survey_type:  surveyType,
-        answers:      answersArr,
+        first_name:    firstName,
+        last_name:     lastName,
+        email:         email,
+        class_id:      classId,
+        survey_type:   surveyType,
+        answers:       answersArr,
         practice_area: practiceArea,
         manager_name:  managerName,
       })
