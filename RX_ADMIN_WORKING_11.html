@@ -572,6 +572,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <option value="">All Classes</option>
       </select>
       <button id="bulkResendBtn" class="btn-outline" onclick="bulkResendWelcome()" style="display:none;margin-left:12px">📨 Resend Invitations to All</button>
+      <button id="goalReminderBtn" class="btn-outline" onclick="sendGoalReminder()" style="display:none;margin-left:8px;background:#1a3a1a;color:#7fd67f;border-color:#2a6a2a;">📣 Send Goal Reminder</button>
     </div>
     <div id="bulkResendProgress" style="display:none;margin:8px 0;padding:10px 14px;background:#0d2040;border:1px solid #1e4080;border-radius:8px;color:#7ab3f5;font-size:0.9rem"></div>
     <div id="studentsLoading" class="loading-msg" style="display:none">Loading students…</div>
@@ -1556,6 +1557,8 @@ function renderStudents(){
   var list=filterClassId?STUDENTS.filter(function(s){return(s.class_id===filterClassId);}):STUDENTS;
   var bulkBtn=document.getElementById("bulkResendBtn");
   if(bulkBtn) bulkBtn.style.display=(filterClassId&&list.length)?'inline-block':'none';
+  var goalBtn=document.getElementById("goalReminderBtn");
+  if(goalBtn) goalBtn.style.display=(filterClassId&&list.length)?'inline-block':'none';
   if(!list.length){el.innerHTML='<p class="empty-msg">'+(filterClassId?'No students in this class yet.':'No students yet. Use <strong>Invite Student</strong> to add one.')+'</p>';return;}
   el.innerHTML=list.map(function(s){
     var cls=CLASSES.find(function(c){return c.id===s.class_id;});
@@ -1566,6 +1569,7 @@ function renderStudents(){
       +'<div class="student-meta"><span>✉️ '+esc(s.email||'')+'</span><span>📋 '+esc(className)+'</span>'
       +(s.completed_activities!=null?'<span>✅ '+s.completed_activities+'/'+s.total_activities+' activities</span>':'')
       +'</div></div><div class="class-actions" style="display:flex;gap:6px">'
+      +'<button class="btn-sm" onclick="openProgressDetail('+s.id+',\''+esc(fullName)+'\')" style="background:#1a3a22;color:#7fd67f;border:1px solid #2a6a32;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">📊 Progress</button>'
       +'<button class="btn-sm btn-edit" onclick="openEditStudent('+s.id+')" style="background:#1a3a5f;color:#7ab3f5;border:1px solid #2a5a8f;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">✏️ Edit</button>'
       +'<button class="btn-sm" style="background:#2a5298;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resendWelcome('+s.id+')">📧 Resend Email</button>'
       +'<button class="btn-sm" style="background:#5c3200;color:#ffd080;border:1px solid #c97000;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resetStudentDemo(\''+esc(s.email)+'\')">🔄 Reset</button>'
@@ -1733,6 +1737,77 @@ async function resetStudentDemo(email){
     await loadStudents();
   }
 }
+// ── Goal Reminder ─────────────────────────────────────────────────────────
+async function sendGoalReminder(){
+  var filterClassId=document.getElementById('studentClassFilter').value;
+  filterClassId=filterClassId?parseInt(filterClassId):null;
+  if(!filterClassId){toast('Please select a class first.');return;}
+  var cls=CLASSES.find(function(c){return c.id===filterClassId;});
+  var clsName=cls?cls.name:'this class';
+  if(!confirm('Send a goal-setting reminder email to all students in "'+clsName+'" who have NOT yet committed their goals?\n\nStudents who already completed goal-setting will NOT receive an email.\n\nContinue?')) return;
+  var btn=document.getElementById('goalReminderBtn');
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  var result=await apiCall('POST','/students/goal-reminder/'+filterClassId);
+  if(btn){btn.disabled=false;btn.textContent='📣 Send Goal Reminder';}
+  if(result!=null){
+    if(result.sent===0){toast('✅ '+result.message);}
+    else{toast('✅ Reminder sent to '+result.sent+' student'+(result.sent!==1?'s':'')+(result.skipped?' ('+result.skipped+' failed)':'')+'.');}
+  }
+}
+
+// ── Student Progress Detail ────────────────────────────────────────────────
+async function openProgressDetail(studentId, studentName){
+  var modal=document.getElementById('progressDetailModal');
+  document.getElementById('progressDetailName').textContent=studentName+' — Goal Progress';
+  document.getElementById('progressDetailMeta').textContent='';
+  document.getElementById('progressDetailBody').innerHTML='<p style="color:#8a9bb8;font-size:0.9rem">Loading…</p>';
+  modal.style.display='flex';
+
+  var data=await apiCall('GET','/students/'+studentId+'/progress-detail');
+  if(data===null){document.getElementById('progressDetailBody').innerHTML='<p style="color:#e07070">Failed to load progress.</p>';return;}
+
+  if(!data.length){
+    document.getElementById('progressDetailBody').innerHTML='<p style="color:#8a9bb8;font-size:0.9rem">This student has not committed any goals yet.</p>';
+    document.getElementById('progressDetailMeta').textContent='0 goals committed';
+    return;
+  }
+
+  var totalActivities=data.reduce(function(n,g){return n+g.activities.length;},0);
+  var completed=data.reduce(function(n,g){return n+g.activities.filter(function(a){return a.status==='complete';}).length;},0);
+  var inProgress=data.reduce(function(n,g){return n+g.activities.filter(function(a){return a.status==='in_progress';}).length;},0);
+  document.getElementById('progressDetailMeta').textContent=data.length+' goals · '+totalActivities+' activities · '+completed+' complete · '+inProgress+' in progress';
+
+  var statusLabel={'committed':'Not Started','in_progress':'In Progress','complete':'Complete'};
+  var statusColor={'committed':'#8a9bb8','in_progress':'#c9a227','complete':'#4caf50'};
+  var statusBg={'committed':'rgba(138,155,184,0.1)','in_progress':'rgba(201,162,39,0.15)','complete':'rgba(76,175,80,0.15)'};
+
+  var html=data.map(function(goal){
+    var acts=goal.activities.map(function(a){
+      var st=a.status||'committed';
+      var label=statusLabel[st]||st;
+      var color=statusColor[st]||'#8a9bb8';
+      var bg=statusBg[st]||'transparent';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:6px;margin-bottom:4px;">'
+        +'<span style="color:#d0ddf0;font-size:0.85rem;flex:1;padding-right:12px">'+esc(a.activity_content)+'</span>'
+        +'<span style="background:'+bg+';color:'+color+';padding:3px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;white-space:nowrap">'+label+'</span>'
+        +'</div>';
+    }).join('');
+    var doneCount=goal.activities.filter(function(a){return a.status==='complete';}).length;
+    return '<div style="margin-bottom:20px">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'
+      +'<span style="color:#c9a227;font-weight:700;font-size:0.9rem">'+esc(goal.goal_title)+'</span>'
+      +'<span style="color:#8a9bb8;font-size:0.78rem">('+doneCount+'/'+goal.activities.length+' complete)</span>'
+      +'</div>'
+      +acts
+      +'</div>';
+  }).join('');
+
+  document.getElementById('progressDetailBody').innerHTML=html;
+}
+function closeProgressDetail(){
+  document.getElementById('progressDetailModal').style.display='none';
+}
+
 async function submitInvite(){
   hideInviteError();
   var firstName=(document.getElementById("inviteFirstName").value||"").trim();
@@ -4182,6 +4257,22 @@ function escHtml(str) {
 </script>
 <!-- EDIT SCHEDULE SLOT MODAL -->
 <!-- Edit Student Modal -->
+<!-- STUDENT PROGRESS DETAIL MODAL -->
+<div id="progressDetailModal" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,0.75);align-items:flex-start;justify-content:center;overflow-y:auto;padding:32px 16px;">
+  <div style="background:#0d1f3c;border:1px solid #2a4a7f;border-radius:12px;width:100%;max-width:680px;box-shadow:0 24px 60px rgba(0,0,0,0.6);position:relative">
+    <div style="background:#0a1628;padding:20px 28px;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <h3 id="progressDetailName" style="color:#fff;margin:0;font-size:1.1rem;font-weight:700;">Student Progress</h3>
+        <p id="progressDetailMeta" style="color:#7ab3f5;margin:4px 0 0;font-size:0.82rem"></p>
+      </div>
+      <button onclick="closeProgressDetail()" style="background:none;border:none;color:#8a9bb8;font-size:1.4rem;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div id="progressDetailBody" style="padding:20px 28px 28px;max-height:70vh;overflow-y:auto">
+      <p style="color:#8a9bb8;font-size:0.9rem">Loading…</p>
+    </div>
+  </div>
+</div>
+
 <div id="editStudentModal" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;">
   <div style="background:#1a2a45;border:1px solid #2a4a7f;border-radius:12px;padding:28px 32px;width:100%;max-width:460px;box-shadow:0 24px 60px rgba(0,0,0,0.5);margin:16px;">
     <h3 style="color:#fff;font-size:1.1rem;margin:0 0 20px;font-weight:700;">✏️ Edit Student</h3>
