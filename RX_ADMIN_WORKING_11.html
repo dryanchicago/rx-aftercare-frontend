@@ -621,6 +621,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         </div>
       </div>
       <button class="btn-outline" id="certNotifyCoachesBtn" onclick="certNotifyCoaches()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">🎓 Notify Coaches</button>
+      <button class="btn-outline" id="certLinkedInReminderBtn" onclick="sendLinkedInReminder()" style="display:none;background:#1a2a4a;color:#7ab3f5;border-color:#2a5a8c;">🔗 LinkedIn Reminder</button>
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
       <button class="btn-outline" id="certBulkRegradeBtn" onclick="certBulkRegrade()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">♻ Re-grade Selected (<span id="certRegradeCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
@@ -3723,9 +3724,12 @@ function renderCertTable(rows) {
   if (bulkSendBtn) bulkSendBtn.style.display = 'none';
   var bulkRegradeBtn = document.getElementById('certBulkRegradeBtn');
   if (bulkRegradeBtn) bulkRegradeBtn.style.display = 'none';
-  // Show Notify Coaches whenever there are any certified rows in this class
+  // Show Notify Coaches + LinkedIn Reminder whenever there are any certified rows in this class
+  var hasCertified = rows.some(function(r) { return r.status === 'certified'; });
   var notifyBtn = document.getElementById('certNotifyCoachesBtn');
-  if (notifyBtn) notifyBtn.style.display = rows.some(function(r) { return r.status === 'certified'; }) ? '' : 'none';
+  if (notifyBtn) notifyBtn.style.display = hasCertified ? '' : 'none';
+  var liReminderBtn = document.getElementById('certLinkedInReminderBtn');
+  if (liReminderBtn) liReminderBtn.style.display = hasCertified ? '' : 'none';
 
   if (rows.length === 0) {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No certification submissions yet for this class.</div>';
@@ -3880,6 +3884,28 @@ async function certNotifyCoaches() {
   } catch(e) {
     alert('❌ Error: ' + (e.message || 'Could not notify coaches.'));
     if (btn) { btn.disabled = false; btn.textContent = '🎓 Notify Coaches'; }
+  }
+}
+
+async function sendLinkedInReminder() {
+  var classId = document.getElementById('certClassSelect').value;
+  if (!classId) return alert('Please select a class first.');
+  var btn = document.getElementById('certLinkedInReminderBtn');
+  var cls = (CLASSES || []).find(function(c){ return c.id == classId; });
+  var clsName = cls ? cls.name : 'this class';
+  if (!confirm('Send a LinkedIn badge reminder to all certified students in "' + clsName + '"?\n\nEach student will receive an email with the RxCP™ logo and LinkedIn instructions attached.\n\nContinue?')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    var result = await apiCall('POST', '/certifications/linkedin-reminder/' + classId);
+    if (result.sent === 0) {
+      alert(result.message || 'No certified students found.');
+    } else {
+      alert('✅ LinkedIn reminder sent to ' + result.sent + ' student' + (result.sent !== 1 ? 's' : '') + (result.skipped ? '\n⚠ ' + result.skipped + ' failed.' : '') + '.');
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '🔗 LinkedIn Reminder'; }
+  } catch(e) {
+    alert('❌ Error: ' + (e.message || 'Could not send reminder.'));
+    if (btn) { btn.disabled = false; btn.textContent = '🔗 LinkedIn Reminder'; }
   }
 }
 
