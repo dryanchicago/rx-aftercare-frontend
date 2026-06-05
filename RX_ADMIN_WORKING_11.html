@@ -3893,12 +3893,27 @@ async function sendLinkedInReminder() {
   var btn = document.getElementById('certLinkedInReminderBtn');
   var cls = (CLASSES || []).find(function(c){ return c.id == classId; });
   var clsName = cls ? cls.name : 'this class';
-  if (!confirm('Send a LinkedIn badge reminder to all certified students in "' + clsName + '"?\n\nEach student will receive an email with the RxCP™ logo and LinkedIn instructions attached.\n\nContinue?')) return;
+
+  // Ask: test or real send
+  var choice = confirm(
+    '🔗 LinkedIn Badge Reminder\n\n' +
+    'Class: ' + clsName + '\n\n' +
+    'Click OK to send a TEST to dryan@graymattersgroup.com only.\n' +
+    'Click Cancel to send to ALL certified students.'
+  );
+  var testMode = choice; // true = test, false = send all
+
+  if (!testMode) {
+    if (!confirm('Send to ALL certified students in "' + clsName + '"?\n\nEach will receive the RxCP™ logo and LinkedIn instructions.\n\nThis cannot be undone. Continue?')) return;
+  }
+
   if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
   try {
-    var result = await apiCall('POST', '/certifications/linkedin-reminder/' + classId);
+    var result = await apiCall('POST', '/certifications/linkedin-reminder/' + classId, { test_mode: testMode });
     if (result.sent === 0) {
       alert(result.message || 'No certified students found.');
+    } else if (testMode) {
+      alert('✅ Test email sent to dryan@graymattersgroup.com.\n\nCheck your inbox, then click the button again to send to all students.');
     } else {
       alert('✅ LinkedIn reminder sent to ' + result.sent + ' student' + (result.sent !== 1 ? 's' : '') + (result.skipped ? '\n⚠ ' + result.skipped + ' failed.' : '') + '.');
     }
