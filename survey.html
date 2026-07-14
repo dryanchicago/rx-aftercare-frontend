@@ -295,6 +295,10 @@
         <!-- Extra profile fields (pre only) -->
         <div id="profileFields">
           <div class="form-group">
+            <label>Company Name</label>
+            <input type="text" id="companyName" placeholder="e.g. Deloitte, McKinsey, Point B">
+          </div>
+          <div class="form-group">
             <label>Practice Area</label>
             <input type="text" id="practiceArea" placeholder="e.g. Advisory, Tax, Consulting">
           </div>
@@ -359,6 +363,15 @@
 
         <div id="activityQuestions"></div>
 
+        <hr class="divider">
+
+        <!-- Pivot question — marks which survey the respondent is completing -->
+        <div class="section-heading">Survey Timing</div>
+        <p class="section-desc">Please confirm when you are completing this survey.</p>
+        <div class="scale-group" id="pivotGroup">
+          <div style="display:flex;flex-direction:column;gap:12px" id="pivotOptions"></div>
+        </div>
+
         <div class="btn-row">
           <button class="btn btn-back" onclick="goStep(1)">← Back</button>
           <button class="btn btn-primary" id="step2NextBtn" onclick="step2Next()">Next →</button>
@@ -375,7 +388,15 @@
           <div class="section-heading">Course Evaluation</div>
           <p class="section-desc">Please rate the following aspects of the Rx program.</p>
 
-          <div id="courseEvalQuestions"></div>
+          <table class="likert-table">
+            <thead><tr><th class="q-col"></th><th>Very Much So</th><th>For the Most Part</th><th>Somewhat</th><th>Only Slightly</th><th>Not at All</th></tr></thead>
+            <tbody id="courseEvalQuestionsAgree"></tbody>
+          </table>
+
+          <table class="likert-table">
+            <thead><tr><th class="q-col"></th><th>Excellent</th><th>Very Good</th><th>Average</th><th>Below Avg</th><th>Poor</th></tr></thead>
+            <tbody id="courseEvalQuestionsExcel"></tbody>
+          </table>
 
           <hr class="divider">
 
@@ -507,15 +528,20 @@ var ACTIVITY_QS = [
   { key: 'act_new_opps',          text: 'IDENTIFYING NEW OPPORTUNITIES/CLIENT NEEDS: Over the last 90 days, approximately how many new service delivery opportunities/client needs have you personally surfaced and communicated to appropriate internal colleagues?', scale: 7 },
 ];
 
-var COURSE_EVAL_QS = [
+// Q11-Q14 + Q17: "Very Much So … Not at All" agree scale
+var COURSE_EVAL_AGREE = [
   { key: 'eval_objectives_met',    text: 'Were the stated objectives of the session met?' },
   { key: 'eval_understood_before', text: 'To what extent did you understand the information/concepts presented PRIOR to this training?' },
   { key: 'eval_understood_after',  text: 'To what extent do you understand the information/concepts presented AFTER completing this training?' },
   { key: 'eval_will_apply',        text: 'Will you apply the information presented in this training to your current and/or anticipated job responsibilities?' },
-  { key: 'eval_facilitator',       text: 'How would you rate the overall effectiveness of the facilitator(s)?' },
-  { key: 'eval_handouts',          text: 'How would you rate the overall effectiveness of the handouts, tools and templates?' },
   { key: 'eval_overall_satisfied', text: 'Overall, were you satisfied with the quality of this program and would you recommend it to a colleague?' },
 ];
+// Q15-Q16: "Excellent … Poor" scale
+var COURSE_EVAL_EXCEL = [
+  { key: 'eval_facilitator', text: 'How would you rate the overall effectiveness of the facilitator(s)?' },
+  { key: 'eval_handouts',    text: 'How would you rate the overall effectiveness of the handouts, tools and templates?' },
+];
+var COURSE_EVAL_QS = COURSE_EVAL_AGREE.concat(COURSE_EVAL_EXCEL); // kept for validation
 
 var FINAL_RATINGS = [
   { key: 'final_workshop_content',  text: 'Rx Workshop Content' },
@@ -568,8 +594,10 @@ var answers = {};
   renderLikert('skillB', SKILL_B, LIKERT_LABELS_5);
   renderLikert('skillC', SKILL_C, LIKERT_LABELS_5);
   renderActivityQuestions();
+  renderPivotQuestion();
   if (surveyType === 'post') {
-    renderLikert('courseEvalQuestions', COURSE_EVAL_QS, LIKERT_LABELS_AGREE, true);
+    renderLikert('courseEvalQuestionsAgree', COURSE_EVAL_AGREE, LIKERT_LABELS_AGREE);
+    renderLikert('courseEvalQuestionsExcel', COURSE_EVAL_EXCEL, LIKERT_LABELS_5);
     renderLikert('finalRatings', FINAL_RATINGS, LIKERT_LABELS_5);
     renderScaleGroup('impactRating', 'q_impact_pct', IMPACT_OPTIONS);
     renderScaleGroup('rxVsOthers',   'q_rx_vs_others', RX_VS_OTHERS);
@@ -623,6 +651,25 @@ function renderScaleGroup(containerId, key, options) {
     html += '<label><input type="radio" name="' + key + '" value="' + (i+1) + '" onchange="setAnswer(\'' + key + '\',' + (i+1) + ')"><span class="scale-btn">' + escHtml(opt) + '</span></label>';
   });
   container.innerHTML = html;
+}
+
+function renderPivotQuestion() {
+  var container = document.getElementById('pivotOptions');
+  if (!container) return;
+  var opts = [
+    { val: 'pre',  label: 'Before or immediately after an Rx Workshop (online or classroom version)' },
+    { val: 'post', label: 'Following completion of the 90-day or longer Rx Aftercare program' },
+  ];
+  var html = '';
+  opts.forEach(function(o) {
+    var checked = (o.val === surveyType) ? ' checked' : '';
+    html += '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:14px;color:rgba(255,255,255,0.85);line-height:1.5;">';
+    html += '<input type="radio" name="pivot_question" value="' + o.val + '"' + checked + ' onchange="setAnswer(\'pivot_question\',\'' + o.val + '\')" style="margin-top:3px;accent-color:var(--gold);width:16px;height:16px;flex-shrink:0;">';
+    html += '<span>' + escHtml(o.label) + '</span></label>';
+  });
+  container.innerHTML = html;
+  // Pre-set the answer to match survey type
+  answers['pivot_question'] = surveyType;
 }
 
 function setAnswer(key, val) { answers[key] = val; }
@@ -733,6 +780,8 @@ async function submitSurvey() {
   var email         = document.getElementById('respondentEmail').value.trim();
   var practiceArea  = surveyType === 'pre' ? (document.getElementById('practiceArea').value.trim() || null) : null;
   var managerName   = surveyType === 'pre' ? (document.getElementById('managerName').value.trim()  || null) : null;
+  var companyName   = surveyType === 'pre' ? (document.getElementById('companyName').value.trim()  || null) : null;
+  if (companyName) answers['company_name'] = companyName;
 
   try {
     var r = await fetch(API_BASE + '/api/surveys/submit', {
