@@ -292,20 +292,21 @@
           <input type="email" id="respondentEmail" placeholder="Your work email">
         </div>
 
-        <!-- Extra profile fields (pre only) -->
-        <div id="profileFields">
-          <div class="form-group">
-            <label>Company Name</label>
-            <input type="text" id="companyName" placeholder="e.g. Deloitte, McKinsey, Point B">
-          </div>
-          <div class="form-group">
-            <label>Practice Area</label>
-            <input type="text" id="practiceArea" placeholder="e.g. Advisory, Tax, Consulting">
-          </div>
-          <div class="form-group">
-            <label>Manager's Name</label>
-            <input type="text" id="managerName" placeholder="Your direct manager">
-          </div>
+        <div class="form-group">
+          <label>Company Name</label>
+          <input type="text" id="companyName" placeholder="e.g. Deloitte, McKinsey, Point B">
+        </div>
+        <div class="form-group">
+          <label>Practice Area</label>
+          <input type="text" id="practiceArea" placeholder="e.g. Advisory, Tax, Consulting">
+        </div>
+        <div class="form-group">
+          <label>Manager's Name</label>
+          <input type="text" id="managerName" placeholder="Your direct manager">
+        </div>
+        <div class="form-group">
+          <label>Month/Year of Rx Workshop</label>
+          <input type="text" id="workshopMonthYear" placeholder="e.g. March 2025">
         </div>
         <hr class="divider">
 
@@ -379,12 +380,11 @@
         <div class="error-msg" id="err2"></div>
       </div>
 
-      <!-- ── STEP 3: POST-only questions (course eval + impact) ── -->
-      <!-- For PRE survey this step goes straight to submit -->
+      <!-- ── STEP 3A: Course Eval — shown when pivot = "before/after workshop" ── -->
       <div class="step" id="step3">
 
-        <!-- Course eval (post only) -->
-        <div id="courseEvalSection">
+        <!-- Path A: Course Eval (Q11–21) -->
+        <div id="pathCourseEval" style="display:none">
           <div class="section-heading">Course Evaluation</div>
           <p class="section-desc">Please rate the following aspects of the Rx program.</p>
 
@@ -401,20 +401,21 @@
           <hr class="divider">
 
           <div class="form-group">
-            <label>What did you find most beneficial about this program?</label>
+            <label>What did you find most beneficial about this session?</label>
             <textarea id="q_most_beneficial" placeholder="Your thoughts…"></textarea>
           </div>
           <div class="form-group">
-            <label>What can you implement immediately?</label>
+            <label>What did you learn that you can implement immediately?</label>
             <textarea id="q_implement_immediately" placeholder="Your thoughts…"></textarea>
           </div>
           <div class="form-group">
-            <label>Recommendations for improvement?</label>
+            <label>What recommendations do you have for improvement?</label>
             <textarea id="q_improvements" placeholder="Your thoughts…"></textarea>
           </div>
+        </div>
 
-          <hr class="divider">
-
+        <!-- Path B: Impact Measurements + Final Feedback (Q22–29) -->
+        <div id="pathImpact" style="display:none">
           <div class="section-heading">Impact Measurements</div>
           <div class="form-group">
             <label>Most important QUALITATIVE achievements from applying Rx learnings (new relationships, behaviors, breakthroughs, etc.)</label>
@@ -436,12 +437,7 @@
           <div class="section-heading">Final Feedback</div>
           <p class="section-desc">Rate the overall effectiveness of each component.</p>
           <table class="likert-table">
-            <thead>
-              <tr>
-                <th class="q-col"></th>
-                <th>Excellent</th><th>Very Good</th><th>Average</th><th>Below Avg</th><th>Poor</th>
-              </tr>
-            </thead>
+            <thead><tr><th class="q-col"></th><th>Excellent</th><th>Very Good</th><th>Average</th><th>Below Avg</th><th>Poor</th></tr></thead>
             <tbody id="finalRatings"></tbody>
           </table>
 
@@ -557,52 +553,35 @@ var RX_VS_OTHERS   = ['Significantly Better','Better','Similar','Not on Par','Fa
 var RECOMMEND_OPTS = ['Yes, absolutely','Perhaps','Neutral','No'];
 
 // ── State ─────────────────────────────────────────────────────────────────────
-var surveyType = 'pre'; // 'pre' or 'post'
+var surveyType = 'pre'; // initial hint from URL; actual type set by pivot answer
+var pivotAnswer = 'pre'; // 'pre' = course eval path, 'post' = impact path
 var currentStep = 1;
-var totalSteps = 2; // pre=2, post=3
+var totalSteps = 3; // always 3 steps
 var classId = null;
 var answers = {};
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 (async function init() {
   var params = new URLSearchParams(window.location.search);
-  surveyType = params.get('type') || 'pre';
-  classId    = params.get('classId') || null;
+  surveyType  = params.get('type') || 'pre';
+  pivotAnswer = surveyType;
+  classId     = params.get('classId') || null;
 
-  // Configure for survey type
-  totalSteps = (surveyType === 'post') ? 3 : 2;
   document.getElementById('surveyTypeLabel').textContent =
     surveyType === 'pre' ? 'Pre-Program Assessment' : 'Post-Program Assessment';
 
-  // PRE: relabel step 2 next button to Submit Survey
-  if (surveyType === 'pre') {
-    document.getElementById('step2NextBtn').textContent = 'Submit Survey';
-  }
-
-  // Hide profile fields on post (already collected at pre)
-  if (surveyType === 'post') {
-    document.getElementById('profileFields').style.display = 'none';
-  }
-
-  // Hide course eval section on pre
-  if (surveyType === 'pre') {
-    document.getElementById('courseEvalSection').style.display = 'none';
-  }
-
-  // Render question tables
+  // Render all question tables upfront (both paths)
   renderLikert('skillA', SKILL_A, LIKERT_LABELS_5);
   renderLikert('skillB', SKILL_B, LIKERT_LABELS_5);
   renderLikert('skillC', SKILL_C, LIKERT_LABELS_5);
   renderActivityQuestions();
   renderPivotQuestion();
-  if (surveyType === 'post') {
-    renderLikert('courseEvalQuestionsAgree', COURSE_EVAL_AGREE, LIKERT_LABELS_AGREE);
-    renderLikert('courseEvalQuestionsExcel', COURSE_EVAL_EXCEL, LIKERT_LABELS_5);
-    renderLikert('finalRatings', FINAL_RATINGS, LIKERT_LABELS_5);
-    renderScaleGroup('impactRating', 'q_impact_pct', IMPACT_OPTIONS);
-    renderScaleGroup('rxVsOthers',   'q_rx_vs_others', RX_VS_OTHERS);
-    renderScaleGroup('recommend',    'q_recommend', RECOMMEND_OPTS);
-  }
+  renderLikert('courseEvalQuestionsAgree', COURSE_EVAL_AGREE, LIKERT_LABELS_AGREE);
+  renderLikert('courseEvalQuestionsExcel', COURSE_EVAL_EXCEL, LIKERT_LABELS_5);
+  renderLikert('finalRatings', FINAL_RATINGS, LIKERT_LABELS_5);
+  renderScaleGroup('impactRating', 'q_impact_pct', IMPACT_OPTIONS);
+  renderScaleGroup('rxVsOthers',   'q_rx_vs_others', RX_VS_OTHERS);
+  renderScaleGroup('recommend',    'q_recommend', RECOMMEND_OPTS);
 
   updateProgress();
   document.getElementById('loadingState').style.display = 'none';
@@ -675,16 +654,18 @@ function renderPivotQuestion() {
 function setAnswer(key, val) { answers[key] = val; }
 
 function step2Next() {
-  // PRE survey: step 2 is the last step — submit directly
-  // POST survey: advance to step 3 (course eval)
-  if (surveyType === 'pre') {
-    var err = validateStep(2);
-    if (err) { document.getElementById('err2').textContent = err; return; }
-    document.getElementById('err2').textContent = '';
-    submitSurvey();
-  } else {
-    goStep(3);
-  }
+  var err = validateStep(2);
+  if (err) { document.getElementById('err2').textContent = err; return; }
+  document.getElementById('err2').textContent = '';
+
+  // Read pivot answer to determine which step 3 path to show
+  pivotAnswer = answers['pivot_question'] || surveyType;
+
+  // Show the correct path, hide the other
+  document.getElementById('pathCourseEval').style.display = (pivotAnswer === 'pre') ? '' : 'none';
+  document.getElementById('pathImpact').style.display     = (pivotAnswer === 'post') ? '' : 'none';
+
+  goStep(3);
 }
 
 function escHtml(s) {
@@ -775,13 +756,15 @@ async function submitSurvey() {
   btn.disabled = true;
   btn.textContent = 'Submitting…';
 
-  var firstName     = document.getElementById('firstName').value.trim();
-  var lastName      = document.getElementById('lastName').value.trim();
-  var email         = document.getElementById('respondentEmail').value.trim();
-  var practiceArea  = surveyType === 'pre' ? (document.getElementById('practiceArea').value.trim() || null) : null;
-  var managerName   = surveyType === 'pre' ? (document.getElementById('managerName').value.trim()  || null) : null;
-  var companyName   = surveyType === 'pre' ? (document.getElementById('companyName').value.trim()  || null) : null;
-  if (companyName) answers['company_name'] = companyName;
+  var firstName        = document.getElementById('firstName').value.trim();
+  var lastName         = document.getElementById('lastName').value.trim();
+  var email            = document.getElementById('respondentEmail').value.trim();
+  var practiceArea     = document.getElementById('practiceArea').value.trim()     || null;
+  var managerName      = document.getElementById('managerName').value.trim()      || null;
+  var companyName      = document.getElementById('companyName').value.trim()      || null;
+  var workshopMonthYr  = document.getElementById('workshopMonthYear').value.trim() || null;
+  if (companyName)     answers['company_name']       = companyName;
+  if (workshopMonthYr) answers['workshop_month_year'] = workshopMonthYr;
 
   try {
     var r = await fetch(API_BASE + '/api/surveys/submit', {
@@ -792,7 +775,7 @@ async function submitSurvey() {
         last_name:     lastName,
         email:         email,
         class_id:      classId,
-        survey_type:   surveyType,
+        survey_type:   pivotAnswer,
         answers:       answersArr,
         practice_area: practiceArea,
         manager_name:  managerName,
@@ -804,7 +787,7 @@ async function submitSurvey() {
     // Success
     document.getElementById('surveyForm').classList.remove('active');
     document.getElementById('successState').classList.add('active');
-    if (surveyType === 'pre') {
+    if (pivotAnswer === 'pre') {
       document.getElementById('successMsg').textContent =
         'Your pre-program assessment has been submitted. You\'ll receive another survey at the end of the aftercare program to measure your progress.';
     } else {
