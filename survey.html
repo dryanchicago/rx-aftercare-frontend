@@ -361,7 +361,7 @@
 
         <div class="btn-row">
           <button class="btn btn-back" onclick="goStep(1)">← Back</button>
-          <button class="btn btn-primary" onclick="goStep(3)">Next →</button>
+          <button class="btn btn-primary" id="step2NextBtn" onclick="step2Next()">Next →</button>
         </div>
         <div class="error-msg" id="err2"></div>
       </div>
@@ -548,6 +548,11 @@ var answers = {};
   document.getElementById('surveyTypeLabel').textContent =
     surveyType === 'pre' ? 'Pre-Program Assessment' : 'Post-Program Assessment';
 
+  // PRE: relabel step 2 next button to Submit Survey
+  if (surveyType === 'pre') {
+    document.getElementById('step2NextBtn').textContent = 'Submit Survey';
+  }
+
   // Hide profile fields on post (already collected at pre)
   if (surveyType === 'post') {
     document.getElementById('profileFields').style.display = 'none';
@@ -621,6 +626,19 @@ function renderScaleGroup(containerId, key, options) {
 }
 
 function setAnswer(key, val) { answers[key] = val; }
+
+function step2Next() {
+  // PRE survey: step 2 is the last step — submit directly
+  // POST survey: advance to step 3 (course eval)
+  if (surveyType === 'pre') {
+    var err = validateStep(2);
+    if (err) { document.getElementById('err2').textContent = err; return; }
+    document.getElementById('err2').textContent = '';
+    submitSurvey();
+  } else {
+    goStep(3);
+  }
+}
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
