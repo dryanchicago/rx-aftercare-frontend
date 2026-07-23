@@ -4869,7 +4869,7 @@ function generateProgressReport() {
     return `<span style="color:${color};font-weight:700;font-size:0.85rem;">${sign}${diff.toFixed(1)}</span>`;
   }
 
-  function skillSection(title, questions, preAvgs, postAvgs, max) {
+  function skillSection(title, questions, preAvgs, postAvgs, max, rowLabel) {
     const preAvg  = preAvgs.filter(q => q.avg !== null);
     const sectionAvg = preAvg.length ? (preAvg.reduce((s,q) => s + q.avg, 0) / preAvg.length) : null;
 
@@ -4892,7 +4892,7 @@ function generateProgressReport() {
       <table style="width:100%;border-collapse:collapse;border:1px solid #dde2e8;border-radius:6px;overflow:hidden;">
         <thead>
           <tr style="background:#0d1f3c;">
-            <th style="padding:8px 12px;text-align:left;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Skill / Behavior</th>
+            <th style="padding:8px 12px;text-align:left;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">${rowLabel || 'Skill / Behavior'}</th>
             <th style="padding:8px 12px;text-align:left;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Pre-Program Avg</th>
             ${hasPost ? `<th style="padding:8px 12px;text-align:left;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Post-Program Avg</th>
             <th style="padding:8px 12px;text-align:center;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Change</th>` : ''}
@@ -4985,18 +4985,31 @@ function generateProgressReport() {
     <!-- Course eval -->
     ${d.preEvalAgree.some(q => q.avg !== null) ? `
     <h2 style="font-size:0.95rem;font-weight:700;color:#0d1f3c;text-transform:uppercase;letter-spacing:.6px;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid #e8ecf0;">Program Evaluation</h2>
-    ${skillSection('Agreement Scale (5 = Very Much So, 1 = Not at All)', d.COURSE_EVAL_AGREE, d.preEvalAgree, null, 5)}
-    ${d.preEvalExcel.some(q => q.avg !== null) ? skillSection('Quality Scale (5 = Excellent, 1 = Poor)', d.COURSE_EVAL_EXCEL, d.preEvalExcel, null, 5) : ''}
+    ${skillSection('Agreement Scale (5 = Very Much So, 1 = Not at All)', d.COURSE_EVAL_AGREE, d.preEvalAgree, null, 5, 'Question')}
+    ${d.preEvalExcel.some(q => q.avg !== null) ? skillSection('Quality Scale (5 = Excellent, 1 = Poor)', d.COURSE_EVAL_EXCEL, d.preEvalExcel, null, 5, 'Question') : ''}
+    ${(() => {
+      const facQ = { key: 'q_facilitator_comments', label: 'Facilitator & program materials comments' };
+      const items = (d.preText[facQ.key] || []).filter(r => r.text);
+      if (!items.length) return '';
+      return `<div style="margin-top:16px;margin-bottom:28px;page-break-inside:avoid;">
+        <div style="font-size:0.75rem;font-weight:700;color:#8a6800;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">Facilitator &amp; Program Materials — Written Comments</div>
+        ${items.map(r => `
+          <div style="margin-bottom:10px;">
+            <div style="font-size:0.72rem;font-weight:700;color:#8a6800;margin-bottom:3px;">${r.name}</div>
+            <div style="font-size:0.83rem;color:#333;line-height:1.55;padding-left:10px;border-left:3px solid #c9a227;">${r.text}</div>
+          </div>`).join('')}
+      </div>`;
+    })()}
     ` : ''}
 
     <!-- Final ratings (post only) -->
     ${hasPost && d.postFinal.some(q => q.avg !== null) ? `
     <h2 style="font-size:0.95rem;font-weight:700;color:#0d1f3c;text-transform:uppercase;letter-spacing:.6px;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid #e8ecf0;">Final Program Ratings</h2>
-    ${skillSection('Post-Program Ratings (5 = Excellent, 1 = Poor)', d.FINAL_RATINGS, d.postFinal, null, 5)}
+    ${skillSection('Post-Program Ratings (5 = Excellent, 1 = Poor)', d.FINAL_RATINGS, d.postFinal, null, 5, 'Question')}
     ` : ''}
 
-    <!-- Open-ended -->
-    ${textSection(d.TEXT_QS, d.preText, d.postText)}
+    <!-- Open-ended (excludes facilitator comments — shown above with eval) -->
+    ${textSection(d.TEXT_QS.filter(q => q.key !== 'q_facilitator_comments'), d.preText, d.postText)}
 
     <!-- Footer -->
     <div style="margin-top:48px;padding-top:16px;border-top:1px solid #dde2e8;display:flex;justify-content:space-between;font-size:0.75rem;color:#aaa;">
