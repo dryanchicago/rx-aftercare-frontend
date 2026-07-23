@@ -398,6 +398,11 @@
             <tbody id="courseEvalQuestionsExcel"></tbody>
           </table>
 
+          <div class="form-group" style="margin-top:18px;">
+            <label class="form-label">Please share any comments about the facilitator(s) or program materials: <span style="font-weight:400;color:#8a9bb8;">(optional)</span></label>
+            <textarea id="q_facilitator_comments" placeholder="Your comments…" rows="3"></textarea>
+          </div>
+
           <hr class="divider">
 
           <div class="form-group">
@@ -728,6 +733,7 @@ function validateStep(step) {
 function collectTextAnswers() {
   var textFields = [
     'q_most_beneficial','q_implement_immediately','q_improvements',
+    'q_facilitator_comments',
     'q_qualitative','q_quantitative','q_suggestions','q_support_needed'
   ];
   textFields.forEach(function(id) {
