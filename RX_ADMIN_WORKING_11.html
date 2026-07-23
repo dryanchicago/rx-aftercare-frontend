@@ -4536,8 +4536,16 @@ async function loadProgressTab() {
 
     document.getElementById('progressLastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
+    // Build response_id → name map from survey results
+    const responseNameMap = {};
+    (Array.isArray(surveyRows) ? surveyRows : []).forEach(r => {
+      const name = r.first_name + ' ' + r.last_name;
+      if (r.pre_response_id)  responseNameMap[r.pre_response_id]  = name;
+      if (r.post_response_id) responseNameMap[r.post_response_id] = name;
+    });
+
     // Build survey summary below the table
-    await renderSurveySummary(classId, token, surveyRows);
+    await renderSurveySummary(classId, token, surveyRows, responseNameMap);
 
   } catch(e) {
     console.error('loadProgressTab:', e);
@@ -4545,7 +4553,7 @@ async function loadProgressTab() {
   }
 }
 
-async function renderSurveySummary(classId, token, surveyRows) {
+async function renderSurveySummary(classId, token, surveyRows, responseNameMap) {
   // Question definitions (mirrors survey.html)
   var SKILL_A = [
     { key: 'skill_a_elevator_speech',    text: 'Confidently/succinctly deliver variations of your "elevator speech"' },
@@ -4628,9 +4636,10 @@ async function renderSurveySummary(classId, token, surveyRows) {
     const result = {};
     questions.forEach(q => { result[q.key] = []; });
     responseIds.forEach(rid => {
+      const name = responseNameMap[rid] || 'Unknown';
       (byResponse[rid] || []).forEach(a => {
         if (result[a.question_key] !== undefined && a.answer_text) {
-          result[a.question_key].push(a.answer_text.trim());
+          result[a.question_key].push({ text: a.answer_text.trim(), name });
         }
       });
     });
@@ -4688,13 +4697,17 @@ async function renderSurveySummary(classId, token, surveyRows) {
     const postItems = postText[q.key] || [];
     if (!preItems.length && !postItems.length) return '';
     const renderItems = (items, label) => items.length
-      ? items.map(t => `<div style="background:#0a1628;border-left:3px solid #2a4a6e;padding:8px 12px;border-radius:0 4px 4px 0;margin-bottom:6px;font-size:0.82rem;color:#c8d8f0;line-height:1.5;">${t}</div>`).join('')
+      ? items.map(item => `
+          <div style="background:#0a1628;border-left:3px solid #2a4a6e;padding:8px 12px;border-radius:0 4px 4px 0;margin-bottom:8px;">
+            <div style="font-size:0.72rem;font-weight:700;color:#c9a227;margin-bottom:4px;">${item.name}</div>
+            <div style="font-size:0.82rem;color:#c8d8f0;line-height:1.5;">${item.text}</div>
+          </div>`).join('')
       : `<div style="color:#3a5a7a;font-size:0.78rem;padding:4px 0;">No ${label.toLowerCase()} responses yet</div>`;
-    return `<div style="margin-bottom:20px;">
-      <div style="font-size:0.8rem;font-weight:700;color:#8a9bb8;margin-bottom:8px;">${q.label}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;">PRE</div>${renderItems(preItems,'pre')}</div>
-        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;">POST</div>${renderItems(postItems,'post')}</div>
+    return `<div style="margin-bottom:24px;">
+      <div style="font-size:0.85rem;font-weight:700;color:#8a9bb8;margin-bottom:10px;border-bottom:1px solid #1a2a45;padding-bottom:6px;">${q.label}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">PRE (${preItems.length} response${preItems.length!==1?'s':''})</div>${renderItems(preItems,'pre')}</div>
+        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">POST (${postItems.length} response${postItems.length!==1?'s':''})</div>${renderItems(postItems,'post')}</div>
       </div>
     </div>`;
   }).filter(Boolean).join('');
@@ -4704,9 +4717,9 @@ async function renderSurveySummary(classId, token, surveyRows) {
   summaryDiv.innerHTML = `
     <div style="font-size:1rem;font-weight:700;color:#c9a227;margin-bottom:4px;">📊 Skills Assessment Summary</div>
     <div style="font-size:0.8rem;color:#5a7a9a;margin-bottom:20px;">
-      Pre: ${preResponseIds.length} response${preResponseIds.length !== 1 ? 's' : ''} &nbsp;|&nbsp;
-      Post: ${postResponseIds.length} response${postResponseIds.length !== 1 ? 's' : ''}
-      &nbsp;·&nbsp; Scale: 5 = Excellent, 1 = Poor
+      Pre-survey: <strong style="color:#c8d8f0;">${preResponseIds.length}</strong> respondent${preResponseIds.length !== 1 ? 's' : ''} &nbsp;|&nbsp;
+      Post-survey: <strong style="color:#c8d8f0;">${postResponseIds.length}</strong> respondent${postResponseIds.length !== 1 ? 's' : ''}
+      &nbsp;·&nbsp; Numeric scale: <strong style="color:#4caf7d;">5 = Excellent</strong> → <strong style="color:#f07070;">1 = Poor</strong>
     </div>
     ${skillTable('Skill Set A — Building & Maintaining Relationships', SKILL_A, preA, postResponseIds.length ? postA : null, 5)}
     ${skillTable('Skill Set B — Preparing & Managing Interactions',    SKILL_B, preB, postResponseIds.length ? postB : null, 5)}
