@@ -4539,10 +4539,188 @@ async function loadProgressTab() {
       </table>`;
 
     document.getElementById('progressLastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    // Build survey summary below the table
+    await renderSurveySummary(classId, token, surveyRows);
+
   } catch(e) {
     console.error('loadProgressTab:', e);
     wrap.innerHTML = '<div style="color:#f07070;padding:16px 0;">Error loading progress data.</div>';
   }
+}
+
+async function renderSurveySummary(classId, token, surveyRows) {
+  // Question definitions (mirrors survey.html)
+  var SKILL_A = [
+    { key: 'skill_a_elevator_speech',    text: 'Confidently/succinctly deliver variations of your "elevator speech"' },
+    { key: 'skill_a_personal_awareness', text: 'Personal awareness — tuned into own "style" and those of others' },
+    { key: 'skill_a_adapt_style',        text: 'Regularly adapt my own "style" to match those of others' },
+    { key: 'skill_a_documented_plan',    text: 'Have a documented plan for personal networking/relationship development' },
+    { key: 'skill_a_execute_plan',       text: 'Consistently execute on your personal networking/relationship development plan' },
+    { key: 'skill_a_system',             text: 'Consistently use a "system" to manage contacts, interactions, info, follow up' },
+    { key: 'skill_a_earmark_time',       text: 'Earmark time to execute on networking/relationship advancement activities' },
+  ];
+  var SKILL_B = [
+    { key: 'skill_b_client_knowledge',  text: 'Thoroughly researched and knowledgeable about clients you serve' },
+    { key: 'skill_b_key_contacts',      text: 'Identify key contacts at current clients for relationship development' },
+    { key: 'skill_b_firm_capabilities', text: "Knowledgeable about your own firm's capabilities and services" },
+    { key: 'skill_b_prepare_meetings',  text: 'Regularly prepare in advance for meetings/interactions' },
+    { key: 'skill_b_manage_meetings',   text: 'Effectively manage time, flow, and expectations of meetings & interactions' },
+    { key: 'skill_b_followup',          text: 'Execute timely follow up on all internal/external interactions' },
+  ];
+  var SKILL_C = [
+    { key: 'skill_c_gain_access',       text: 'Able to gain access to key client contacts, decision makers and influencers' },
+    { key: 'skill_c_qualify_opps',      text: 'Have a handle on how to "qualify" an opportunity' },
+    { key: 'skill_c_decision_process',  text: 'Understand the subtleties of the Decision Making Process' },
+    { key: 'skill_c_questioning',       text: 'Comfortable questioning clients about their needs' },
+    { key: 'skill_c_objections',        text: 'Comfortable handling objections from clients' },
+  ];
+  var TEXT_QS = [
+    { key: 'q_most_beneficial',      label: 'What was most beneficial about the Rx program?' },
+    { key: 'q_implement_immediately',label: 'What will you implement immediately?' },
+    { key: 'q_improvements',         label: 'Suggestions for improvement?' },
+    { key: 'q_qualitative',          label: 'Qualitative impact story' },
+    { key: 'q_quantitative',         label: 'Quantitative impact story' },
+    { key: 'q_suggestions',          label: 'Additional suggestions' },
+    { key: 'q_support_needed',       label: 'What support do you need?' },
+  ];
+
+  const preResponseIds = surveyRows
+    .filter(r => r.pre_response_id)
+    .map(r => r.pre_response_id);
+  const postResponseIds = surveyRows
+    .filter(r => r.post_response_id)
+    .map(r => r.post_response_id);
+
+  if (!preResponseIds.length && !postResponseIds.length) return;
+
+  // Fetch all answers for this class
+  let allAnswers = [];
+  try {
+    const r = await fetch(API + '/api/surveys/answers/' + classId, { headers: { Authorization: 'Bearer ' + token } });
+    allAnswers = await r.json();
+  } catch(e) { console.error('survey answers fetch:', e); return; }
+
+  if (!Array.isArray(allAnswers)) return;
+
+  // Group answers by response_id
+  const byResponse = {};
+  allAnswers.forEach(a => {
+    if (!byResponse[a.response_id]) byResponse[a.response_id] = [];
+    byResponse[a.response_id].push(a);
+  });
+
+  function computeAvgs(responseIds, questions) {
+    const totals = {}, counts = {};
+    responseIds.forEach(rid => {
+      (byResponse[rid] || []).forEach(a => {
+        if (a.answer_value !== null && a.answer_value !== undefined) {
+          totals[a.question_key] = (totals[a.question_key] || 0) + Number(a.answer_value);
+          counts[a.question_key] = (counts[a.question_key] || 0) + 1;
+        }
+      });
+    });
+    return questions.map(q => ({
+      text: q.text,
+      key:  q.key,
+      avg:  counts[q.key] ? (totals[q.key] / counts[q.key]) : null,
+      n:    counts[q.key] || 0
+    }));
+  }
+
+  function collectText(responseIds, questions) {
+    const result = {};
+    questions.forEach(q => { result[q.key] = []; });
+    responseIds.forEach(rid => {
+      (byResponse[rid] || []).forEach(a => {
+        if (result[a.question_key] !== undefined && a.answer_text) {
+          result[a.question_key].push(a.answer_text.trim());
+        }
+      });
+    });
+    return result;
+  }
+
+  function scoreBar(avg, max) {
+    if (avg === null) return '<span style="color:#3a5a7a;">—</span>';
+    const pct = (avg / max) * 100;
+    const color = pct >= 70 ? '#4caf7d' : pct >= 40 ? '#c9a227' : '#f07070';
+    return `<div style="display:flex;align-items:center;gap:8px;">
+      <div style="flex:1;background:#1a2e4a;border-radius:3px;height:8px;min-width:80px;">
+        <div style="width:${pct}%;background:${color};height:8px;border-radius:3px;"></div>
+      </div>
+      <span style="color:${color};font-weight:700;font-size:0.85rem;min-width:32px;">${avg.toFixed(1)}</span>
+      <span style="color:#3a5a7a;font-size:0.75rem;">/ ${max}</span>
+    </div>`;
+  }
+
+  function skillTable(title, questions, preAvgs, postAvgs, max) {
+    const rows = questions.map((q, i) => {
+      const pre  = preAvgs[i];
+      const post = postAvgs ? postAvgs[i] : null;
+      return `<tr>
+        <td style="padding:8px 12px;border-bottom:1px solid #1a2a45;color:#c8d8f0;font-size:0.82rem;">${q.text}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #1a2a45;min-width:180px;">${scoreBar(pre.avg, max)}</td>
+        <td style="padding:8px 12px;border-bottom:1px solid #1a2a45;min-width:180px;">${post ? scoreBar(post.avg, max) : '<span style="color:#2a4a6a;font-size:0.78rem;">No post surveys yet</span>'}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:24px;">
+      <div style="font-size:0.8rem;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead><tr style="background:#0d1f3c;">
+          <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Skill</th>
+          <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Pre (avg)</th>
+          <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Post (avg)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+
+  const preA  = computeAvgs(preResponseIds,  SKILL_A);
+  const preB  = computeAvgs(preResponseIds,  SKILL_B);
+  const preC  = computeAvgs(preResponseIds,  SKILL_C);
+  const postA = computeAvgs(postResponseIds, SKILL_A);
+  const postB = computeAvgs(postResponseIds, SKILL_B);
+  const postC = computeAvgs(postResponseIds, SKILL_C);
+  const preText  = collectText(preResponseIds,  TEXT_QS);
+  const postText = collectText(postResponseIds, TEXT_QS);
+
+  // Text responses section
+  const textHtml = TEXT_QS.map(q => {
+    const preItems  = preText[q.key]  || [];
+    const postItems = postText[q.key] || [];
+    if (!preItems.length && !postItems.length) return '';
+    const renderItems = (items, label) => items.length
+      ? items.map(t => `<div style="background:#0a1628;border-left:3px solid #2a4a6e;padding:8px 12px;border-radius:0 4px 4px 0;margin-bottom:6px;font-size:0.82rem;color:#c8d8f0;line-height:1.5;">${t}</div>`).join('')
+      : `<div style="color:#3a5a7a;font-size:0.78rem;padding:4px 0;">No ${label.toLowerCase()} responses yet</div>`;
+    return `<div style="margin-bottom:20px;">
+      <div style="font-size:0.8rem;font-weight:700;color:#8a9bb8;margin-bottom:8px;">${q.label}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;">PRE</div>${renderItems(preItems,'pre')}</div>
+        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;">POST</div>${renderItems(postItems,'post')}</div>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  const summaryDiv = document.createElement('div');
+  summaryDiv.style.cssText = 'margin-top:32px;border-top:2px solid #1e3a5f;padding-top:24px;';
+  summaryDiv.innerHTML = `
+    <div style="font-size:1rem;font-weight:700;color:#c9a227;margin-bottom:4px;">📊 Skills Assessment Summary</div>
+    <div style="font-size:0.8rem;color:#5a7a9a;margin-bottom:20px;">
+      Pre: ${preResponseIds.length} response${preResponseIds.length !== 1 ? 's' : ''} &nbsp;|&nbsp;
+      Post: ${postResponseIds.length} response${postResponseIds.length !== 1 ? 's' : ''}
+      &nbsp;·&nbsp; Scale: 5 = Excellent, 1 = Poor
+    </div>
+    ${skillTable('Skill Set A — Building & Maintaining Relationships', SKILL_A, preA, postResponseIds.length ? postA : null, 5)}
+    ${skillTable('Skill Set B — Preparing & Managing Interactions',    SKILL_B, preB, postResponseIds.length ? postB : null, 5)}
+    ${skillTable('Skill Set C — Advancing Relationships Commercially', SKILL_C, preC, postResponseIds.length ? postC : null, 5)}
+    ${textHtml ? `<div style="margin-top:24px;border-top:1px solid #1e3a5f;padding-top:20px;">
+      <div style="font-size:0.8rem;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;">Open-Ended Responses</div>
+      ${textHtml}
+    </div>` : ''}
+  `;
+  document.getElementById('progressTableWrap').appendChild(summaryDiv);
 }
 </script>
 </body>
