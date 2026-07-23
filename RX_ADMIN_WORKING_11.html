@@ -4438,19 +4438,15 @@ async function loadProgressTab() {
   const token = localStorage.getItem('adminToken');
   const sel   = document.getElementById('progressClassSelect');
 
-  // Populate class dropdown if empty
+  // Populate class dropdown from global CLASSES array (loaded at startup)
   if (sel.options.length <= 1) {
-    try {
-      const r = await fetch(API + '/api/classes', { headers: { Authorization: 'Bearer ' + token } });
-      const classes = await r.json();
-      sel.innerHTML = '<option value="">— Select a class —</option>';
-      (classes || []).filter(c => !c.deleted_at).forEach(c => {
-        const o = document.createElement('option');
-        o.value = c.id;
-        o.textContent = c.name;
-        sel.appendChild(o);
-      });
-    } catch(e) { console.error('loadProgressTab classes:', e); }
+    sel.innerHTML = '<option value="">— Select a class —</option>';
+    (window.CLASSES || []).filter(c => !c.deleted_at).forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id;
+      o.textContent = c.name;
+      sel.appendChild(o);
+    });
   }
 
   const classId = sel.value;
