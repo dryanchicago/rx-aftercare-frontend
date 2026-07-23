@@ -646,6 +646,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <option value="">— Select a class —</option>
       </select>
       <button class="btn-outline" onclick="loadProgressTab()" style="font-size:0.82rem;">↻ Refresh</button>
+      <button class="btn-outline" id="previewReminderBtn" onclick="previewReminder()" style="font-size:0.82rem;display:none;">🔍 Preview Email</button>
       <button class="btn-outline" id="remindCombinedBtn" onclick="sendProgressReminder('combined')" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;display:none;">📧 Send Reminders</button>
       <span id="progressLastUpdated" style="font-size:0.78rem;color:#5a7a9a;margin-left:4px;"></span>
     </div>
@@ -4545,6 +4546,9 @@ async function loadProgressTab() {
     remindBtn.style.display  = needsReminder > 0 ? '' : 'none';
     remindBtn.textContent    = `📧 Send Reminders (${needsReminder})`;
     remindBtn.dataset.classId = classId;
+    const previewBtn = document.getElementById('previewReminderBtn');
+    previewBtn.style.display  = needsReminder > 0 ? '' : 'none';
+    previewBtn.dataset.classId = classId;
 
     // Build response_id → name map from survey results
     const responseNameMap = {};
@@ -4560,6 +4564,35 @@ async function loadProgressTab() {
   } catch(e) {
     console.error('loadProgressTab:', e);
     wrap.innerHTML = '<div style="color:#f07070;padding:16px 0;">Error loading progress data: ' + e.message + '</div>';
+  }
+}
+
+async function previewReminder() {
+  const token   = localStorage.getItem('adminToken');
+  const classId = document.getElementById('previewReminderBtn').dataset.classId;
+  if (!classId) return;
+
+  try {
+    const r    = await fetch(`${API_BASE}/students/combined-reminder/${classId}?preview=true`, { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Preview failed');
+    if (data.message) { alert(data.message); return; }
+
+    // Open the email HTML in a new tab so you can see it and click the links
+    const win = window.open('', '_blank');
+    win.document.write(`
+      <html><head><title>Email Preview — ${data.student.name}</title></head>
+      <body style="margin:0;background:#eee;">
+        <div style="background:#1a2744;color:#fff;padding:12px 20px;font-family:Arial,sans-serif;display:flex;align-items:center;gap:16px;">
+          <strong>📧 Preview for: ${data.student.name} (${data.student.email})</strong>
+          <span style="font-size:0.85rem;opacity:.8;">Needs Goals: ${data.student.needsGoals} &nbsp;|&nbsp; Needs Survey: ${data.student.needsSurvey}</span>
+          <span style="font-size:0.85rem;opacity:.8;">Links → Goals: <code style="background:#0d1f3c;padding:2px 6px;border-radius:3px;">${data.links.dashUrl}</code> &nbsp;|&nbsp; Survey: <code style="background:#0d1f3c;padding:2px 6px;border-radius:3px;">${data.links.surveyUrl}</code></span>
+        </div>
+        <div style="padding:20px;">${data.html}</div>
+      </body></html>`);
+    win.document.close();
+  } catch(e) {
+    alert('Preview error: ' + e.message);
   }
 }
 
