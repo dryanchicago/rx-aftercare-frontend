@@ -646,6 +646,8 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <option value="">— Select a class —</option>
       </select>
       <button class="btn-outline" onclick="loadProgressTab()" style="font-size:0.82rem;">↻ Refresh</button>
+      <button class="btn-outline" id="remindGoalsBtn" onclick="sendProgressReminder('goals')" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;display:none;">📧 Remind: Goals</button>
+      <button class="btn-outline" id="remindSurveyBtn" onclick="sendProgressReminder('survey')" style="font-size:0.82rem;background:#1a2a4a;color:#7ab3f5;border-color:#2a5a8c;display:none;">📧 Remind: Survey</button>
       <span id="progressLastUpdated" style="font-size:0.78rem;color:#5a7a9a;margin-left:4px;"></span>
     </div>
     <div id="progressTableWrap">
@@ -4536,6 +4538,18 @@ async function loadProgressTab() {
 
     document.getElementById('progressLastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
+    // Show reminder buttons once a class is loaded
+    const goalsNotDone  = students.filter(s => (s.total_activities || 0) === 0).length;
+    const surveyNotDone = students.filter(s => !surveyMap[s.id]?.pre_submitted_at).length;
+    const remindGoalsBtn  = document.getElementById('remindGoalsBtn');
+    const remindSurveyBtn = document.getElementById('remindSurveyBtn');
+    remindGoalsBtn.style.display  = goalsNotDone  > 0 ? '' : 'none';
+    remindSurveyBtn.style.display = surveyNotDone > 0 ? '' : 'none';
+    remindGoalsBtn.textContent    = `📧 Remind: Goals (${goalsNotDone})`;
+    remindSurveyBtn.textContent   = `📧 Remind: Survey (${surveyNotDone})`;
+    remindGoalsBtn.dataset.classId  = classId;
+    remindSurveyBtn.dataset.classId = classId;
+
     // Build response_id → name map from survey results
     const responseNameMap = {};
     (Array.isArray(surveyRows) ? surveyRows : []).forEach(r => {
@@ -4550,6 +4564,35 @@ async function loadProgressTab() {
   } catch(e) {
     console.error('loadProgressTab:', e);
     wrap.innerHTML = '<div style="color:#f07070;padding:16px 0;">Error loading progress data: ' + e.message + '</div>';
+  }
+}
+
+async function sendProgressReminder(type) {
+  const token   = localStorage.getItem('adminToken');
+  const btn     = document.getElementById(type === 'goals' ? 'remindGoalsBtn' : 'remindSurveyBtn');
+  const classId = btn.dataset.classId;
+  if (!classId) return;
+
+  const label = type === 'goals' ? 'goal-setting' : 'pre-survey';
+  const count = btn.textContent.match(/\((\d+)\)/)?.[1] || '?';
+  if (!confirm(`Send a ${label} reminder to ${count} student(s) who haven't completed it yet?`)) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending…';
+
+  try {
+    const endpoint = type === 'goals'
+      ? `${API_BASE}/students/goal-reminder/${classId}`
+      : `${API_BASE}/surveys/remind/${classId}`;
+    const r    = await fetch(endpoint, { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Send failed');
+    alert(`✅ Sent to ${data.sent} student${data.sent !== 1 ? 's' : ''}.${data.skipped ? ' ' + data.skipped + ' failed.' : ''}`);
+    loadProgressTab();
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = type === 'goals' ? '📧 Remind: Goals' : '📧 Remind: Survey';
   }
 }
 
