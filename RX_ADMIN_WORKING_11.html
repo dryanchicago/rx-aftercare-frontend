@@ -4460,8 +4460,8 @@ async function loadProgressTab() {
 
   try {
     const [surveyRes, studentsRes] = await Promise.all([
-      fetch(API + '/api/surveys/results/' + classId, { headers: { Authorization: 'Bearer ' + token } }),
-      fetch(API + '/api/students/class/' + classId,  { headers: { Authorization: 'Bearer ' + token } })
+      fetch(API_BASE + '/surveys/results/' + classId, { headers: { Authorization: 'Bearer ' + token } }),
+      fetch(API_BASE + '/students/class/' + classId,  { headers: { Authorization: 'Bearer ' + token } })
     ]);
     const surveyRows  = await surveyRes.json();
     const students    = await studentsRes.json();
@@ -4541,7 +4541,7 @@ async function loadProgressTab() {
 
   } catch(e) {
     console.error('loadProgressTab:', e);
-    wrap.innerHTML = '<div style="color:#f07070;padding:16px 0;">Error loading progress data.</div>';
+    wrap.innerHTML = '<div style="color:#f07070;padding:16px 0;">Error loading progress data: ' + e.message + '</div>';
   }
 }
 
@@ -4593,7 +4593,7 @@ async function renderSurveySummary(classId, token, surveyRows) {
   // Fetch all answers for this class
   let allAnswers = [];
   try {
-    const r = await fetch(API + '/api/surveys/answers/' + classId, { headers: { Authorization: 'Bearer ' + token } });
+    const r = await fetch(API_BASE + '/surveys/answers/' + classId, { headers: { Authorization: 'Bearer ' + token } });
     allAnswers = await r.json();
   } catch(e) { console.error('survey answers fetch:', e); return; }
 
