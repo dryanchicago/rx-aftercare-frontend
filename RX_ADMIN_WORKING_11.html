@@ -448,6 +448,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
   <div class="tab" onclick="switchTab(this,'sec-students');loadStudents()">👥 Students</div>
   <div class="tab" onclick="switchTab(this,'sec-emaillib');loadEmailLibrary()">📧 Email Library</div>
   <div class="tab" onclick="switchTab(this,'sec-cert');loadCertTab()">🎓 Certifications</div>
+  <div class="tab" onclick="switchTab(this,'sec-progress');loadProgressTab()">📊 Progress</div>
   <a class="tab" href="coach-admin.html">👤 Coaches ↗</a>
 </div>
 
@@ -632,6 +633,24 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <div class="cert-empty">Select a class to view certification submissions.</div>
     </div>
 
+  </div>
+
+  <!-- PROGRESS TAB -->
+  <div id="sec-progress" class="section">
+    <div class="sec-header">
+      <h2>📊 Class Progress</h2>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+      <label style="color:#8a9bb8;font-size:0.85rem;">Class:</label>
+      <select id="progressClassSelect" onchange="loadProgressTab()" style="background:#0d1f3c;color:#c8d8f0;border:1px solid #2a4a6e;border-radius:5px;padding:6px 10px;font-size:0.85rem;">
+        <option value="">— Select a class —</option>
+      </select>
+      <button class="btn-outline" onclick="loadProgressTab()" style="font-size:0.82rem;">↻ Refresh</button>
+      <span id="progressLastUpdated" style="font-size:0.78rem;color:#5a7a9a;margin-left:4px;"></span>
+    </div>
+    <div id="progressTableWrap">
+      <div style="color:#5a7a9a;font-size:0.9rem;padding:20px 0;">Select a class to view student progress.</div>
+    </div>
   </div>
 
 </div><!-- /.main -->
@@ -4412,5 +4431,119 @@ function escHtml(str) {
   </div>
 </div>
 
+<script>
+// ── Progress Tab ───────────────────────────────────────────────────────────────
+
+async function loadProgressTab() {
+  const token = localStorage.getItem('adminToken');
+  const sel   = document.getElementById('progressClassSelect');
+
+  // Populate class dropdown if empty
+  if (sel.options.length <= 1) {
+    try {
+      const r = await fetch(API + '/api/classes', { headers: { Authorization: 'Bearer ' + token } });
+      const classes = await r.json();
+      sel.innerHTML = '<option value="">— Select a class —</option>';
+      (classes || []).filter(c => !c.deleted_at).forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id;
+        o.textContent = c.name;
+        sel.appendChild(o);
+      });
+    } catch(e) { console.error('loadProgressTab classes:', e); }
+  }
+
+  const classId = sel.value;
+  const wrap    = document.getElementById('progressTableWrap');
+  if (!classId) {
+    wrap.innerHTML = '<div style="color:#5a7a9a;font-size:0.9rem;padding:20px 0;">Select a class to view student progress.</div>';
+    return;
+  }
+
+  wrap.innerHTML = '<div style="color:#8a9bb8;padding:16px 0;">Loading…</div>';
+
+  try {
+    const [surveyRes, studentsRes] = await Promise.all([
+      fetch(API + '/api/surveys/results/' + classId, { headers: { Authorization: 'Bearer ' + token } }),
+      fetch(API + '/api/students/class/' + classId,  { headers: { Authorization: 'Bearer ' + token } })
+    ]);
+    const surveyRows  = await surveyRes.json();
+    const students    = await studentsRes.json();
+
+    // Build lookup by student id
+    const surveyMap = {};
+    (Array.isArray(surveyRows) ? surveyRows : []).forEach(r => { surveyMap[r.student_id] = r; });
+    if (!students.length) {
+      wrap.innerHTML = '<div style="color:#5a7a9a;padding:20px 0;">No students found in this class.</div>';
+      return;
+    }
+
+    // Summary counts
+    const totalStudents  = students.length;
+    const goalsSet       = students.filter(s => (s.total_activities || 0) > 0).length;
+    const preDone        = students.filter(s => surveyMap[s.id]?.pre_submitted_at).length;
+    const postDone       = students.filter(s => surveyMap[s.id]?.post_submitted_at).length;
+
+    const pct = (n) => Math.round(n / totalStudents * 100);
+
+    const summaryHtml = `
+      <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
+        ${[
+          ['👥 Total Students', totalStudents, '#5a7a9a'],
+          ['🎯 Goals Set', goalsSet + ' / ' + totalStudents + ' (' + pct(goalsSet) + '%)', goalsSet === totalStudents ? '#4caf7d' : '#c9a227'],
+          ['📋 Pre-Survey Done', preDone + ' / ' + totalStudents + ' (' + pct(preDone) + '%)', preDone === totalStudents ? '#4caf7d' : '#c9a227'],
+          ['📋 Post-Survey Done', postDone + ' / ' + totalStudents + ' (' + pct(postDone) + '%)', postDone === totalStudents ? '#4caf7d' : '#5a7a9a'],
+        ].map(([label, val, color]) => `
+          <div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:8px;padding:14px 20px;min-width:160px;">
+            <div style="font-size:0.75rem;color:#5a7a9a;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">${label}</div>
+            <div style="font-size:1.2rem;font-weight:700;color:${color};">${val}</div>
+          </div>`).join('')}
+      </div>`;
+
+    // Per-student table
+    const rows = students.map(s => {
+      const survey   = surveyMap[s.id] || {};
+      const goalsOk  = (s.total_activities || 0) > 0;
+      const preOk    = !!survey.pre_submitted_at;
+      const postOk   = !!survey.post_submitted_at;
+      const fmtDate  = (d) => d ? new Date(d).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—';
+      const badge    = (ok, label, date) => ok
+        ? `<span style="background:rgba(76,175,80,0.15);color:#4caf7d;border:1px solid #2a6a3a;border-radius:4px;padding:3px 8px;font-size:0.78rem;white-space:nowrap;">✓ ${fmtDate(date)}</span>`
+        : `<span style="background:rgba(255,255,255,0.04);color:#5a7a9a;border:1px solid #1e3a5f;border-radius:4px;padding:3px 8px;font-size:0.78rem;">— Pending</span>`;
+
+      return `<tr>
+        <td style="padding:9px 12px;border-bottom:1px solid #1a2a45;color:#c8d8f0;">${s.last_name}, ${s.first_name}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid #1a2a45;color:#6a8aaa;font-size:0.82rem;">${s.email}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid #1a2a45;text-align:center;">
+          ${goalsOk
+            ? `<span style="background:rgba(76,175,80,0.15);color:#4caf7d;border:1px solid #2a6a3a;border-radius:4px;padding:3px 8px;font-size:0.78rem;">✓ ${s.total_activities} activities</span>`
+            : `<span style="background:rgba(255,255,255,0.04);color:#5a7a9a;border:1px solid #1e3a5f;border-radius:4px;padding:3px 8px;font-size:0.78rem;">— Pending</span>`}
+        </td>
+        <td style="padding:9px 12px;border-bottom:1px solid #1a2a45;text-align:center;">${badge(preOk, 'Pre', survey.pre_submitted_at)}</td>
+        <td style="padding:9px 12px;border-bottom:1px solid #1a2a45;text-align:center;">${badge(postOk, 'Post', survey.post_submitted_at)}</td>
+      </tr>`;
+    }).join('');
+
+    wrap.innerHTML = summaryHtml + `
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead>
+          <tr style="background:#0d1f3c;">
+            <th style="padding:9px 12px;text-align:left;color:#8a9bb8;font-weight:700;text-transform:uppercase;font-size:0.75rem;letter-spacing:.3px;border-bottom:2px solid #1e3a5f;">Student</th>
+            <th style="padding:9px 12px;text-align:left;color:#8a9bb8;font-weight:700;text-transform:uppercase;font-size:0.75rem;letter-spacing:.3px;border-bottom:2px solid #1e3a5f;">Email</th>
+            <th style="padding:9px 12px;text-align:center;color:#8a9bb8;font-weight:700;text-transform:uppercase;font-size:0.75rem;letter-spacing:.3px;border-bottom:2px solid #1e3a5f;">🎯 Goals Set</th>
+            <th style="padding:9px 12px;text-align:center;color:#8a9bb8;font-weight:700;text-transform:uppercase;font-size:0.75rem;letter-spacing:.3px;border-bottom:2px solid #1e3a5f;">📋 Pre-Survey</th>
+            <th style="padding:9px 12px;text-align:center;color:#8a9bb8;font-weight:700;text-transform:uppercase;font-size:0.75rem;letter-spacing:.3px;border-bottom:2px solid #1e3a5f;">📋 Post-Survey</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+
+    document.getElementById('progressLastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    console.error('loadProgressTab:', e);
+    wrap.innerHTML = '<div style="color:#f07070;padding:16px 0;">Error loading progress data.</div>';
+  }
+}
+</script>
 </body>
 </html>
