@@ -4579,6 +4579,24 @@ async function renderSurveySummary(classId, token, surveyRows, responseNameMap) 
     { key: 'skill_c_questioning',       text: 'Comfortable questioning clients about their needs' },
     { key: 'skill_c_objections',        text: 'Comfortable handling objections from clients' },
   ];
+  var COURSE_EVAL_AGREE = [
+    { key: 'eval_objectives_met',    text: 'Were the stated objectives of the session met?' },
+    { key: 'eval_understood_before', text: 'To what extent did you understand the concepts PRIOR to this training?' },
+    { key: 'eval_understood_after',  text: 'To what extent do you understand the concepts AFTER completing this training?' },
+    { key: 'eval_will_apply',        text: 'Will you apply the information presented to your current job responsibilities?' },
+    { key: 'eval_overall_satisfied', text: 'Overall, were you satisfied with the quality of this program?' },
+  ];
+  var COURSE_EVAL_EXCEL = [
+    { key: 'eval_facilitator', text: 'Overall effectiveness of the facilitator(s)' },
+    { key: 'eval_handouts',    text: 'Overall effectiveness of the handouts, tools and templates' },
+  ];
+  var FINAL_RATINGS = [
+    { key: 'final_workshop_content',  text: 'Rx Workshop Content' },
+    { key: 'final_workshop_delivery', text: 'Rx Workshop Delivery Approach' },
+    { key: 'final_templates',         text: 'Rx Templates' },
+    { key: 'final_aftercare',         text: 'Rx Aftercare Experience' },
+  ];
+
   var TEXT_QS = [
     { key: 'q_most_beneficial',      label: 'What was most beneficial about the Rx program?' },
     { key: 'q_implement_immediately',label: 'What will you implement immediately?' },
@@ -4688,6 +4706,9 @@ async function renderSurveySummary(classId, token, surveyRows, responseNameMap) 
   const postA = computeAvgs(postResponseIds, SKILL_A);
   const postB = computeAvgs(postResponseIds, SKILL_B);
   const postC = computeAvgs(postResponseIds, SKILL_C);
+  const preEvalAgree  = computeAvgs(preResponseIds,  COURSE_EVAL_AGREE);
+  const preEvalExcel  = computeAvgs(preResponseIds,  COURSE_EVAL_EXCEL);
+  const postFinal     = computeAvgs(postResponseIds, FINAL_RATINGS);
   const preText  = collectText(preResponseIds,  TEXT_QS);
   const postText = collectText(postResponseIds, TEXT_QS);
 
@@ -4724,6 +4745,9 @@ async function renderSurveySummary(classId, token, surveyRows, responseNameMap) 
     ${skillTable('Skill Set A — Building & Maintaining Relationships', SKILL_A, preA, postResponseIds.length ? postA : null, 5)}
     ${skillTable('Skill Set B — Preparing & Managing Interactions',    SKILL_B, preB, postResponseIds.length ? postB : null, 5)}
     ${skillTable('Skill Set C — Advancing Relationships Commercially', SKILL_C, preC, postResponseIds.length ? postC : null, 5)}
+    ${preEvalAgree.some(q => q.avg !== null) ? skillTable('Program Assessment — Agreement Scale (5 = Very Much So, 1 = Not at All)', COURSE_EVAL_AGREE, preEvalAgree, null, 5) : ''}
+    ${preEvalExcel.some(q => q.avg !== null) ? skillTable('Program Assessment — Quality Scale (5 = Excellent, 1 = Poor)', COURSE_EVAL_EXCEL, preEvalExcel, null, 5) : ''}
+    ${postFinal.some(q => q.avg !== null) ? skillTable('Final Program Ratings (Post — 5 = Excellent, 1 = Poor)', FINAL_RATINGS, postFinal, null, 5) : ''}
     ${textHtml ? `<div style="margin-top:24px;border-top:1px solid #1e3a5f;padding-top:20px;">
       <div style="font-size:0.8rem;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:.5px;margin-bottom:16px;">Open-Ended Responses</div>
       ${textHtml}
