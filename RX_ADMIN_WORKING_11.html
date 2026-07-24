@@ -1595,6 +1595,7 @@ function renderStudents(){
       +'<button class="btn-sm" onclick="openProgressDetail('+s.id+',\''+esc(fullName)+'\')" style="background:#1a3a22;color:#7fd67f;border:1px solid #2a6a32;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">📊 Progress</button>'
       +'<button class="btn-sm btn-edit" onclick="openEditStudent('+s.id+')" style="background:#1a3a5f;color:#7ab3f5;border:1px solid #2a5a8f;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;">✏️ Edit</button>'
       +'<button class="btn-sm" style="background:#2a5298;color:#fff;border:none;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resendWelcome('+s.id+')">📧 Resend Email</button>'
+      +'<button class="btn-sm" style="background:#3a1a1a;color:#f08080;border:1px solid #7a2a2a;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resetStudentGoals('+s.id+',\''+esc(fullName)+'\')">🎯 Reset Goals</button>'
       +'<button class="btn-sm" style="background:#5c3200;color:#ffd080;border:1px solid #c97000;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resetStudentDemo(\''+esc(s.email)+'\')">🔄 Reset</button>'
       +'<button class="btn-sm btn-del" onclick="removeStudent('+s.id+')">🗑 Remove</button></div></div></div>';
   }).join("");
@@ -1745,6 +1746,23 @@ async function bulkResendWelcome(){
   toast(summary);
   if(reset>0) await loadStudents();
 }
+async function resetStudentGoals(studentId, studentName) {
+  if (!confirm('Reset goal commitments for ' + studentName + '?\n\nThis clears all their committed goals and activities so they return to the goal-setting screen. Their login credentials and survey responses are NOT affected.')) return;
+  const token = localStorage.getItem('adminToken');
+  try {
+    const r = await fetch(API_BASE + '/students/' + studentId + '/reset-progress', {
+      method: 'DELETE',
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Reset failed');
+    alert('✅ Goals reset for ' + studentName + '. They can now re-set their goals on next login.');
+    await loadStudents();
+  } catch (e) {
+    alert('Error: ' + e.message);
+  }
+}
+
 async function resetStudentDemo(email){
   var enrollments=STUDENTS.filter(function(s){return s.email===email;});
   var classNames=enrollments.map(function(s){
