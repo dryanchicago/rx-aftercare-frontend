@@ -4804,11 +4804,13 @@ async function renderSurveySummary(classId, token, surveyRows, responseNameMap) 
   const preText  = collectText(preResponseIds,  TEXT_QS);
   const postText = collectText(postResponseIds, TEXT_QS);
 
-  // Text responses section
-  const textHtml = TEXT_QS.map(q => {
+  // Text responses section — collapsible per question
+  const textHtml = TEXT_QS.map((q, qi) => {
     const preItems  = preText[q.key]  || [];
     const postItems = postText[q.key] || [];
     if (!preItems.length && !postItems.length) return '';
+    const totalCount = preItems.length + postItems.length;
+    const panelId = 'tq-panel-' + qi;
     const renderItems = (items, label) => items.length
       ? items.map(item => `
           <div style="background:#0a1628;border-left:3px solid #2a4a6e;padding:8px 12px;border-radius:0 4px 4px 0;margin-bottom:8px;">
@@ -4816,11 +4818,20 @@ async function renderSurveySummary(classId, token, surveyRows, responseNameMap) 
             <div style="font-size:0.82rem;color:#c8d8f0;line-height:1.5;">${item.text}</div>
           </div>`).join('')
       : `<div style="color:#3a5a7a;font-size:0.78rem;padding:4px 0;">No ${label.toLowerCase()} responses yet</div>`;
-    return `<div style="margin-bottom:24px;">
-      <div style="font-size:0.85rem;font-weight:700;color:#8a9bb8;margin-bottom:10px;border-bottom:1px solid #1a2a45;padding-bottom:6px;">${q.label}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">PRE (${preItems.length} response${preItems.length!==1?'s':''})</div>${renderItems(preItems,'pre')}</div>
-        <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">POST (${postItems.length} response${postItems.length!==1?'s':''})</div>${renderItems(postItems,'post')}</div>
+    return `<div style="margin-bottom:6px;border:1px solid #1a2a45;border-radius:6px;overflow:hidden;">
+      <div onclick="(function(el){var p=document.getElementById('${panelId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('.tq-arrow').textContent=open?'▶':'▼';})(this)"
+           style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0d1f3c;cursor:pointer;user-select:none;">
+        <span style="font-size:0.85rem;font-weight:700;color:#8a9bb8;">${q.label}</span>
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:0.72rem;color:#5a7a9a;background:#0a1628;padding:2px 8px;border-radius:10px;">${totalCount} response${totalCount!==1?'s':''}</span>
+          <span class="tq-arrow" style="font-size:0.7rem;color:#5a7a9a;">▶</span>
+        </span>
+      </div>
+      <div id="${panelId}" style="display:none;padding:14px;background:#060f1e;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">PRE (${preItems.length})</div>${renderItems(preItems,'pre')}</div>
+          <div><div style="font-size:0.7rem;color:#5a7a9a;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;">POST (${postItems.length})</div>${renderItems(postItems,'post')}</div>
+        </div>
       </div>
     </div>`;
   }).filter(Boolean).join('');
