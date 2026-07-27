@@ -4555,6 +4555,9 @@ async function loadProgressTab() {
         <tbody>${rows}</tbody>
       </table>`;
 
+    // Store roster for report generator
+    window._progressRosterData = { students, surveyMap };
+
     document.getElementById('progressLastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
     // Show combined reminder button if anyone is missing goals or survey
@@ -4993,6 +4996,62 @@ function generateProgressReport() {
       <span style="color:#c0392b;font-weight:700;">1 = Poor / Never</span>
       &nbsp;·&nbsp; Score bars: <span style="color:#2e7d52;font-weight:700;">green ≥70%</span>, <span style="color:#b8860b;font-weight:700;">gold ≥40%</span>, <span style="color:#c0392b;font-weight:700;">red &lt;40%</span> of max
     </div>
+
+    <!-- Completion snapshot -->
+    ${(() => {
+      const roster = window._progressRosterData;
+      if (!roster) return '';
+      const { students, surveyMap } = roster;
+      const goalsSet  = students.filter(s => (s.total_activities || 0) > 0).length;
+      const preDone   = students.filter(s => surveyMap[s.id]?.pre_submitted_at).length;
+      const postDone  = students.filter(s => surveyMap[s.id]?.post_submitted_at).length;
+      const total     = students.length;
+      const pct = n => Math.round(n / total * 100);
+
+      const summaryTiles = [
+        ['Total Students',   total,    '#0d1f3c', '#fff'],
+        ['Goals Committed',  goalsSet + ' / ' + total + ' (' + pct(goalsSet) + '%)',  goalsSet === total ? '#e8f5ee' : '#fdf6e3', goalsSet === total ? '#2e7d52' : '#8a6800'],
+        ['Pre-Survey Done',  preDone  + ' / ' + total + ' (' + pct(preDone)  + '%)',  preDone  === total ? '#e8f5ee' : '#fdf6e3', preDone  === total ? '#2e7d52' : '#8a6800'],
+        ['Post-Survey Done', postDone + ' / ' + total + ' (' + pct(postDone) + '%)',  '#f0f4fa', '#555'],
+      ].map(([label, val, bg, color]) => `
+        <div style="background:${bg};border:1px solid #dde2e8;border-radius:6px;padding:12px 18px;min-width:140px;flex:1;">
+          <div style="font-size:0.7rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;">${label}</div>
+          <div style="font-size:1.1rem;font-weight:700;color:${color};">${val}</div>
+        </div>`).join('');
+
+      const tableRows = students.map(s => {
+        const survey   = surveyMap[s.id] || {};
+        const hasGoals = (s.total_activities || 0) > 0;
+        const hasPre   = !!survey.pre_submitted_at;
+        const hasPost  = !!survey.post_submitted_at;
+        const tick  = (ok, date) => ok
+          ? `<span style="color:#2e7d52;font-weight:700;">✓ Done</span>${date ? '<br><span style="font-size:0.7rem;color:#888;">' + new Date(date).toLocaleDateString() + '</span>' : ''}`
+          : `<span style="color:#c0392b;font-weight:700;">✗ Pending</span>`;
+        return `<tr style="border-bottom:1px solid #eef0f3;">
+          <td style="padding:8px 12px;font-size:0.83rem;color:#0d1f3c;font-weight:600;">${s.last_name}, ${s.first_name}</td>
+          <td style="padding:8px 12px;font-size:0.78rem;color:#555;">${s.email}</td>
+          <td style="padding:8px 12px;text-align:center;font-size:0.82rem;">${hasGoals ? `<span style="color:#2e7d52;font-weight:700;">✓ ${s.total_activities} committed</span>` : `<span style="color:#c0392b;font-weight:700;">✗ Pending</span>`}</td>
+          <td style="padding:8px 12px;text-align:center;font-size:0.82rem;">${tick(hasPre, survey.pre_submitted_at)}</td>
+          <td style="padding:8px 12px;text-align:center;font-size:0.82rem;">${tick(hasPost, survey.post_submitted_at)}</td>
+        </tr>`;
+      }).join('');
+
+      return `
+        <h2 style="font-size:0.95rem;font-weight:700;color:#0d1f3c;text-transform:uppercase;letter-spacing:.6px;margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid #e8ecf0;">Completion Status</h2>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">${summaryTiles}</div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #dde2e8;margin-bottom:36px;">
+          <thead>
+            <tr style="background:#0d1f3c;">
+              <th style="padding:8px 12px;text-align:left;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Student</th>
+              <th style="padding:8px 12px;text-align:left;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Email</th>
+              <th style="padding:8px 12px;text-align:center;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Goals Committed</th>
+              <th style="padding:8px 12px;text-align:center;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Pre-Survey</th>
+              <th style="padding:8px 12px;text-align:center;color:#8a9bb8;font-size:0.73rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Post-Survey</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>`;
+    })()}
 
     <!-- Skill sections -->
     <h2 style="font-size:0.95rem;font-weight:700;color:#0d1f3c;text-transform:uppercase;letter-spacing:.6px;margin:0 0 16px;padding-bottom:8px;border-bottom:2px solid #e8ecf0;">Skills Self-Assessment</h2>
