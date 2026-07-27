@@ -4771,40 +4771,48 @@ async function renderSurveySummary(classId, token, surveyRows, responseNameMap) 
 
   let _stIdx = 0;
   function skillTable(title, questions, preAvgs, postAvgs, max) {
-    const panelId = 'st-panel-' + (_stIdx++);
-    const validPre = preAvgs.filter(q => q.avg !== null);
-    const sectionAvg = validPre.length ? (validPre.reduce((s, q) => s + q.avg, 0) / validPre.length) : null;
-    const avgColor = sectionAvg === null ? '#5a7a9a' : sectionAvg / max >= 0.7 ? '#4caf7d' : sectionAvg / max >= 0.4 ? '#c9a227' : '#f07070';
-
     const rows = questions.map((q, i) => {
-      const pre  = preAvgs[i];
-      const post = postAvgs ? postAvgs[i] : null;
-      return `<tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #1a2a45;color:#c8d8f0;font-size:0.82rem;">${q.text}</td>
+      const pre    = preAvgs[i];
+      const post   = postAvgs ? postAvgs[i] : null;
+      const detailId = 'sq-detail-' + (_stIdx++);
+
+      // Per-participant breakdown for this question
+      const preDetails = preResponseIds.map(rid => {
+        const name = responseNameMap[rid] || 'Unknown';
+        const ans  = (byResponse[rid] || []).find(a => a.question_key === q.key);
+        const v    = ans ? Number(ans.answer_value) : null;
+        const color = v >= 4 ? '#4caf7d' : v === 3 ? '#c9a227' : v !== null ? '#f07070' : '#3a5a7a';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #0d1f3c;">
+          <span style="font-size:0.78rem;color:#8a9bb8;">${name}</span>
+          <span style="font-size:0.82rem;font-weight:700;color:${color};">${v !== null ? v + ' / ' + max : '—'}</span>
+        </div>`;
+      }).join('');
+
+      return `<tr onclick="(function(el){var p=document.getElementById('${detailId}');var open=p.style.display!=='none';p.style.display=open?'none':'table-row';el.querySelector('.sq-arrow').textContent=open?'▶':'▼';})(this)"
+               style="cursor:pointer;" title="Click to see individual responses">
+        <td style="padding:8px 12px;border-bottom:1px solid #1a2a45;color:#c8d8f0;font-size:0.82rem;">
+          <span class="sq-arrow" style="font-size:0.65rem;color:#3a5a7a;margin-right:6px;">▶</span>${q.text}
+        </td>
         <td style="padding:8px 12px;border-bottom:1px solid #1a2a45;min-width:180px;">${scoreBar(pre.avg, max)}</td>
         <td style="padding:8px 12px;border-bottom:1px solid #1a2a45;min-width:180px;">${post ? scoreBar(post.avg, max) : '<span style="color:#2a4a6a;font-size:0.78rem;">No post surveys yet</span>'}</td>
+      </tr>
+      <tr id="${detailId}" style="display:none;">
+        <td colspan="3" style="padding:0;border-bottom:2px solid #1e3a5f;">
+          <div style="background:#060f1e;padding:4px 0 4px 32px;">${preDetails}</div>
+        </td>
       </tr>`;
     }).join('');
 
-    return `<div style="margin-bottom:6px;border:1px solid #1a2a45;border-radius:6px;overflow:hidden;">
-      <div onclick="(function(el){var p=document.getElementById('${panelId}');var open=p.style.display!=='none';p.style.display=open?'none':'block';el.querySelector('.st-arrow').textContent=open?'▶':'▼';})(this)"
-           style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0d1f3c;cursor:pointer;user-select:none;">
-        <span style="font-size:0.8rem;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:.5px;">${title}</span>
-        <span style="display:flex;align-items:center;gap:10px;">
-          ${sectionAvg !== null ? `<span style="font-size:0.8rem;font-weight:700;color:${avgColor};">avg ${sectionAvg.toFixed(1)} / ${max}</span>` : ''}
-          <span class="st-arrow" style="font-size:0.7rem;color:#5a7a9a;">▶</span>
-        </span>
-      </div>
-      <div id="${panelId}" style="display:none;">
-        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
-          <thead><tr style="background:#071428;">
-            <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Skill</th>
-            <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Pre (avg)</th>
-            <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Post (avg)</th>
-          </tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
+    return `<div style="margin-bottom:24px;">
+      <div style="font-size:0.8rem;font-weight:700;color:#c9a227;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">${title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead><tr style="background:#0d1f3c;">
+          <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Skill &nbsp;<span style="font-weight:400;color:#3a5a7a;font-size:0.7rem;">(click to expand)</span></th>
+          <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Pre (avg)</th>
+          <th style="padding:8px 12px;text-align:left;color:#5a7a9a;font-size:0.75rem;font-weight:700;text-transform:uppercase;border-bottom:2px solid #1e3a5f;">Post (avg)</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>`;
   }
 
