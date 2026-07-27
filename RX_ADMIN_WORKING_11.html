@@ -4853,9 +4853,11 @@ async function renderSurveySummary(classId, token, surveyRows, responseNameMap) 
     className, classId,
     preCount: preResponseIds.length,
     postCount: postResponseIds.length,
+    preResponseIds, postResponseIds,
     preA, preB, preC, postA, postB, postC,
     preEvalAgree, preEvalExcel, postFinal,
     preText, postText,
+    byResponse, responseNameMap,
     SKILL_A, SKILL_B, SKILL_C,
     COURSE_EVAL_AGREE, COURSE_EVAL_EXCEL, FINAL_RATINGS, TEXT_QS
   };
@@ -5064,6 +5066,33 @@ function generateProgressReport() {
     <h2 style="font-size:0.95rem;font-weight:700;color:#0d1f3c;text-transform:uppercase;letter-spacing:.6px;margin:32px 0 16px;padding-bottom:8px;border-bottom:2px solid #e8ecf0;">Program Evaluation</h2>
     ${skillSection('Agreement Scale (5 = Very Much So, 1 = Not at All)', d.COURSE_EVAL_AGREE, d.preEvalAgree, null, 5, 'Question')}
     ${d.preEvalExcel.some(q => q.avg !== null) ? skillSection('Quality Scale (5 = Excellent, 1 = Poor)', d.COURSE_EVAL_EXCEL, d.preEvalExcel, null, 5, 'Question') : ''}
+    ${d.preEvalExcel.some(q => q.avg !== null) ? (() => {
+      // Individual scores for each Quality Scale question
+      const rows = d.preResponseIds.map(rid => {
+        const name = d.responseNameMap[rid] || 'Unknown';
+        const answers = d.byResponse[rid] || [];
+        const cols = d.COURSE_EVAL_EXCEL.map(q => {
+          const ans = answers.find(a => a.question_key === q.key);
+          const v = ans ? Number(ans.answer_value) : null;
+          const color = v >= 4 ? '#2e7d52' : v === 3 ? '#b8860b' : v !== null ? '#c0392b' : '#aaa';
+          return `<td style="padding:7px 12px;text-align:center;font-size:0.85rem;font-weight:700;color:${color};">${v !== null ? v + ' / 5' : '—'}</td>`;
+        }).join('');
+        return `<tr style="border-bottom:1px solid #eef0f3;">
+          <td style="padding:7px 12px;font-size:0.82rem;color:#333;">${name}</td>
+          ${cols}
+        </tr>`;
+      }).join('');
+      return `<div style="margin-top:-16px;margin-bottom:28px;">
+        <div style="font-size:0.72rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Individual Responses — Quality Scale</div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #dde2e8;">
+          <thead><tr style="background:#f0f4fa;">
+            <th style="padding:7px 12px;text-align:left;color:#555;font-size:0.73rem;font-weight:700;text-transform:uppercase;">Respondent</th>
+            ${d.COURSE_EVAL_EXCEL.map(q => `<th style="padding:7px 12px;text-align:center;color:#555;font-size:0.73rem;font-weight:700;text-transform:uppercase;">${q.text}</th>`).join('')}
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    })() : ''}
     ${(() => {
       const facQ = { key: 'q_facilitator_comments', label: 'Facilitator & program materials comments' };
       const items = (d.preText[facQ.key] || []).filter(r => r.text);
