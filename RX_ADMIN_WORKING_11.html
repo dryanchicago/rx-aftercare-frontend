@@ -574,6 +574,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       </select>
       <button id="bulkResendBtn" class="btn-outline" onclick="bulkResendWelcome()" style="display:none;margin-left:12px">📨 Resend Invitations to All</button>
       <button id="goalReminderBtn" class="btn-outline" onclick="sendGoalReminder()" style="display:none;margin-left:8px;background:#1a3a1a;color:#7fd67f;border-color:#2a6a2a;">📣 Send Goal Reminder</button>
+      <button id="coachReportBtn" class="btn-outline" onclick="exportCoachReport()" style="margin-left:8px;background:#1a2a3a;color:#7ab3f5;border-color:#2a5a8f;">📥 Export Coach Report</button>
     </div>
     <div id="bulkResendProgress" style="display:none;margin:8px 0;padding:10px 14px;background:#0d2040;border:1px solid #1e4080;border-radius:8px;color:#7ab3f5;font-size:0.9rem"></div>
     <div id="studentsLoading" class="loading-msg" style="display:none">Loading students…</div>
@@ -1599,6 +1600,28 @@ function renderStudents(){
       +'<button class="btn-sm" style="background:#5c3200;color:#ffd080;border:1px solid #c97000;padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;" onclick="resetStudentDemo(\''+esc(s.email)+'\')">🔄 Reset</button>'
       +'<button class="btn-sm btn-del" onclick="removeStudent('+s.id+')">🗑 Remove</button></div></div></div>';
   }).join("");
+}
+async function exportCoachReport(){
+  var filterClassId=document.getElementById("studentClassFilter").value;
+  var classId=filterClassId?parseInt(filterClassId):null;
+  var url="/students/coach-report"+(classId?"?class_id="+classId:"");
+  var rows=await apiCall("GET",url);
+  if(!rows||!Array.isArray(rows)){toast("❌ Could not load report data.");return;}
+  var csv=["Student Name,Email,Class,Goals Committed,Goal Count,Assigned Coach"];
+  rows.forEach(function(r){
+    var name='"'+((r.first_name||"")+" "+(r.last_name||"")).trim()+'"';
+    var email='"'+(r.email||"")+'"';
+    var cls='"'+(r.class_name||"")+'"';
+    var committed=r.goal_count>0?"Yes":"No";
+    var coach='"'+(r.coach_name||"Not Assigned")+'"';
+    csv.push([name,email,cls,committed,r.goal_count,coach].join(","));
+  });
+  var blob=new Blob([csv.join("\n")],{type:"text/csv"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  var className=classId?(CLASSES.find(function(c){return c.id===classId;})||{}).name||"class":"all-classes";
+  a.download="coach-report-"+className.replace(/[^a-z0-9]/gi,"-").toLowerCase()+".csv";
+  a.click();
 }
 async function removeStudent(studentId){
   var s=STUDENTS.find(function(x){return x.id===studentId;}); if(!s) return;
