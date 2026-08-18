@@ -860,8 +860,11 @@ function renderCoachTable() {
       ? '<button class="btn-invite" onclick="sendInvite(' + c.id + ')">✉ Send Invite</button>'
       : '';
 
-    // Class pills from student assignments
+    // Class pills — from direct class assignments AND student assignments
     var classNames = [];
+    (c.classes || []).forEach(function(cl) {
+      if (cl.name && classNames.indexOf(cl.name) === -1) classNames.push(cl.name);
+    });
     (c.students || []).forEach(function(s) {
       if (s.class_name && classNames.indexOf(s.class_name) === -1) classNames.push(s.class_name);
     });
