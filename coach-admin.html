@@ -806,7 +806,9 @@ function renderCoachTable() {
 
   var filtered = filterClassId
     ? _coaches.filter(function(c) {
-        return (c.students || []).some(function(s) { return String(s.class_id) === filterClassId; });
+        var inStudents = (c.students || []).some(function(s) { return String(s.class_id) === filterClassId; });
+        var inClasses  = (c.classes  || []).some(function(cl) { return String(cl.id) === filterClassId; });
+        return inStudents || inClasses;
       })
     : _coaches;
 
