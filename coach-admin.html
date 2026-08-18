@@ -560,7 +560,7 @@
 <!-- ══════════════════════════════════════════════
      CLASS ACCESS MODAL
 ══════════════════════════════════════════════ -->
-<div class="modal-overlay" id="classModal">
+<div class="modal" id="classModal">
   <div class="modal-panel" style="max-width:420px">
     <div class="modal-header">
       <div>
@@ -725,6 +725,9 @@ async function doAdminLogin() {
     });
     document.getElementById('studentModal').addEventListener('click', function(e) {
       if (e.target === this) closeStudentModal();
+    });
+    document.getElementById('classModal').addEventListener('click', function(e) {
+      if (e.target === this) closeClassModal();
     });
     document.getElementById('importModal').addEventListener('click', function(e) {
       if (e.target === this) closeImportModal();
