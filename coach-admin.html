@@ -475,6 +475,7 @@
       <select class="filter-select" id="classFilter" onchange="renderCoachTable()">
         <option value="">All Classes</option>
       </select>
+      <button class="btn-secondary" style="padding:6px 14px;font-size:12px;" onclick="openRollupModal()">📊 View Class Rollup</button>
     </div>
     <div class="table-card" id="coachTableWrap">
       <div class="spinner">Loading coaches…</div>
@@ -578,6 +579,30 @@
       <button class="btn-save" onclick="saveClassAccess()">Save</button>
       <button class="btn-cancel" onclick="closeClassModal()">Cancel</button>
       <span class="form-msg" id="cm2-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CLASS ROLLUP MODAL — admin view across all coaches
+══════════════════════════════════════════════ -->
+<div class="modal" id="rollupModal">
+  <div class="modal-panel" style="max-width:920px">
+    <div class="modal-header">
+      <div>
+        <h2>📊 Class Engagement Rollup</h2>
+        <div class="sub" id="rollup-class-name"></div>
+      </div>
+      <button class="modal-close" onclick="closeRollupModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="rollup-summary" style="margin-bottom:14px;font-size:13px;color:#667;"></div>
+      <div class="table-card" id="rollup-table-wrap" style="max-height:480px;overflow-y:auto;">
+        <div class="spinner">Loading…</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeRollupModal()">Close</button>
     </div>
   </div>
 </div>
@@ -695,6 +720,9 @@ window.addEventListener('DOMContentLoaded', function() {
   });
   document.getElementById('importModal').addEventListener('click', function(e) {
     if (e.target === this) closeImportModal();
+  });
+  document.getElementById('rollupModal').addEventListener('click', function(e) {
+    if (e.target === this) closeRollupModal();
   });
 });
 
@@ -885,6 +913,7 @@ function renderCoachTable() {
           '<button class="btn-edit"     onclick="openCoachModal(' + c.id + ')">Edit</button>' +
           '<button class="btn-students" onclick="openStudentModal(' + c.id + ')">Students</button>' +
           '<button class="btn-students" style="background:#1a2a4a;border-color:#2a4a8a;" onclick="openClassModal(' + c.id + ')">🏫 Classes</button>' +
+          '<button class="btn-students" style="background:#3a1a5c;border-color:#6a3a9c;" onclick="viewCoachDashboard(' + c.id + ')">📊 View Dashboard</button>' +
           inviteBtn +
           '<button class="btn-delete"   onclick="deleteCoach(' + c.id + ',\'' + safeName + '\')">Delete</button>' +
         '</div>' +
@@ -1009,6 +1038,18 @@ async function sendInvite(coachId) {
     await loadCoaches();
   } else {
     alert('Failed: ' + (res && res.error ? res.error : 'Unknown error'));
+  }
+}
+
+// Admin: open this coach's live dashboard in a new tab, logged in as them —
+// works even if the coach has never registered (Invite Pending), since it
+// reuses the same magic-token auth path as the real invite/notification emails.
+async function viewCoachDashboard(coachId) {
+  var res = await apiCall('POST', '/auth/magic-token', { type: 'coach', id: coachId });
+  if (res && res.success && res.url) {
+    window.open(res.url, '_blank');
+  } else {
+    alert('Could not open dashboard: ' + (res && res.error ? res.error : 'Unknown error'));
   }
 }
 
@@ -1234,6 +1275,72 @@ async function saveClassAccess() {
     msgEl.textContent = '✕ ' + (res && res.error ? res.error : 'Save failed.');
     msgEl.className = 'form-msg err';
   }
+}
+
+// ════════════════════════════════════════════════════════════════
+// CLASS ROLLUP MODAL — admin engagement view across every coach in a class
+// ════════════════════════════════════════════════════════════════
+async function openRollupModal() {
+  var classId = document.getElementById('classFilter').value;
+  if (!classId) { alert('Select a class from the "Filter by Class" dropdown first.'); return; }
+
+  document.getElementById('rollup-class-name').textContent = '';
+  document.getElementById('rollup-summary').textContent    = '';
+  document.getElementById('rollup-table-wrap').innerHTML   = '<div class="spinner">Loading…</div>';
+  document.getElementById('rollupModal').classList.add('open');
+
+  var data = await apiCall('GET', '/coaches/classes/' + classId + '/admin-rollup');
+  if (!data || !data.students) {
+    document.getElementById('rollup-table-wrap').innerHTML =
+      '<div class="table-empty"><strong>Could not load engagement data.</strong></div>';
+    return;
+  }
+  document.getElementById('rollup-class-name').textContent =
+    data.class.name + (data.class.client ? ' — ' + data.class.client : '');
+  renderRollupTable(data);
+}
+
+function closeRollupModal() {
+  document.getElementById('rollupModal').classList.remove('open');
+}
+
+function renderRollupTable(data) {
+  document.getElementById('rollup-summary').textContent =
+    data.total_students + ' student' + (data.total_students !== 1 ? 's' : '') +
+    ' · ' + data.total_scheduled + ' booster email' + (data.total_scheduled !== 1 ? 's' : '') + ' scheduled' +
+    ' · avg completion ' + data.avg_completion + '%' +
+    ' · avg open rate ' + data.avg_open_rate + '%';
+
+  if (!data.students.length) {
+    document.getElementById('rollup-table-wrap').innerHTML =
+      '<div class="table-empty"><strong>No students in this class yet.</strong></div>';
+    return;
+  }
+
+  var rows = data.students.map(function(s) {
+    var lastEmail = s.last_email_at ? new Date(s.last_email_at).toLocaleDateString() : '—';
+    var coachCell = s.coach_names
+      ? '<span class="pill">' + esc(s.coach_names) + '</span>'
+      : '<span class="pill-none">Unassigned</span>';
+    return '<tr>' +
+      '<td><div class="coach-name">' + esc(s.first_name + ' ' + s.last_name) + '</div>' +
+          '<div class="coach-email">' + esc(s.email) + '</div></td>' +
+      '<td>' + coachCell + '</td>' +
+      '<td>' + s.emails_received + '</td>' +
+      '<td>' + s.emails_opened + ' (' + s.open_rate_pct + '%)</td>' +
+      '<td>' + s.emails_clicked + '</td>' +
+      '<td>' + s.completion_pct + '%</td>' +
+      '<td>' + lastEmail + '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('rollup-table-wrap').innerHTML =
+    '<table>' +
+      '<thead><tr>' +
+        '<th>Student</th><th>Coach</th><th>Sent</th><th>Opened</th><th>Clicked</th><th>Completion</th><th>Last Email</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>';
 }
 
 // ════════════════════════════════════════════════════════════════
