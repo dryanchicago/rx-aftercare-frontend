@@ -2206,12 +2206,26 @@ function refreshEpPreview() {
 async function sendTestEmail(templateId) {
   var to = prompt("Send test email to:", "dryan@graymattersgroup.com");
   if (!to) return;
+
+  // Optional: preview merge fields like {{class_name}} using a real class
+  var classId = null;
+  if (CLASSES.length) {
+    var list = CLASSES.map(function(c, i) { return (i + 1) + ". " + c.name; }).join("\n");
+    var pick = prompt("Preview as which class? Enter a number, or leave blank for a generic preview:\n" + list, "");
+    if (pick && pick.trim()) {
+      var idx = parseInt(pick.trim(), 10) - 1;
+      if (CLASSES[idx]) classId = CLASSES[idx].id;
+    }
+  }
+
   toast("📧 Fetching template…");
   var data = await apiCall("GET", "/email-templates/" + templateId);
   if (!data || !data.success || !data.template) { toast("❌ Could not load template"); return; }
   var t = data.template;
   toast("📧 Sending test email…");
-  var res = await apiCall("POST", "/email-templates/test-send", { to_email: to, subject: t.subject, html_body: t.html_body, first_name: "Dave" });
+  var body = { to_email: to, subject: t.subject, html_body: t.html_body, first_name: "Dave" };
+  if (classId) body.class_id = classId;
+  var res = await apiCall("POST", "/email-templates/test-send", body);
   if (res && res.success) toast("✅ Test email sent to " + to);
   else {
     var errMsg = res ? (res.error || res.message || JSON.stringify(res)) : 'No response';
