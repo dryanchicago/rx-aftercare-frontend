@@ -5326,16 +5326,17 @@ async function loadAlumniRefresherTab() {
 
     wrap.innerHTML = summaryHtml + tableHtml + '<p style="color:#5a7a9a;font-size:0.8rem;margin-top:10px;">Click any row to see full response.</p>';
 
-    // Detail modal (reuse existing modal-style pattern)
+    // Detail modal
     if (!document.getElementById('alumniDetailModal')) {
       var m = document.createElement('div');
       m.id = 'alumniDetailModal';
-      m.className = 'modal';
-      m.innerHTML = '<div class="modal-box" style="max-width:680px;">'
-        + '<button class="modal-close" onclick="document.getElementById(\'alumniDetailModal\').style.display=\'none\'">✕</button>'
+      m.className = 'modal-overlay';
+      m.innerHTML = '<div class="modal-box" style="max-width:680px;overflow-y:auto;max-height:80vh;">'
+        + '<button onclick="document.getElementById(\'alumniDetailModal\').classList.remove(\'open\')" '
+        + 'style="float:right;background:none;border:none;color:#8a9bb8;font-size:1.2rem;cursor:pointer;line-height:1;">✕</button>'
         + '<div id="alumniDetailContent"></div></div>';
       document.body.appendChild(m);
-      m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
+      m.addEventListener('click', function(e){ if(e.target===m) m.classList.remove('open'); });
     }
 
   } catch(e) {
@@ -5364,7 +5365,7 @@ function showAlumniDetail(responseId) {
   });
 
   document.getElementById('alumniDetailContent').innerHTML = html;
-  document.getElementById('alumniDetailModal').style.display = 'flex';
+  document.getElementById('alumniDetailModal').classList.add('open');
 }
 
 function exportAlumniRefresherCSV() {
