@@ -665,6 +665,9 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
     </div>
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
       <button class="btn-outline" onclick="loadAlumniRefresherTab()" style="font-size:0.82rem;">↻ Refresh</button>
+      <select id="alumniEventFilter" onchange="renderAlumniRefresherView()" style="display:none;background:#0d1f3c;color:#c8d8f0;border:1px solid #2a4a6e;border-radius:5px;padding:6px 10px;font-size:0.85rem;">
+        <option value="">All Events</option>
+      </select>
       <button class="btn-outline" onclick="exportAlumniRefresherCSV()" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;" id="alumniExportBtn" style="display:none;">📥 Export CSV</button>
       <span id="alumniRefresherCount" style="font-size:0.82rem;color:#5a7a9a;"></span>
     </div>
@@ -5247,7 +5250,6 @@ async function loadAlumniRefresherTab() {
     if (!r.ok) throw new Error(data.error || 'Failed to load');
 
     _alumniRefresherData = data;
-    document.getElementById('alumniRefresherCount').textContent = data.length + ' response' + (data.length !== 1 ? 's' : '');
     document.getElementById('alumniExportBtn').style.display = data.length ? '' : 'none';
 
     if (!data.length) {
@@ -5255,133 +5257,17 @@ async function loadAlumniRefresherTab() {
       return;
     }
 
-    // Summary cards for numeric questions
-    function avg(key) {
-      var vals = [];
-      data.forEach(function(r) { r.answers.forEach(function(a) { if (a.question_key === key && a.answer_value !== null) vals.push(Number(a.answer_value)); }); });
-      return vals.length ? (vals.reduce(function(s,v){return s+v;},0) / vals.length).toFixed(1) : '—';
-    }
-
-    // Recommend score + tally (computed before building summaryHtml so all 3 cards are in one row)
-    var recScale = { 'Definitely': 5, 'Probably': 4, 'Not sure': 3, 'Probably not': 2, 'Definitely not': 1 };
-    var recTally = {};
-    var recVals  = [];
-    data.forEach(function(r) { r.answers.forEach(function(a) {
-      if (a.question_key === 'q_recommend' && a.answer_text) {
-        recTally[a.answer_text] = (recTally[a.answer_text] || 0) + 1;
-        if (recScale[a.answer_text]) recVals.push(recScale[a.answer_text]);
-      }
-    }); });
-    var recAvg = recVals.length ? (recVals.reduce(function(s,v){return s+v;},0) / recVals.length).toFixed(1) : '—';
-
-    // Three score cards in one flex row
-    var summaryHtml = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">';
-    [['q_overall_value','Overall Value',5],['q_discussion_value','Discussion Value',5]].forEach(function(q) {
-      var a = avg(q[0]);
-      summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;min-width:160px;flex:1;">'
-        + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">' + q[1] + '</div>'
-        + '<div style="font-size:2rem;font-weight:700;color:#c9a227;">' + a + '<span style="font-size:1rem;color:#5a7a9a;">/' + q[2] + '</span></div>'
-        + '</div>';
+    // Populate event filter dropdown
+    var eventFilter = document.getElementById('alumniEventFilter');
+    var events = [];
+    data.forEach(function(r) { if (r.event_label && events.indexOf(r.event_label) === -1) events.push(r.event_label); });
+    eventFilter.innerHTML = '<option value="">All Events</option>';
+    events.sort().forEach(function(e) {
+      eventFilter.innerHTML += '<option value="' + e.replace(/"/g,'&quot;') + '">' + e + '</option>';
     });
-    summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;min-width:160px;flex:1;">'
-      + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Would Recommend</div>'
-      + '<div style="font-size:2rem;font-weight:700;color:#c9a227;">' + recAvg + '<span style="font-size:1rem;color:#5a7a9a;">/5</span></div>'
-      + '</div></div>';
+    eventFilter.style.display = events.length > 0 ? '' : 'none';
 
-    // Recommend tally breakdown
-    if (Object.keys(recTally).length) {
-      summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:14px 22px;margin-bottom:28px;">'
-        + '<div style="font-size:0.72rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Recommend Breakdown</div>'
-        + '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
-      ['Definitely','Probably','Not sure','Probably not','Definitely not'].forEach(function(opt) {
-        var n = recTally[opt] || 0;
-        if (!n) return;
-        var color = opt === 'Definitely' ? '#4caf7d' : opt === 'Probably' ? '#7ab3f5' : opt === 'Not sure' ? '#c9a227' : '#e07070';
-        summaryHtml += '<span style="background:rgba(255,255,255,0.05);border:1px solid #1e3a5f;border-radius:6px;padding:5px 12px;font-size:0.85rem;color:' + color + ';">' + opt + ': <strong>' + n + '</strong></span>';
-      });
-      summaryHtml += '</div></div>';
-    }
-
-    // Response table
-    var tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">'
-      + '<thead><tr style="background:#0d1f3c;">'
-      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Date</th>'
-      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Name</th>'
-      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Firm</th>'
-      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Event</th>'
-      + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Overall</th>'
-      + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Discussion</th>'
-      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Recommend</th>'
-      + '</tr></thead><tbody>';
-
-    data.forEach(function(r) {
-      function ans(key) {
-        var a = r.answers.find(function(x){return x.question_key===key;});
-        return a ? (a.answer_text || a.answer_value || '') : '';
-      }
-      var dateStr = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
-      var fullName = [ans('respondent_first_name'), ans('respondent_last_name')].filter(Boolean).join(' ') || '—';
-      tableHtml += '<tr onclick="showAlumniDetail(' + r.id + ')" style="cursor:pointer;border-bottom:1px solid #1a2a45;" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'\'">'
-        + '<td style="padding:9px 12px;color:#c8d8f0;white-space:nowrap;">' + dateStr + '</td>'
-        + '<td style="padding:9px 12px;color:#c8d8f0;font-weight:500;">' + fullName + '</td>'
-        + '<td style="padding:9px 12px;color:#8a9bb8;">' + (ans('respondent_firm') || '—') + '</td>'
-        + '<td style="padding:9px 12px;color:#8a9bb8;">' + (r.event_label || '—') + '</td>'
-        + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_overall_value') || '—') + '</td>'
-        + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_discussion_value') || '—') + '</td>'
-        + '<td style="padding:9px 12px;color:#ccc;">' + (ans('q_recommend') || '—') + '</td>'
-        + '</tr>';
-    });
-
-    tableHtml += '</tbody></table></div>';
-
-    // Aggregate text responses by question
-    var textQs = [
-      { key: 'q_most_valuable',     label: 'Most Valuable Part' },
-      { key: 'q_put_into_practice', label: 'Most Likely to Put Into Practice' },
-      { key: 'q_would_change',      label: 'What Would You Change or Add' },
-      { key: 'q_rx_impact',         label: 'Broader Rx Impact' },
-      { key: 'q_anything_else',     label: 'Anything Else' },
-    ];
-
-    var aggregateHtml = '<div style="margin-top:32px;">'
-      + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;font-weight:700;">All Narrative Responses</div>';
-
-    textQs.forEach(function(q) {
-      var responses = [];
-      data.forEach(function(r) {
-        var name = [
-          ((r.answers.find(function(a){return a.question_key==='respondent_first_name';}) || {}).answer_text || ''),
-          ((r.answers.find(function(a){return a.question_key==='respondent_last_name';}) || {}).answer_text || '')
-        ].filter(Boolean).join(' ') || 'Anonymous';
-        var a = r.answers.find(function(x){return x.question_key===q.key;});
-        if (a && a.answer_text && a.answer_text.trim()) {
-          responses.push({ name: name, text: a.answer_text.trim() });
-        }
-      });
-
-      if (!responses.length) return;
-
-      aggregateHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin-bottom:16px;">'
-        + '<div style="font-size:0.78rem;color:#c9a227;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:12px;">' + q.label + '</div>';
-
-      responses.forEach(function(r) {
-        aggregateHtml += '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);">'
-          + '<div style="font-size:0.72rem;color:#5a7a9a;margin-bottom:4px;">' + r.name + '</div>'
-          + '<div style="font-size:0.88rem;color:#dde6f5;line-height:1.6;">' + r.text.replace(/\n/g,'<br>') + '</div>'
-          + '</div>';
-      });
-
-      // Remove last border
-      aggregateHtml += '</div>';
-    });
-
-    aggregateHtml += '</div>';
-
-    wrap.innerHTML = summaryHtml + aggregateHtml
-      + '<div style="margin-top:32px;border-top:1px solid #1e3a5f;padding-top:24px;">'
-      + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-weight:700;">Individual Responses</div>'
-      + tableHtml
-      + '<p style="color:#5a7a9a;font-size:0.8rem;margin-top:10px;">Click any row to see full response.</p></div>';
+    renderAlumniRefresherView();
 
     // Detail modal
     if (!document.getElementById('alumniDetailModal')) {
@@ -5399,6 +5285,139 @@ async function loadAlumniRefresherTab() {
   } catch(e) {
     wrap.innerHTML = '<div style="color:#e07070;padding:20px 0;">Error loading responses: ' + e.message + '</div>';
   }
+}
+
+function renderAlumniRefresherView() {
+  var wrap = document.getElementById('alumniRefresherWrap');
+  var filterVal = (document.getElementById('alumniEventFilter') || {}).value || '';
+  var data = filterVal
+    ? _alumniRefresherData.filter(function(r) { return r.event_label === filterVal; })
+    : _alumniRefresherData;
+
+  if (!data.length) {
+    wrap.innerHTML = '<div style="color:#5a7a9a;font-size:0.9rem;padding:20px 0;">No responses for this event.</div>';
+    return;
+  }
+
+  function avg(key) {
+    var vals = [];
+    data.forEach(function(r) { r.answers.forEach(function(a) { if (a.question_key === key && a.answer_value !== null) vals.push(Number(a.answer_value)); }); });
+    return vals.length ? (vals.reduce(function(s,v){return s+v;},0) / vals.length).toFixed(1) : '—';
+  }
+
+  var recScale = { 'Definitely': 5, 'Probably': 4, 'Not sure': 3, 'Probably not': 2, 'Definitely not': 1 };
+  var recTally = {};
+  var recVals  = [];
+  data.forEach(function(r) { r.answers.forEach(function(a) {
+    if (a.question_key === 'q_recommend' && a.answer_text) {
+      recTally[a.answer_text] = (recTally[a.answer_text] || 0) + 1;
+      if (recScale[a.answer_text]) recVals.push(recScale[a.answer_text]);
+    }
+  }); });
+  var recAvg = recVals.length ? (recVals.reduce(function(s,v){return s+v;},0) / recVals.length).toFixed(1) : '—';
+
+  var summaryHtml = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">';
+  [['q_overall_value','Overall Value',5],['q_discussion_value','Discussion Value',5]].forEach(function(q) {
+    var a = avg(q[0]);
+    summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;min-width:160px;flex:1;">'
+      + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">' + q[1] + '</div>'
+      + '<div style="font-size:2rem;font-weight:700;color:#c9a227;">' + a + '<span style="font-size:1rem;color:#5a7a9a;">/' + q[2] + '</span></div>'
+      + '</div>';
+  });
+  summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;min-width:160px;flex:1;">'
+    + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Would Recommend</div>'
+    + '<div style="font-size:2rem;font-weight:700;color:#c9a227;">' + recAvg + '<span style="font-size:1rem;color:#5a7a9a;">/5</span></div>'
+    + '</div></div>';
+
+  if (Object.keys(recTally).length) {
+    summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:14px 22px;margin-bottom:28px;">'
+      + '<div style="font-size:0.72rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Recommend Breakdown</div>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
+    ['Definitely','Probably','Not sure','Probably not','Definitely not'].forEach(function(opt) {
+      var n = recTally[opt] || 0;
+      if (!n) return;
+      var color = opt === 'Definitely' ? '#4caf7d' : opt === 'Probably' ? '#7ab3f5' : opt === 'Not sure' ? '#c9a227' : '#e07070';
+      summaryHtml += '<span style="background:rgba(255,255,255,0.05);border:1px solid #1e3a5f;border-radius:6px;padding:5px 12px;font-size:0.85rem;color:' + color + ';">' + opt + ': <strong>' + n + '</strong></span>';
+    });
+    summaryHtml += '</div></div>';
+  }
+
+  var tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">'
+    + '<thead><tr style="background:#0d1f3c;">'
+    + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Date</th>'
+    + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Name</th>'
+    + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Firm</th>'
+    + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Event</th>'
+    + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Overall</th>'
+    + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Discussion</th>'
+    + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Recommend</th>'
+    + '</tr></thead><tbody>';
+
+  data.forEach(function(r) {
+    function ans(key) {
+      var a = r.answers.find(function(x){return x.question_key===key;});
+      return a ? (a.answer_text || a.answer_value || '') : '';
+    }
+    var dateStr = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+    var fullName = [ans('respondent_first_name'), ans('respondent_last_name')].filter(Boolean).join(' ') || '—';
+    tableHtml += '<tr onclick="showAlumniDetail(' + r.id + ')" style="cursor:pointer;border-bottom:1px solid #1a2a45;" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'\'">'
+      + '<td style="padding:9px 12px;color:#c8d8f0;white-space:nowrap;">' + dateStr + '</td>'
+      + '<td style="padding:9px 12px;color:#c8d8f0;font-weight:500;">' + fullName + '</td>'
+      + '<td style="padding:9px 12px;color:#8a9bb8;">' + (ans('respondent_firm') || '—') + '</td>'
+      + '<td style="padding:9px 12px;color:#8a9bb8;">' + (r.event_label || '—') + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_overall_value') || '—') + '</td>'
+      + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_discussion_value') || '—') + '</td>'
+      + '<td style="padding:9px 12px;color:#ccc;">' + (ans('q_recommend') || '—') + '</td>'
+      + '</tr>';
+  });
+  tableHtml += '</tbody></table></div>';
+
+  var textQs = [
+    { key: 'q_most_valuable',     label: 'Most Valuable Part' },
+    { key: 'q_put_into_practice', label: 'Most Likely to Put Into Practice' },
+    { key: 'q_would_change',      label: 'What Would You Change or Add' },
+    { key: 'q_rx_impact',         label: 'Broader Rx Impact' },
+    { key: 'q_anything_else',     label: 'Anything Else' },
+  ];
+
+  var aggregateHtml = '<div style="margin-top:32px;">'
+    + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;font-weight:700;">All Narrative Responses</div>';
+
+  textQs.forEach(function(q) {
+    var responses = [];
+    data.forEach(function(r) {
+      var name = [
+        ((r.answers.find(function(a){return a.question_key==='respondent_first_name';}) || {}).answer_text || ''),
+        ((r.answers.find(function(a){return a.question_key==='respondent_last_name';}) || {}).answer_text || '')
+      ].filter(Boolean).join(' ') || 'Anonymous';
+      var a = r.answers.find(function(x){return x.question_key===q.key;});
+      if (a && a.answer_text && a.answer_text.trim()) {
+        responses.push({ name: name, text: a.answer_text.trim() });
+      }
+    });
+
+    if (!responses.length) return;
+
+    aggregateHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin-bottom:16px;">'
+      + '<div style="font-size:0.78rem;color:#c9a227;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:12px;">' + q.label + '</div>';
+
+    responses.forEach(function(resp) {
+      aggregateHtml += '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);">'
+        + '<div style="font-size:0.72rem;color:#5a7a9a;margin-bottom:4px;">' + resp.name + '</div>'
+        + '<div style="font-size:0.88rem;color:#dde6f5;line-height:1.6;">' + resp.text.replace(/\n/g,'<br>') + '</div>'
+        + '</div>';
+    });
+
+    aggregateHtml += '</div>';
+  });
+
+  aggregateHtml += '</div>';
+
+  wrap.innerHTML = summaryHtml + aggregateHtml
+    + '<div style="margin-top:32px;border-top:1px solid #1e3a5f;padding-top:24px;">'
+    + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-weight:700;">Individual Responses</div>'
+    + tableHtml
+    + '<p style="color:#5a7a9a;font-size:0.8rem;margin-top:10px;">Click any row to see full response.</p></div>';
 }
 
 function showAlumniDetail(responseId) {
@@ -5426,7 +5445,11 @@ function showAlumniDetail(responseId) {
 }
 
 function exportAlumniRefresherCSV() {
-  if (!_alumniRefresherData.length) { alert('No data to export.'); return; }
+  var filterVal = (document.getElementById('alumniEventFilter') || {}).value || '';
+  var exportData = filterVal
+    ? _alumniRefresherData.filter(function(r) { return r.event_label === filterVal; })
+    : _alumniRefresherData;
+  if (!exportData.length) { alert('No data to export.'); return; }
 
   var keys = ['respondent_first_name','respondent_last_name','respondent_firm','q_overall_value','q_most_valuable','q_put_into_practice','q_discussion_value','q_would_change','q_recommend','q_rx_impact','q_anything_else'];
   var headers = ['Submitted At','Event'].concat(keys.map(function(k){return ALUMNI_Q_LABELS[k]||k;}));
@@ -5437,7 +5460,7 @@ function exportAlumniRefresherCSV() {
   }
 
   var rows = [headers.map(esc).join(',')];
-  _alumniRefresherData.forEach(function(r) {
+  exportData.forEach(function(r) {
     function ans(key) {
       var a = r.answers.find(function(x){return x.question_key===key;});
       return a ? (a.answer_text || a.answer_value || '') : '';
