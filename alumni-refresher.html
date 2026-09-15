@@ -231,10 +231,35 @@
 
       <div class="progress-wrap">
         <div class="progress-label">
-          <span id="stepLabel">Question 1 of 8</span>
+          <span id="stepLabel">About You</span>
           <span id="stepPct">0%</span>
         </div>
         <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+
+      <!-- Q0: Name + Firm -->
+      <div class="step active" id="q0">
+        <div class="textarea-group">
+          <div class="q-label">Your Name</div>
+          <div style="display:flex;gap:12px;">
+            <input type="text" id="q0_first" placeholder="First name"
+              style="flex:1;padding:13px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;"
+              onfocus="this.style.borderColor='rgba(201,162,39,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+            <input type="text" id="q0_last" placeholder="Last name"
+              style="flex:1;padding:13px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;"
+              onfocus="this.style.borderColor='rgba(201,162,39,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+          </div>
+        </div>
+        <div class="textarea-group">
+          <div class="q-label">Firm / Company</div>
+          <input type="text" id="q0_firm" placeholder="e.g. Deloitte, Point B, Resultant"
+            style="width:100%;padding:13px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;"
+            onfocus="this.style.borderColor='rgba(201,162,39,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="navTo(1)">Next →</button>
+        </div>
+        <div class="error-msg" id="err0"></div>
       </div>
 
       <!-- Q1 -->
@@ -360,7 +385,7 @@ var API_BASE = window.location.hostname === 'localhost' || window.location.hostn
   : 'https://rx-aftercare-backend-production.up.railway.app';
 
 var TOTAL_QS = 8;
-var currentQ = 1;
+var currentQ = 0;
 var answers  = {};
 
 // Optional event label from URL: ?event=Deloitte+LIFT+Oct+2026
@@ -396,20 +421,19 @@ function escHtml(s) {
 }
 
 function updateProgress() {
-  var pct = Math.round(((currentQ - 1) / TOTAL_QS) * 100);
+  var pct = currentQ === 0 ? 0 : Math.round((currentQ / TOTAL_QS) * 100);
   document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('stepLabel').textContent = 'Question ' + currentQ + ' of ' + TOTAL_QS;
+  document.getElementById('stepLabel').textContent = currentQ === 0 ? 'About You' : 'Question ' + currentQ + ' of ' + TOTAL_QS;
   document.getElementById('stepPct').textContent = pct + '%';
 }
 
 function navTo(n) {
-  // Validate current before advancing
   if (n > currentQ) {
+    // Collect text first so validation sees the current textarea values
+    collectText();
     var err = validate(currentQ);
     if (err) { document.getElementById('err' + currentQ).textContent = err; return; }
     document.getElementById('err' + currentQ).textContent = '';
-    // Collect textarea values
-    collectText();
   }
 
   document.getElementById('q' + currentQ).classList.remove('active');
@@ -420,7 +444,16 @@ function navTo(n) {
 }
 
 function collectText() {
-  var map = { 2: 'q_most_valuable', 3: 'q_put_into_practice', 5: 'q_would_change', 7: 'q_rx_impact', 8: 'q_anything_else' };
+  // Name/firm from Q0
+  var first = (document.getElementById('q0_first') || {}).value || '';
+  var last  = (document.getElementById('q0_last')  || {}).value || '';
+  var firm  = (document.getElementById('q0_firm')  || {}).value || '';
+  if (first.trim()) answers['respondent_first_name'] = first.trim();
+  if (last.trim())  answers['respondent_last_name']  = last.trim();
+  if (firm.trim())  answers['respondent_firm']       = firm.trim();
+
+  // Textarea answers
+  var map   = { 2: 'q_most_valuable', 3: 'q_put_into_practice', 5: 'q_would_change', 7: 'q_rx_impact', 8: 'q_anything_else' };
   var idMap = { 2: 'q2_text', 3: 'q3_text', 5: 'q5_text', 7: 'q7_text', 8: 'q8_text' };
   Object.keys(map).forEach(function(q) {
     var el = document.getElementById(idMap[q]);
@@ -429,11 +462,16 @@ function collectText() {
 }
 
 function validate(q) {
-  if (q === 1 && !answers['q_overall_value'])   return 'Please select a rating before continuing.';
-  if (q === 2 && !answers['q_most_valuable'])   return 'Please share your thoughts before continuing.';
-  if (q === 3 && !answers['q_put_into_practice']) return 'Please share your thoughts before continuing.';
-  if (q === 4 && !answers['q_discussion_value']) return 'Please select a rating before continuing.';
-  if (q === 6 && !answers['q_recommend'])        return 'Please select an option before continuing.';
+  if (q === 0) {
+    var first = ((document.getElementById('q0_first') || {}).value || '').trim();
+    var last  = ((document.getElementById('q0_last')  || {}).value || '').trim();
+    if (!first || !last) return 'Please enter your first and last name.';
+  }
+  if (q === 1 && !answers['q_overall_value'])      return 'Please select a rating before continuing.';
+  if (q === 2 && !answers['q_most_valuable'])      return 'Please share your thoughts before continuing.';
+  if (q === 3 && !answers['q_put_into_practice'])  return 'Please share your thoughts before continuing.';
+  if (q === 4 && !answers['q_discussion_value'])   return 'Please select a rating before continuing.';
+  if (q === 6 && !answers['q_recommend'])          return 'Please select an option before continuing.';
   return null;
 }
 
@@ -449,14 +487,17 @@ function submitSurvey() {
   btn.textContent = 'Submitting…';
 
   var answerPayload = [
-    { question_key: 'q_overall_value',      answer_value: answers['q_overall_value'] || null,      answer_text: null },
-    { question_key: 'q_most_valuable',      answer_value: null, answer_text: answers['q_most_valuable'] || null },
-    { question_key: 'q_put_into_practice',  answer_value: null, answer_text: answers['q_put_into_practice'] || null },
-    { question_key: 'q_discussion_value',   answer_value: answers['q_discussion_value'] || null,   answer_text: null },
-    { question_key: 'q_would_change',       answer_value: null, answer_text: answers['q_would_change'] || null },
-    { question_key: 'q_recommend',          answer_value: null, answer_text: answers['q_recommend'] || null },
-    { question_key: 'q_rx_impact',          answer_value: null, answer_text: answers['q_rx_impact'] || null },
-    { question_key: 'q_anything_else',      answer_value: null, answer_text: answers['q_anything_else'] || null },
+    { question_key: 'respondent_first_name', answer_value: null, answer_text: answers['respondent_first_name'] || null },
+    { question_key: 'respondent_last_name',  answer_value: null, answer_text: answers['respondent_last_name']  || null },
+    { question_key: 'respondent_firm',       answer_value: null, answer_text: answers['respondent_firm']       || null },
+    { question_key: 'q_overall_value',       answer_value: answers['q_overall_value'] || null, answer_text: null },
+    { question_key: 'q_most_valuable',       answer_value: null, answer_text: answers['q_most_valuable']      || null },
+    { question_key: 'q_put_into_practice',   answer_value: null, answer_text: answers['q_put_into_practice']  || null },
+    { question_key: 'q_discussion_value',    answer_value: answers['q_discussion_value'] || null, answer_text: null },
+    { question_key: 'q_would_change',        answer_value: null, answer_text: answers['q_would_change']       || null },
+    { question_key: 'q_recommend',           answer_value: null, answer_text: answers['q_recommend']          || null },
+    { question_key: 'q_rx_impact',           answer_value: null, answer_text: answers['q_rx_impact']          || null },
+    { question_key: 'q_anything_else',       answer_value: null, answer_text: answers['q_anything_else']      || null },
   ].filter(function(a) { return a.answer_value !== null || (a.answer_text && a.answer_text.length > 0); });
 
   var body = { answers: answerPayload };

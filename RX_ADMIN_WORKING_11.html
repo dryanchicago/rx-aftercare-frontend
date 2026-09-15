@@ -5223,14 +5223,17 @@ function generateProgressReport() {
 var _alumniRefresherData = [];
 
 var ALUMNI_Q_LABELS = {
-  q_overall_value:      'Overall Value (1–5)',
-  q_most_valuable:      'Most Valuable Part',
-  q_put_into_practice:  'Most Likely to Put Into Practice',
-  q_discussion_value:   'Discussion/Alumni Examples Value (1–5)',
-  q_would_change:       'What Would You Change or Add',
-  q_recommend:          'Would You Recommend',
-  q_rx_impact:          'Broader Rx Impact',
-  q_anything_else:      'Anything Else',
+  respondent_first_name: 'First Name',
+  respondent_last_name:  'Last Name',
+  respondent_firm:       'Firm / Company',
+  q_overall_value:       'Overall Value (1–5)',
+  q_most_valuable:       'Most Valuable Part',
+  q_put_into_practice:   'Most Likely to Put Into Practice',
+  q_discussion_value:    'Discussion/Alumni Examples Value (1–5)',
+  q_would_change:        'What Would You Change or Add',
+  q_recommend:           'Would You Recommend',
+  q_rx_impact:           'Broader Rx Impact',
+  q_anything_else:       'Anything Else',
 };
 
 async function loadAlumniRefresherTab() {
@@ -5293,10 +5296,11 @@ async function loadAlumniRefresherTab() {
     var tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">'
       + '<thead><tr style="background:#0d1f3c;">'
       + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Date</th>'
+      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Name</th>'
+      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Firm</th>'
       + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Event</th>'
       + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Overall</th>'
       + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Discussion</th>'
-      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Most Valuable</th>'
       + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Recommend</th>'
       + '</tr></thead><tbody>';
 
@@ -5306,12 +5310,14 @@ async function loadAlumniRefresherTab() {
         return a ? (a.answer_text || a.answer_value || '') : '';
       }
       var dateStr = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      var fullName = [ans('respondent_first_name'), ans('respondent_last_name')].filter(Boolean).join(' ') || '—';
       tableHtml += '<tr onclick="showAlumniDetail(' + r.id + ')" style="cursor:pointer;border-bottom:1px solid #1a2a45;" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'\'">'
         + '<td style="padding:9px 12px;color:#c8d8f0;white-space:nowrap;">' + dateStr + '</td>'
+        + '<td style="padding:9px 12px;color:#c8d8f0;font-weight:500;">' + fullName + '</td>'
+        + '<td style="padding:9px 12px;color:#8a9bb8;">' + (ans('respondent_firm') || '—') + '</td>'
         + '<td style="padding:9px 12px;color:#8a9bb8;">' + (r.event_label || '—') + '</td>'
         + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_overall_value') || '—') + '</td>'
         + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_discussion_value') || '—') + '</td>'
-        + '<td style="padding:9px 12px;color:#ccc;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (ans('q_most_valuable') || '—') + '</td>'
         + '<td style="padding:9px 12px;color:#ccc;">' + (ans('q_recommend') || '—') + '</td>'
         + '</tr>';
     });
@@ -5348,7 +5354,7 @@ function showAlumniDetail(responseId) {
   var html = '<h3 style="color:#c9a227;margin-bottom:4px;font-size:1.1rem;">Rx Alumni Refresher Response</h3>'
     + '<p style="color:#5a7a9a;font-size:0.8rem;margin-bottom:20px;">' + dateStr + (r.event_label ? ' &nbsp;·&nbsp; ' + r.event_label : '') + '</p>';
 
-  var order = ['q_overall_value','q_most_valuable','q_put_into_practice','q_discussion_value','q_would_change','q_recommend','q_rx_impact','q_anything_else'];
+  var order = ['respondent_first_name','respondent_last_name','respondent_firm','q_overall_value','q_most_valuable','q_put_into_practice','q_discussion_value','q_would_change','q_recommend','q_rx_impact','q_anything_else'];
   order.forEach(function(key) {
     var v = ans(key);
     if (!v) return;
@@ -5364,7 +5370,7 @@ function showAlumniDetail(responseId) {
 function exportAlumniRefresherCSV() {
   if (!_alumniRefresherData.length) { alert('No data to export.'); return; }
 
-  var keys = ['q_overall_value','q_most_valuable','q_put_into_practice','q_discussion_value','q_would_change','q_recommend','q_rx_impact','q_anything_else'];
+  var keys = ['respondent_first_name','respondent_last_name','respondent_firm','q_overall_value','q_most_valuable','q_put_into_practice','q_discussion_value','q_would_change','q_recommend','q_rx_impact','q_anything_else'];
   var headers = ['Submitted At','Event'].concat(keys.map(function(k){return ALUMNI_Q_LABELS[k]||k;}));
 
   function esc(v) {
