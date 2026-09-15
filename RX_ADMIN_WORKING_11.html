@@ -5262,7 +5262,20 @@ async function loadAlumniRefresherTab() {
       return vals.length ? (vals.reduce(function(s,v){return s+v;},0) / vals.length).toFixed(1) : '—';
     }
 
-    var summaryHtml = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px;">';
+    // Recommend score + tally (computed before building summaryHtml so all 3 cards are in one row)
+    var recScale = { 'Definitely': 5, 'Probably': 4, 'Not sure': 3, 'Probably not': 2, 'Definitely not': 1 };
+    var recTally = {};
+    var recVals  = [];
+    data.forEach(function(r) { r.answers.forEach(function(a) {
+      if (a.question_key === 'q_recommend' && a.answer_text) {
+        recTally[a.answer_text] = (recTally[a.answer_text] || 0) + 1;
+        if (recScale[a.answer_text]) recVals.push(recScale[a.answer_text]);
+      }
+    }); });
+    var recAvg = recVals.length ? (recVals.reduce(function(s,v){return s+v;},0) / recVals.length).toFixed(1) : '—';
+
+    // Three score cards in one flex row
+    var summaryHtml = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;">';
     [['q_overall_value','Overall Value',5],['q_discussion_value','Discussion Value',5]].forEach(function(q) {
       var a = avg(q[0]);
       summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;min-width:160px;flex:1;">'
@@ -5270,19 +5283,16 @@ async function loadAlumniRefresherTab() {
         + '<div style="font-size:2rem;font-weight:700;color:#c9a227;">' + a + '<span style="font-size:1rem;color:#5a7a9a;">/' + q[2] + '</span></div>'
         + '</div>';
     });
-    summaryHtml += '</div>';
+    summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;min-width:160px;flex:1;">'
+      + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Would Recommend</div>'
+      + '<div style="font-size:2rem;font-weight:700;color:#c9a227;">' + recAvg + '<span style="font-size:1rem;color:#5a7a9a;">/5</span></div>'
+      + '</div></div>';
 
-    // Recommend tally
-    var recTally = {};
-    data.forEach(function(r) { r.answers.forEach(function(a) {
-      if (a.question_key === 'q_recommend' && a.answer_text) {
-        recTally[a.answer_text] = (recTally[a.answer_text] || 0) + 1;
-      }
-    }); });
+    // Recommend tally breakdown
     if (Object.keys(recTally).length) {
-      summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;margin-bottom:28px;">'
-        + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Would Recommend</div>'
-        + '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+      summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:14px 22px;margin-bottom:28px;">'
+        + '<div style="font-size:0.72rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Recommend Breakdown</div>'
+        + '<div style="display:flex;gap:10px;flex-wrap:wrap;">';
       ['Definitely','Probably','Not sure','Probably not','Definitely not'].forEach(function(opt) {
         var n = recTally[opt] || 0;
         if (!n) return;
