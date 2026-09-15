@@ -5324,7 +5324,54 @@ async function loadAlumniRefresherTab() {
 
     tableHtml += '</tbody></table></div>';
 
-    wrap.innerHTML = summaryHtml + tableHtml + '<p style="color:#5a7a9a;font-size:0.8rem;margin-top:10px;">Click any row to see full response.</p>';
+    // Aggregate text responses by question
+    var textQs = [
+      { key: 'q_most_valuable',     label: 'Most Valuable Part' },
+      { key: 'q_put_into_practice', label: 'Most Likely to Put Into Practice' },
+      { key: 'q_would_change',      label: 'What Would You Change or Add' },
+      { key: 'q_rx_impact',         label: 'Broader Rx Impact' },
+      { key: 'q_anything_else',     label: 'Anything Else' },
+    ];
+
+    var aggregateHtml = '<div style="margin-top:32px;">'
+      + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:16px;font-weight:700;">All Narrative Responses</div>';
+
+    textQs.forEach(function(q) {
+      var responses = [];
+      data.forEach(function(r) {
+        var name = [
+          ((r.answers.find(function(a){return a.question_key==='respondent_first_name';}) || {}).answer_text || ''),
+          ((r.answers.find(function(a){return a.question_key==='respondent_last_name';}) || {}).answer_text || '')
+        ].filter(Boolean).join(' ') || 'Anonymous';
+        var a = r.answers.find(function(x){return x.question_key===q.key;});
+        if (a && a.answer_text && a.answer_text.trim()) {
+          responses.push({ name: name, text: a.answer_text.trim() });
+        }
+      });
+
+      if (!responses.length) return;
+
+      aggregateHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:18px 20px;margin-bottom:16px;">'
+        + '<div style="font-size:0.78rem;color:#c9a227;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-bottom:12px;">' + q.label + '</div>';
+
+      responses.forEach(function(r) {
+        aggregateHtml += '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);">'
+          + '<div style="font-size:0.72rem;color:#5a7a9a;margin-bottom:4px;">' + r.name + '</div>'
+          + '<div style="font-size:0.88rem;color:#dde6f5;line-height:1.6;">' + r.text.replace(/\n/g,'<br>') + '</div>'
+          + '</div>';
+      });
+
+      // Remove last border
+      aggregateHtml += '</div>';
+    });
+
+    aggregateHtml += '</div>';
+
+    wrap.innerHTML = summaryHtml + aggregateHtml
+      + '<div style="margin-top:32px;border-top:1px solid #1e3a5f;padding-top:24px;">'
+      + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;font-weight:700;">Individual Responses</div>'
+      + tableHtml
+      + '<p style="color:#5a7a9a;font-size:0.8rem;margin-top:10px;">Click any row to see full response.</p></div>';
 
     // Detail modal
     if (!document.getElementById('alumniDetailModal')) {
