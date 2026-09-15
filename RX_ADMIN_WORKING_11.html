@@ -449,6 +449,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
   <div class="tab" onclick="switchTab(this,'sec-emaillib');loadEmailLibrary()">📧 Email Library</div>
   <div class="tab" onclick="switchTab(this,'sec-cert');loadCertTab()">🎓 Certifications</div>
   <div class="tab" onclick="switchTab(this,'sec-progress');loadProgressTab()">📊 Progress</div>
+  <div class="tab" onclick="switchTab(this,'sec-alumni-refresher');loadAlumniRefresherTab()">🔄 Alumni Refresher</div>
   <a class="tab" href="coach-admin.html">👤 Coaches ↗</a>
 </div>
 
@@ -654,6 +655,21 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
     </div>
     <div id="progressTableWrap">
       <div style="color:#5a7a9a;font-size:0.9rem;padding:20px 0;">Select a class to view student progress.</div>
+    </div>
+  </div>
+
+  <!-- ALUMNI REFRESHER TAB -->
+  <div id="sec-alumni-refresher" class="section">
+    <div class="sec-header">
+      <h2>🔄 Alumni Refresher Feedback</h2>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="btn-outline" onclick="loadAlumniRefresherTab()" style="font-size:0.82rem;">↻ Refresh</button>
+      <button class="btn-outline" onclick="exportAlumniRefresherCSV()" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;" id="alumniExportBtn" style="display:none;">📥 Export CSV</button>
+      <span id="alumniRefresherCount" style="font-size:0.82rem;color:#5a7a9a;"></span>
+    </div>
+    <div id="alumniRefresherWrap">
+      <div style="color:#5a7a9a;font-size:0.9rem;padding:20px 0;">Loading responses…</div>
     </div>
   </div>
 
@@ -5200,6 +5216,183 @@ function generateProgressReport() {
   const win = window.open('', '_blank');
   win.document.write(html);
   win.document.close();
+}
+
+// ── Alumni Refresher Tab ──────────────────────────────────────────────────────
+
+var _alumniRefresherData = [];
+
+var ALUMNI_Q_LABELS = {
+  q_overall_value:      'Overall Value (1–5)',
+  q_most_valuable:      'Most Valuable Part',
+  q_put_into_practice:  'Most Likely to Put Into Practice',
+  q_discussion_value:   'Discussion/Alumni Examples Value (1–5)',
+  q_would_change:       'What Would You Change or Add',
+  q_recommend:          'Would You Recommend',
+  q_rx_impact:          'Broader Rx Impact',
+  q_anything_else:      'Anything Else',
+};
+
+async function loadAlumniRefresherTab() {
+  const token = localStorage.getItem('adminToken');
+  const wrap  = document.getElementById('alumniRefresherWrap');
+  wrap.innerHTML = '<div style="color:#5a7a9a;font-size:0.9rem;padding:20px 0;">Loading…</div>';
+
+  try {
+    const r    = await fetch(API_BASE + '/surveys/alumni-refresher/results', { headers: { Authorization: 'Bearer ' + token } });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Failed to load');
+
+    _alumniRefresherData = data;
+    document.getElementById('alumniRefresherCount').textContent = data.length + ' response' + (data.length !== 1 ? 's' : '');
+    document.getElementById('alumniExportBtn').style.display = data.length ? '' : 'none';
+
+    if (!data.length) {
+      wrap.innerHTML = '<div style="color:#5a7a9a;font-size:0.9rem;padding:20px 0;">No responses yet. Share the survey link: <code style="background:#0d1f3c;padding:2px 6px;border-radius:3px;font-size:0.82rem;">alumni-refresher.html</code></div>';
+      return;
+    }
+
+    // Summary cards for numeric questions
+    function avg(key) {
+      var vals = [];
+      data.forEach(function(r) { r.answers.forEach(function(a) { if (a.question_key === key && a.answer_value !== null) vals.push(Number(a.answer_value)); }); });
+      return vals.length ? (vals.reduce(function(s,v){return s+v;},0) / vals.length).toFixed(1) : '—';
+    }
+
+    var summaryHtml = '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:28px;">';
+    [['q_overall_value','Overall Value',5],['q_discussion_value','Discussion Value',5]].forEach(function(q) {
+      var a = avg(q[0]);
+      summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;min-width:160px;flex:1;">'
+        + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">' + q[1] + '</div>'
+        + '<div style="font-size:2rem;font-weight:700;color:#c9a227;">' + a + '<span style="font-size:1rem;color:#5a7a9a;">/' + q[2] + '</span></div>'
+        + '</div>';
+    });
+    summaryHtml += '</div>';
+
+    // Recommend tally
+    var recTally = {};
+    data.forEach(function(r) { r.answers.forEach(function(a) {
+      if (a.question_key === 'q_recommend' && a.answer_text) {
+        recTally[a.answer_text] = (recTally[a.answer_text] || 0) + 1;
+      }
+    }); });
+    if (Object.keys(recTally).length) {
+      summaryHtml += '<div style="background:#0d1f3c;border:1px solid #1e3a5f;border-radius:10px;padding:16px 22px;margin-bottom:28px;">'
+        + '<div style="font-size:0.75rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Would Recommend</div>'
+        + '<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+      ['Definitely','Probably','Not sure','Probably not','Definitely not'].forEach(function(opt) {
+        var n = recTally[opt] || 0;
+        if (!n) return;
+        var color = opt === 'Definitely' ? '#4caf7d' : opt === 'Probably' ? '#7ab3f5' : opt === 'Not sure' ? '#c9a227' : '#e07070';
+        summaryHtml += '<span style="background:rgba(255,255,255,0.05);border:1px solid #1e3a5f;border-radius:6px;padding:5px 12px;font-size:0.85rem;color:' + color + ';">' + opt + ': <strong>' + n + '</strong></span>';
+      });
+      summaryHtml += '</div></div>';
+    }
+
+    // Response table
+    var tableHtml = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">'
+      + '<thead><tr style="background:#0d1f3c;">'
+      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Date</th>'
+      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Event</th>'
+      + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Overall</th>'
+      + '<th style="padding:9px 12px;text-align:center;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Discussion</th>'
+      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Most Valuable</th>'
+      + '<th style="padding:9px 12px;text-align:left;color:#8a9bb8;border-bottom:2px solid #1e3a5f;">Recommend</th>'
+      + '</tr></thead><tbody>';
+
+    data.forEach(function(r) {
+      function ans(key) {
+        var a = r.answers.find(function(x){return x.question_key===key;});
+        return a ? (a.answer_text || a.answer_value || '') : '';
+      }
+      var dateStr = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
+      tableHtml += '<tr onclick="showAlumniDetail(' + r.id + ')" style="cursor:pointer;border-bottom:1px solid #1a2a45;" onmouseover="this.style.background=\'rgba(255,255,255,0.03)\'" onmouseout="this.style.background=\'\'">'
+        + '<td style="padding:9px 12px;color:#c8d8f0;white-space:nowrap;">' + dateStr + '</td>'
+        + '<td style="padding:9px 12px;color:#8a9bb8;">' + (r.event_label || '—') + '</td>'
+        + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_overall_value') || '—') + '</td>'
+        + '<td style="padding:9px 12px;text-align:center;font-weight:700;color:#c9a227;">' + (ans('q_discussion_value') || '—') + '</td>'
+        + '<td style="padding:9px 12px;color:#ccc;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (ans('q_most_valuable') || '—') + '</td>'
+        + '<td style="padding:9px 12px;color:#ccc;">' + (ans('q_recommend') || '—') + '</td>'
+        + '</tr>';
+    });
+
+    tableHtml += '</tbody></table></div>';
+
+    wrap.innerHTML = summaryHtml + tableHtml + '<p style="color:#5a7a9a;font-size:0.8rem;margin-top:10px;">Click any row to see full response.</p>';
+
+    // Detail modal (reuse existing modal-style pattern)
+    if (!document.getElementById('alumniDetailModal')) {
+      var m = document.createElement('div');
+      m.id = 'alumniDetailModal';
+      m.className = 'modal';
+      m.innerHTML = '<div class="modal-box" style="max-width:680px;">'
+        + '<button class="modal-close" onclick="document.getElementById(\'alumniDetailModal\').style.display=\'none\'">✕</button>'
+        + '<div id="alumniDetailContent"></div></div>';
+      document.body.appendChild(m);
+      m.addEventListener('click', function(e){ if(e.target===m) m.style.display='none'; });
+    }
+
+  } catch(e) {
+    wrap.innerHTML = '<div style="color:#e07070;padding:20px 0;">Error loading responses: ' + e.message + '</div>';
+  }
+}
+
+function showAlumniDetail(responseId) {
+  var r = _alumniRefresherData.find(function(x){return x.id===responseId;});
+  if (!r) return;
+  function ans(key) {
+    var a = r.answers.find(function(x){return x.question_key===key;});
+    return a ? (a.answer_text || a.answer_value || null) : null;
+  }
+  var dateStr = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}) : '—';
+  var html = '<h3 style="color:#c9a227;margin-bottom:4px;font-size:1.1rem;">Rx Alumni Refresher Response</h3>'
+    + '<p style="color:#5a7a9a;font-size:0.8rem;margin-bottom:20px;">' + dateStr + (r.event_label ? ' &nbsp;·&nbsp; ' + r.event_label : '') + '</p>';
+
+  var order = ['q_overall_value','q_most_valuable','q_put_into_practice','q_discussion_value','q_would_change','q_recommend','q_rx_impact','q_anything_else'];
+  order.forEach(function(key) {
+    var v = ans(key);
+    if (!v) return;
+    html += '<div style="margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,0.04);border:1px solid #1e3a5f;border-radius:8px;">'
+      + '<div style="font-size:0.72rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">' + (ALUMNI_Q_LABELS[key]||key) + '</div>'
+      + '<div style="color:#e8d8c0;font-size:0.9rem;line-height:1.55;">' + String(v).replace(/\n/g,'<br>') + '</div></div>';
+  });
+
+  document.getElementById('alumniDetailContent').innerHTML = html;
+  document.getElementById('alumniDetailModal').style.display = 'flex';
+}
+
+function exportAlumniRefresherCSV() {
+  if (!_alumniRefresherData.length) { alert('No data to export.'); return; }
+
+  var keys = ['q_overall_value','q_most_valuable','q_put_into_practice','q_discussion_value','q_would_change','q_recommend','q_rx_impact','q_anything_else'];
+  var headers = ['Submitted At','Event'].concat(keys.map(function(k){return ALUMNI_Q_LABELS[k]||k;}));
+
+  function esc(v) {
+    v = String(v == null ? '' : v).replace(/"/g,'""');
+    return '"' + v + '"';
+  }
+
+  var rows = [headers.map(esc).join(',')];
+  _alumniRefresherData.forEach(function(r) {
+    function ans(key) {
+      var a = r.answers.find(function(x){return x.question_key===key;});
+      return a ? (a.answer_text || a.answer_value || '') : '';
+    }
+    var row = [esc(r.submitted_at ? new Date(r.submitted_at).toLocaleString() : ''), esc(r.event_label || '')];
+    keys.forEach(function(k){ row.push(esc(ans(k))); });
+    rows.push(row.join(','));
+  });
+
+  var csv  = rows.join('\r\n');
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'alumni-refresher-responses-' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 </script>
 </body>

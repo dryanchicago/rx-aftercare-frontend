@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rx Alumni Refresher — Quick Feedback</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:   #0F1E3C;
+    --gold:   #C9A227;
+    --gold-lt:#E8C84A;
+    --blue:   #2A5298;
+    --white:  #FFFFFF;
+    --off:    #F4F6FA;
+    --muted:  #8A9BB8;
+    --error:  #C0392B;
+    --green:  #27AE60;
+  }
+
+  html, body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    min-height: 100%;
+  }
+
+  .bg {
+    position: fixed; inset: 0; z-index: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 10%,  rgba(42,82,152,0.45) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 90%,  rgba(201,162,39,0.18) 0%, transparent 55%),
+      radial-gradient(ellipse 100% 100% at 50% 50%, #0F1E3C 0%, #070E1E 100%);
+  }
+
+  .page {
+    position: relative; z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 20px 80px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 680px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 20px;
+    padding: 48px 48px 44px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 32px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,162,39,0.08);
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Branding ── */
+  .brand { text-align: center; margin-bottom: 32px; }
+  .brand-badge {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(201,162,39,0.12);
+    border: 1px solid rgba(201,162,39,0.30);
+    border-radius: 100px; padding: 6px 16px 6px 8px; margin-bottom: 20px;
+  }
+  .brand-dot {
+    width: 28px; height: 28px; background: var(--gold);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--navy);
+  }
+  .brand-badge span {
+    font-size: 12px; font-weight: 600; color: var(--gold);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .brand h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px; font-weight: 400; color: var(--white);
+    line-height: 1.25; margin-bottom: 8px;
+  }
+  .brand h1 em { font-style: italic; color: var(--gold); }
+  .brand p { font-size: 14px; color: var(--muted); font-weight: 300; line-height: 1.6; max-width: 480px; margin: 0 auto; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { margin-bottom: 32px; }
+  .progress-label {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--muted); margin-bottom: 8px;
+  }
+  .progress-bar {
+    height: 4px; background: rgba(255,255,255,0.08);
+    border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--gold);
+    border-radius: 2px; transition: width 0.4s ease;
+  }
+
+  /* ── Question label ── */
+  .q-label {
+    font-size: 15px; color: rgba(255,255,255,0.92);
+    line-height: 1.55; margin-bottom: 12px; font-weight: 500;
+  }
+  .q-optional { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+
+  /* ── Scale (1–5 buttons) ── */
+  .scale-group { margin-bottom: 28px; }
+  .scale-row {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: stretch;
+  }
+  .scale-row label {
+    flex: 1; min-width: 44px; max-width: 80px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+    cursor: pointer;
+  }
+  .scale-row input[type=radio] { display: none; }
+  .scale-btn {
+    width: 100%; padding: 10px 4px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px; font-size: 14px; font-weight: 600;
+    color: rgba(255,255,255,0.7); text-align: center;
+    transition: all 0.15s;
+  }
+  .scale-row input[type=radio]:checked + .scale-btn {
+    background: rgba(201,162,39,0.2);
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .scale-end-labels {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--muted);
+    margin-top: 5px; padding: 0 2px;
+  }
+
+  /* ── Single-select (radio pills) ── */
+  .radio-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+  .radio-group label {
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer; padding: 11px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.10);
+    border-radius: 10px;
+    font-size: 14px; color: rgba(255,255,255,0.85);
+    transition: all 0.15s;
+  }
+  .radio-group label:hover { border-color: rgba(201,162,39,0.35); }
+  .radio-group input[type=radio] { accent-color: var(--gold); width: 16px; height: 16px; flex-shrink: 0; }
+  .radio-group input[type=radio]:checked + span { color: var(--gold); font-weight: 600; }
+  .radio-group label:has(input:checked) {
+    border-color: rgba(201,162,39,0.5);
+    background: rgba(201,162,39,0.08);
+  }
+
+  /* ── Textarea ── */
+  .textarea-group { margin-bottom: 28px; }
+  .textarea-group textarea {
+    width: 100%; padding: 13px 14px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px; color: var(--white);
+    font-family: 'DM Sans', sans-serif; font-size: 15px;
+    outline: none; transition: border-color 0.2s;
+    resize: vertical; min-height: 90px; line-height: 1.55;
+  }
+  .textarea-group textarea:focus { border-color: rgba(201,162,39,0.5); }
+  .textarea-group textarea::placeholder { color: rgba(255,255,255,0.3); }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 4px 0 28px; }
+
+  /* ── Buttons ── */
+  .btn-row { display: flex; justify-content: flex-end; align-items: center; margin-top: 8px; gap: 12px; }
+  .btn {
+    padding: 13px 28px; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--gold); color: var(--navy); }
+  .btn-primary:hover { background: var(--gold-lt); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-back {
+    background: transparent; color: var(--muted);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .btn-back:hover { border-color: rgba(255,255,255,0.25); color: var(--white); }
+
+  /* ── Error ── */
+  .error-msg { color: #f5a623; font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+  /* ── Success ── */
+  .success-card { text-align: center; padding: 20px 0; }
+  .success-icon { font-size: 52px; margin-bottom: 16px; }
+  .success-card h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 26px; margin-bottom: 12px; color: var(--white);
+  }
+  .success-card p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+  /* ── Steps ── */
+  .step { display: none; }
+  .step.active { display: block; }
+
+  @media (max-width: 540px) {
+    .card { padding: 32px 22px 28px; }
+    .scale-btn { font-size: 13px; padding: 9px 2px; }
+  }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="page">
+  <div class="card">
+
+    <!-- Survey -->
+    <div id="surveyForm" class="step active">
+
+      <div class="brand">
+        <div class="brand-badge">
+          <div class="brand-dot">Rx</div>
+          <span>Alumni Refresher</span>
+        </div>
+        <h1>Rx Alumni Refresher<br><em>Quick Feedback</em></h1>
+        <p>Thanks for joining the Rx Alumni Refresher. Your feedback will help us continue to improve the experience. This should take less than 5 minutes.</p>
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span id="stepLabel">Question 1 of 8</span>
+          <span id="stepPct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+
+      <!-- Q1 -->
+      <div class="step active" id="q1">
+        <div class="scale-group">
+          <div class="q-label">1. Overall, how valuable was today's Rx Alumni Refresher?</div>
+          <div class="scale-row" id="q1_scale"></div>
+          <div class="scale-end-labels"><span>1 — Not Valuable</span><span>5 — Extremely Valuable</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="navTo(2)">Next →</button>
+        </div>
+        <div class="error-msg" id="err1"></div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="step" id="q2">
+        <div class="textarea-group">
+          <div class="q-label">2. What was the most valuable part of today's refresher?</div>
+          <textarea id="q2_text" placeholder="Share your thoughts…"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="navTo(1)">← Back</button>
+          <button class="btn btn-primary" onclick="navTo(3)">Next →</button>
+        </div>
+        <div class="error-msg" id="err2"></div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="step" id="q3">
+        <div class="textarea-group">
+          <div class="q-label">3. What Rx concept, tool or discipline are you most likely to put back into practice?</div>
+          <textarea id="q3_text" placeholder="Share your thoughts…"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="navTo(2)">← Back</button>
+          <button class="btn btn-primary" onclick="navTo(4)">Next →</button>
+        </div>
+        <div class="error-msg" id="err3"></div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="step" id="q4">
+        <div class="scale-group">
+          <div class="q-label">4. Did the interactive discussion and examples from other Rx alumni add value to the experience?</div>
+          <div class="scale-row" id="q4_scale"></div>
+          <div class="scale-end-labels"><span>1 — Not at all</span><span>5 — Significantly</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="navTo(3)">← Back</button>
+          <button class="btn btn-primary" onclick="navTo(5)">Next →</button>
+        </div>
+        <div class="error-msg" id="err4"></div>
+      </div>
+
+      <!-- Q5 -->
+      <div class="step" id="q5">
+        <div class="textarea-group">
+          <div class="q-label">5. What, if anything, would you change or add to make the refresher more valuable? <span class="q-optional">(optional)</span></div>
+          <textarea id="q5_text" placeholder="Share your thoughts…"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="navTo(4)">← Back</button>
+          <button class="btn btn-primary" onclick="navTo(6)">Next →</button>
+        </div>
+        <div class="error-msg" id="err5"></div>
+      </div>
+
+      <!-- Q6 -->
+      <div class="step" id="q6">
+        <div class="q-label" style="margin-bottom:14px;">6. Would you recommend an Rx Alumni Refresher like this to other Rx alumni?</div>
+        <div class="radio-group" id="q6_options"></div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="navTo(5)">← Back</button>
+          <button class="btn btn-primary" onclick="navTo(7)">Next →</button>
+        </div>
+        <div class="error-msg" id="err6"></div>
+      </div>
+
+      <!-- Q7 -->
+      <div class="step" id="q7">
+        <div class="textarea-group">
+          <div class="q-label">7. Thinking beyond today's refresher, what impact, if any, has Rx had on how you build relationships, work with clients or identify opportunities? <span class="q-optional">(optional)</span></div>
+          <textarea id="q7_text" placeholder="Share your thoughts…"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="navTo(6)">← Back</button>
+          <button class="btn btn-primary" onclick="navTo(8)">Next →</button>
+        </div>
+        <div class="error-msg" id="err7"></div>
+      </div>
+
+      <!-- Q8 -->
+      <div class="step" id="q8">
+        <div class="textarea-group">
+          <div class="q-label">8. Anything else you'd like us to know? <span class="q-optional">(optional)</span></div>
+          <textarea id="q8_text" placeholder="Share your thoughts…"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="navTo(7)">← Back</button>
+          <button class="btn btn-primary" id="submitBtn" onclick="submitSurvey()">Submit Feedback</button>
+        </div>
+        <div class="error-msg" id="err8"></div>
+      </div>
+
+    </div><!-- /surveyForm -->
+
+    <!-- Success -->
+    <div id="successState" class="step">
+      <div class="success-card">
+        <div class="success-icon">🎉</div>
+        <h2>Thank You!</h2>
+        <p>Thank you for your feedback — and for being part of our inaugural Rx Alumni Refresher and RxCP experience.<br><br>We appreciate your helping us make it even better.</p>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /page -->
+
+<script>
+var API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3000'
+  : 'https://rx-aftercare-backend-production.up.railway.app';
+
+var TOTAL_QS = 8;
+var currentQ = 1;
+var answers  = {};
+
+// Optional event label from URL: ?event=Deloitte+LIFT+Oct+2026
+var eventLabel = (new URLSearchParams(window.location.search).get('event') || '').trim() || null;
+
+var Q6_OPTIONS = ['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not'];
+
+// Required question keys
+var REQUIRED = { 1: 'q_overall_value', 2: 'q_most_valuable', 3: 'q_put_into_practice', 4: 'q_discussion_value', 6: 'q_recommend' };
+
+function buildScaleRow(containerId, key) {
+  var c = document.getElementById(containerId);
+  var html = '';
+  for (var v = 1; v <= 5; v++) {
+    html += '<label><input type="radio" name="' + key + '" value="' + v + '" onchange="answers[\'' + key + '\'] = ' + v + '; updateProgress();">'
+          + '<span class="scale-btn">' + v + '</span></label>';
+  }
+  c.innerHTML = html;
+}
+
+function buildRadioGroup(containerId, key, options) {
+  var c = document.getElementById(containerId);
+  var html = '';
+  options.forEach(function(opt) {
+    html += '<label><input type="radio" name="' + key + '" value="' + escHtml(opt) + '" onchange="answers[\'' + key + '\'] = \'' + escHtml(opt) + '\'; updateProgress();">'
+          + '<span>' + escHtml(opt) + '</span></label>';
+  });
+  c.innerHTML = html;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function updateProgress() {
+  var pct = Math.round(((currentQ - 1) / TOTAL_QS) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('stepLabel').textContent = 'Question ' + currentQ + ' of ' + TOTAL_QS;
+  document.getElementById('stepPct').textContent = pct + '%';
+}
+
+function navTo(n) {
+  // Validate current before advancing
+  if (n > currentQ) {
+    var err = validate(currentQ);
+    if (err) { document.getElementById('err' + currentQ).textContent = err; return; }
+    document.getElementById('err' + currentQ).textContent = '';
+    // Collect textarea values
+    collectText();
+  }
+
+  document.getElementById('q' + currentQ).classList.remove('active');
+  currentQ = n;
+  document.getElementById('q' + n).classList.add('active');
+  updateProgress();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function collectText() {
+  var map = { 2: 'q_most_valuable', 3: 'q_put_into_practice', 5: 'q_would_change', 7: 'q_rx_impact', 8: 'q_anything_else' };
+  var idMap = { 2: 'q2_text', 3: 'q3_text', 5: 'q5_text', 7: 'q7_text', 8: 'q8_text' };
+  Object.keys(map).forEach(function(q) {
+    var el = document.getElementById(idMap[q]);
+    if (el) answers[map[q]] = el.value.trim();
+  });
+}
+
+function validate(q) {
+  if (q === 1 && !answers['q_overall_value'])   return 'Please select a rating before continuing.';
+  if (q === 2 && !answers['q_most_valuable'])   return 'Please share your thoughts before continuing.';
+  if (q === 3 && !answers['q_put_into_practice']) return 'Please share your thoughts before continuing.';
+  if (q === 4 && !answers['q_discussion_value']) return 'Please select a rating before continuing.';
+  if (q === 6 && !answers['q_recommend'])        return 'Please select an option before continuing.';
+  return null;
+}
+
+function submitSurvey() {
+  collectText();
+
+  // Final validation
+  var err = validate(8);
+  if (err) { document.getElementById('err8').textContent = err; return; }
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  var answerPayload = [
+    { question_key: 'q_overall_value',      answer_value: answers['q_overall_value'] || null,      answer_text: null },
+    { question_key: 'q_most_valuable',      answer_value: null, answer_text: answers['q_most_valuable'] || null },
+    { question_key: 'q_put_into_practice',  answer_value: null, answer_text: answers['q_put_into_practice'] || null },
+    { question_key: 'q_discussion_value',   answer_value: answers['q_discussion_value'] || null,   answer_text: null },
+    { question_key: 'q_would_change',       answer_value: null, answer_text: answers['q_would_change'] || null },
+    { question_key: 'q_recommend',          answer_value: null, answer_text: answers['q_recommend'] || null },
+    { question_key: 'q_rx_impact',          answer_value: null, answer_text: answers['q_rx_impact'] || null },
+    { question_key: 'q_anything_else',      answer_value: null, answer_text: answers['q_anything_else'] || null },
+  ].filter(function(a) { return a.answer_value !== null || (a.answer_text && a.answer_text.length > 0); });
+
+  var body = { answers: answerPayload };
+  if (eventLabel) body.event_label = eventLabel;
+
+  fetch(API_BASE + '/api/surveys/alumni-refresher/submit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      document.getElementById('surveyForm').classList.remove('active');
+      document.getElementById('successState').classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      document.getElementById('err8').textContent = data.error || 'Submission failed. Please try again.';
+      btn.disabled = false;
+      btn.textContent = 'Submit Feedback';
+    }
+  })
+  .catch(function() {
+    document.getElementById('err8').textContent = 'Network error. Please check your connection and try again.';
+    btn.disabled = false;
+    btn.textContent = 'Submit Feedback';
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(function init() {
+  buildScaleRow('q1_scale', 'q_overall_value');
+  buildScaleRow('q4_scale', 'q_discussion_value');
+  buildRadioGroup('q6_options', 'q_recommend', Q6_OPTIONS);
+  updateProgress();
+})();
+</script>
+</body>
+</html>
