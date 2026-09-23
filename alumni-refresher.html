@@ -257,22 +257,22 @@
             onfocus="this.style.borderColor='rgba(201,162,39,0.5)'" onblur="this.style.borderColor='rgba(255,255,255,0.12)'">
         </div>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="navTo(1)">Next →</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
         </div>
-        <div class="error-msg" id="err0"></div>
+        <div class="error-msg" id="err_q0"></div>
       </div>
 
       <!-- Q1 -->
-      <div class="step active" id="q1">
+      <div class="step" id="q1">
         <div class="scale-group">
           <div class="q-label">1. Overall, how valuable was today's Rx Alumni Refresher?</div>
           <div class="scale-row" id="q1_scale"></div>
           <div class="scale-end-labels"><span>1 — Not Valuable</span><span>5 — Extremely Valuable</span></div>
         </div>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="navTo(2)">Next →</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
         </div>
-        <div class="error-msg" id="err1"></div>
+        <div class="error-msg" id="err_q1"></div>
       </div>
 
       <!-- Q2 -->
@@ -282,87 +282,85 @@
           <textarea id="q2_text" placeholder="Share your thoughts…"></textarea>
         </div>
         <div class="btn-row">
-          <button class="btn btn-back" onclick="navTo(1)">← Back</button>
-          <button class="btn btn-primary" onclick="navTo(3)">Next →</button>
+          <button class="btn btn-back" onclick="goBack()">← Back</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
         </div>
-        <div class="error-msg" id="err2"></div>
+        <div class="error-msg" id="err_q2"></div>
       </div>
 
       <!-- Q3 -->
       <div class="step" id="q3">
-        <div class="textarea-group">
-          <div class="q-label">3. What Rx concept, tool or discipline are you most likely to put back into practice?</div>
-          <textarea id="q3_text" placeholder="Share your thoughts…"></textarea>
+        <div class="scale-group">
+          <div class="q-label">3. Did the interactive discussion and examples from other Rx alumni add value to the experience?</div>
+          <div class="scale-row" id="q3_scale"></div>
+          <div class="scale-end-labels"><span>1 — Not at all</span><span>5 — Significantly</span></div>
         </div>
         <div class="btn-row">
-          <button class="btn btn-back" onclick="navTo(2)">← Back</button>
-          <button class="btn btn-primary" onclick="navTo(4)">Next →</button>
+          <button class="btn btn-back" onclick="goBack()">← Back</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
         </div>
-        <div class="error-msg" id="err3"></div>
+        <div class="error-msg" id="err_q3"></div>
       </div>
 
       <!-- Q4 -->
       <div class="step" id="q4">
-        <div class="scale-group">
-          <div class="q-label">4. Did the interactive discussion and examples from other Rx alumni add value to the experience?</div>
-          <div class="scale-row" id="q4_scale"></div>
-          <div class="scale-end-labels"><span>1 — Not at all</span><span>5 — Significantly</span></div>
+        <div class="textarea-group">
+          <div class="q-label">4. What, if anything, would you change or add to make the refresher more valuable? <span class="q-optional">(optional)</span></div>
+          <textarea id="q4_text" placeholder="Share your thoughts…"></textarea>
         </div>
         <div class="btn-row">
-          <button class="btn btn-back" onclick="navTo(3)">← Back</button>
-          <button class="btn btn-primary" onclick="navTo(5)">Next →</button>
+          <button class="btn btn-back" onclick="goBack()">← Back</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
         </div>
-        <div class="error-msg" id="err4"></div>
+        <div class="error-msg" id="err_q4"></div>
       </div>
 
       <!-- Q5 -->
       <div class="step" id="q5">
-        <div class="textarea-group">
-          <div class="q-label">5. What, if anything, would you change or add to make the refresher more valuable? <span class="q-optional">(optional)</span></div>
-          <textarea id="q5_text" placeholder="Share your thoughts…"></textarea>
-        </div>
+        <div class="q-label" style="margin-bottom:14px;">5. Would you recommend a self-paced, digital version of the Rx Alumni Refresher (approx. 3 hours) — including the opportunity to pursue RxCP&trade; certification — to other alumni?</div>
+        <div class="radio-group" id="q5_options"></div>
         <div class="btn-row">
-          <button class="btn btn-back" onclick="navTo(4)">← Back</button>
-          <button class="btn btn-primary" onclick="navTo(6)">Next →</button>
+          <button class="btn btn-back" onclick="goBack()">← Back</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
         </div>
-        <div class="error-msg" id="err5"></div>
+        <div class="error-msg" id="err_q5"></div>
+      </div>
+
+      <!-- Q5A: shown only if Q5 answer is Definitely/Probably -->
+      <div class="step" id="q5a">
+        <div class="q-label" style="margin-bottom:14px;">5a. What would you consider a fair price for that experience, including certification?</div>
+        <div class="radio-group" id="q5a_options"></div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="goBack()">← Back</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
+        </div>
+        <div class="error-msg" id="err_q5a"></div>
       </div>
 
       <!-- Q6 -->
       <div class="step" id="q6">
-        <div class="q-label" style="margin-bottom:14px;">6. Would you recommend an Rx Alumni Refresher like this to other Rx alumni?</div>
-        <div class="radio-group" id="q6_options"></div>
-        <div class="btn-row">
-          <button class="btn btn-back" onclick="navTo(5)">← Back</button>
-          <button class="btn btn-primary" onclick="navTo(7)">Next →</button>
+        <div class="textarea-group">
+          <div class="q-label">6. Thinking beyond today's refresher, what impact, if any, has Rx had on how you build relationships, work with clients or identify opportunities? <span class="q-optional">(optional)</span></div>
+          <textarea id="q6_text" placeholder="Share your thoughts…"></textarea>
         </div>
-        <div class="error-msg" id="err6"></div>
+        <div class="btn-row">
+          <button class="btn btn-back" onclick="goBack()">← Back</button>
+          <button class="btn btn-primary" onclick="goNext()">Next →</button>
+        </div>
+        <div class="error-msg" id="err_q6"></div>
       </div>
 
       <!-- Q7 -->
       <div class="step" id="q7">
         <div class="textarea-group">
-          <div class="q-label">7. Thinking beyond today's refresher, what impact, if any, has Rx had on how you build relationships, work with clients or identify opportunities? <span class="q-optional">(optional)</span></div>
+          <div class="q-label">7. Anything else you'd like us to know? <span class="q-optional">(optional)</span></div>
           <textarea id="q7_text" placeholder="Share your thoughts…"></textarea>
         </div>
         <div class="btn-row">
-          <button class="btn btn-back" onclick="navTo(6)">← Back</button>
-          <button class="btn btn-primary" onclick="navTo(8)">Next →</button>
-        </div>
-        <div class="error-msg" id="err7"></div>
-      </div>
-
-      <!-- Q8 -->
-      <div class="step" id="q8">
-        <div class="textarea-group">
-          <div class="q-label">8. Anything else you'd like us to know? <span class="q-optional">(optional)</span></div>
-          <textarea id="q8_text" placeholder="Share your thoughts…"></textarea>
-        </div>
-        <div class="btn-row">
-          <button class="btn btn-back" onclick="navTo(7)">← Back</button>
+          <button class="btn btn-back" onclick="goBack()">← Back</button>
           <button class="btn btn-primary" id="submitBtn" onclick="submitSurvey()">Submit Feedback</button>
         </div>
-        <div class="error-msg" id="err8"></div>
+        <div class="error-msg" id="err_q7"></div>
       </div>
 
     </div><!-- /surveyForm -->
@@ -384,17 +382,28 @@ var API_BASE = window.location.hostname === 'localhost' || window.location.hostn
   ? 'http://localhost:3000'
   : 'https://rx-aftercare-backend-production.up.railway.app';
 
-var TOTAL_QS = 8;
-var currentQ = 0;
-var answers  = {};
+// Step order. q5a is a conditional sub-step — skipped unless q_recommend is
+// Definitely/Probably (see isPricingApplicable). Kept as a fixed array so
+// goNext/goBack can walk it in either direction and skip q5a consistently.
+var STEPS    = ['q0','q1','q2','q3','q4','q5','q5a','q6','q7'];
+var POSITION = { q0:0, q1:1, q2:2, q3:3, q4:4, q5:5, q5a:6, q6:7, q7:8 };
+var TOTAL_DISPLAY = 8;
+
+var stepIndex = 0;
+var answers   = {};
 
 // Optional event label from URL: ?event=Deloitte+LIFT+Oct+2026
 var eventLabel = (new URLSearchParams(window.location.search).get('event') || '').trim() || null;
 
-var Q6_OPTIONS = ['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not'];
+var RECOMMEND_OPTIONS = ['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not'];
+var PRICE_BAND_OPTIONS = ['Under $99', '$99–$199', '$200–$349', '$350–$499', '$500+'];
 
-// Required question keys
-var REQUIRED = { 1: 'q_overall_value', 2: 'q_most_valuable', 3: 'q_put_into_practice', 4: 'q_discussion_value', 6: 'q_recommend' };
+function activeStepId() { return STEPS[stepIndex]; }
+
+function isPricingApplicable() {
+  var v = answers['q_recommend'];
+  return v === 'Definitely' || v === 'Probably';
+}
 
 function buildScaleRow(containerId, key) {
   var c = document.getElementById(containerId);
@@ -421,26 +430,38 @@ function escHtml(s) {
 }
 
 function updateProgress() {
-  var pct = currentQ === 0 ? 0 : Math.round((currentQ / TOTAL_QS) * 100);
+  var pos = POSITION[activeStepId()];
+  var pct = pos === 0 ? 0 : Math.round((pos / TOTAL_DISPLAY) * 100);
   document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('stepLabel').textContent = currentQ === 0 ? 'About You' : 'Question ' + currentQ + ' of ' + TOTAL_QS;
+  document.getElementById('stepLabel').textContent = pos === 0 ? 'About You' : 'Question ' + pos + ' of ' + TOTAL_DISPLAY;
   document.getElementById('stepPct').textContent = pct + '%';
 }
 
-function navTo(n) {
-  if (n > currentQ) {
-    // Collect text first so validation sees the current textarea values
-    collectText();
-    var err = validate(currentQ);
-    if (err) { document.getElementById('err' + currentQ).textContent = err; return; }
-    document.getElementById('err' + currentQ).textContent = '';
-  }
-
-  document.getElementById('q' + currentQ).classList.remove('active');
-  currentQ = n;
-  document.getElementById('q' + n).classList.add('active');
+function showStep(idx) {
+  document.getElementById(activeStepId()).classList.remove('active');
+  stepIndex = idx;
+  document.getElementById(activeStepId()).classList.add('active');
   updateProgress();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goNext() {
+  collectText();
+  var id  = activeStepId();
+  var err = validate(id);
+  if (err) { document.getElementById('err_' + id).textContent = err; return; }
+  document.getElementById('err_' + id).textContent = '';
+
+  var next = stepIndex + 1;
+  if (STEPS[next] === 'q5a' && !isPricingApplicable()) next++;
+  showStep(next);
+}
+
+function goBack() {
+  var prev = stepIndex - 1;
+  if (prev < 0) return;
+  if (STEPS[prev] === 'q5a' && !isPricingApplicable()) prev--;
+  showStep(prev);
 }
 
 function collectText() {
@@ -453,34 +474,42 @@ function collectText() {
   if (firm.trim())  answers['respondent_firm']       = firm.trim();
 
   // Textarea answers
-  var map   = { 2: 'q_most_valuable', 3: 'q_put_into_practice', 5: 'q_would_change', 7: 'q_rx_impact', 8: 'q_anything_else' };
-  var idMap = { 2: 'q2_text', 3: 'q3_text', 5: 'q5_text', 7: 'q7_text', 8: 'q8_text' };
+  var map   = { q2: 'q_most_valuable', q4: 'q_would_change', q6: 'q_rx_impact', q7: 'q_anything_else' };
+  var idMap = { q2: 'q2_text', q4: 'q4_text', q6: 'q6_text', q7: 'q7_text' };
   Object.keys(map).forEach(function(q) {
     var el = document.getElementById(idMap[q]);
     if (el) answers[map[q]] = el.value.trim();
   });
 }
 
-function validate(q) {
-  if (q === 0) {
+function validate(id) {
+  if (id === 'q0') {
     var first = ((document.getElementById('q0_first') || {}).value || '').trim();
     var last  = ((document.getElementById('q0_last')  || {}).value || '').trim();
     if (!first || !last) return 'Please enter your first and last name.';
   }
-  if (q === 1 && !answers['q_overall_value'])      return 'Please select a rating before continuing.';
-  if (q === 2 && !answers['q_most_valuable'])      return 'Please share your thoughts before continuing.';
-  if (q === 3 && !answers['q_put_into_practice'])  return 'Please share your thoughts before continuing.';
-  if (q === 4 && !answers['q_discussion_value'])   return 'Please select a rating before continuing.';
-  if (q === 6 && !answers['q_recommend'])          return 'Please select an option before continuing.';
+  if (id === 'q1'  && !answers['q_overall_value'])    return 'Please select a rating before continuing.';
+  if (id === 'q2'  && !answers['q_most_valuable'])    return 'Please share your thoughts before continuing.';
+  if (id === 'q3'  && !answers['q_discussion_value']) return 'Please select a rating before continuing.';
+  if (id === 'q5'  && !answers['q_recommend'])        return 'Please select an option before continuing.';
+  if (id === 'q5a' && !answers['q_price_band'])       return 'Please select a price range before continuing.';
   return null;
 }
 
 function submitSurvey() {
   collectText();
 
-  // Final validation
-  var err = validate(8);
-  if (err) { document.getElementById('err8').textContent = err; return; }
+  // Final safety check — normal forward navigation already validates each
+  // required step, this just guards against anything reached out of order.
+  var requiredIds = ['q1', 'q2', 'q3', 'q5'];
+  if (isPricingApplicable()) requiredIds.push('q5a');
+  for (var i = 0; i < requiredIds.length; i++) {
+    if (validate(requiredIds[i])) {
+      document.getElementById('err_q7').textContent = 'Please complete all required questions before submitting.';
+      return;
+    }
+  }
+  document.getElementById('err_q7').textContent = '';
 
   var btn = document.getElementById('submitBtn');
   btn.disabled = true;
@@ -492,10 +521,10 @@ function submitSurvey() {
     { question_key: 'respondent_firm',       answer_value: null, answer_text: answers['respondent_firm']       || null },
     { question_key: 'q_overall_value',       answer_value: answers['q_overall_value'] || null, answer_text: null },
     { question_key: 'q_most_valuable',       answer_value: null, answer_text: answers['q_most_valuable']      || null },
-    { question_key: 'q_put_into_practice',   answer_value: null, answer_text: answers['q_put_into_practice']  || null },
     { question_key: 'q_discussion_value',    answer_value: answers['q_discussion_value'] || null, answer_text: null },
     { question_key: 'q_would_change',        answer_value: null, answer_text: answers['q_would_change']       || null },
     { question_key: 'q_recommend',           answer_value: null, answer_text: answers['q_recommend']          || null },
+    { question_key: 'q_price_band',          answer_value: null, answer_text: answers['q_price_band']         || null },
     { question_key: 'q_rx_impact',           answer_value: null, answer_text: answers['q_rx_impact']          || null },
     { question_key: 'q_anything_else',       answer_value: null, answer_text: answers['q_anything_else']      || null },
   ].filter(function(a) { return a.answer_value !== null || (a.answer_text && a.answer_text.length > 0); });
@@ -515,13 +544,13 @@ function submitSurvey() {
       document.getElementById('successState').classList.add('active');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      document.getElementById('err8').textContent = data.error || 'Submission failed. Please try again.';
+      document.getElementById('err_q7').textContent = data.error || 'Submission failed. Please try again.';
       btn.disabled = false;
       btn.textContent = 'Submit Feedback';
     }
   })
   .catch(function() {
-    document.getElementById('err8').textContent = 'Network error. Please check your connection and try again.';
+    document.getElementById('err_q7').textContent = 'Network error. Please check your connection and try again.';
     btn.disabled = false;
     btn.textContent = 'Submit Feedback';
   });
@@ -530,8 +559,9 @@ function submitSurvey() {
 // ── Init ──────────────────────────────────────────────────────────────────────
 (function init() {
   buildScaleRow('q1_scale', 'q_overall_value');
-  buildScaleRow('q4_scale', 'q_discussion_value');
-  buildRadioGroup('q6_options', 'q_recommend', Q6_OPTIONS);
+  buildScaleRow('q3_scale', 'q_discussion_value');
+  buildRadioGroup('q5_options',  'q_recommend',  RECOMMEND_OPTIONS);
+  buildRadioGroup('q5a_options', 'q_price_band', PRICE_BAND_OPTIONS);
   updateProgress();
 })();
 </script>
