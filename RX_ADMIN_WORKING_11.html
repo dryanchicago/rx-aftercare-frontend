@@ -620,9 +620,11 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <button class="btn-outline" id="certCheatSheetBtn" onclick="toggleCheatSheetMenu(event)" style="background:#2a1a4a;color:#c090f0;border-color:#4a2a7c;">📋 Cheat Sheet ▾</button>
         <div id="certCheatSheetMenu" style="display:none;position:absolute;top:calc(100% + 3px);left:0;z-index:200;background:#0d1f3c;border:1px solid #4a2a7c;border-radius:6px;min-width:210px;box-shadow:0 4px 14px rgba(0,0,0,.6)">
           <div onclick="generateCheatSheet(true)" style="padding:10px 16px;font-size:0.85rem;color:#c090f0;cursor:pointer;border-bottom:1px solid #2a1a4a;border-radius:6px 6px 0 0" onmouseover="this.style.background='#1a0a30'" onmouseout="this.style.background='transparent'">📋 With Discussion Prompts</div>
-          <div onclick="generateCheatSheet(false)" style="padding:10px 16px;font-size:0.85rem;color:#c090f0;cursor:pointer;border-radius:0 0 6px 6px" onmouseover="this.style.background='#1a0a30'" onmouseout="this.style.background='transparent'">📄 Without Discussion Prompts</div>
+          <div onclick="generateCheatSheet(false)" style="padding:10px 16px;font-size:0.85rem;color:#c090f0;cursor:pointer;border-bottom:1px solid #2a1a4a" onmouseover="this.style.background='#1a0a30'" onmouseout="this.style.background='transparent'">📄 Without Discussion Prompts</div>
+          <div onclick="generateCheatSheet(true, true)" style="padding:10px 16px;font-size:0.85rem;color:#f0c070;cursor:pointer;border-radius:0 0 6px 6px" onmouseover="this.style.background='#1a0a30'" onmouseout="this.style.background='transparent'">👁 Preview (before certifying)</div>
         </div>
       </div>
+      <button class="btn-outline" id="certCertifyRecBtn" onclick="certCertifyRecommended()" style="background:#1a4a1a;color:#7fd67f;border-color:#2a6a2a;">✔ Certify AI-Recommended</button>
       <button class="btn-outline" id="certNotifyCoachesBtn" onclick="certNotifyCoaches()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">🎓 Notify Coaches</button>
       <button class="btn-outline" id="certLinkedInReminderBtn" onclick="sendLinkedInReminder()" style="display:none;background:#1a2a4a;color:#7ab3f5;border-color:#2a5a8c;">🔗 LinkedIn Reminder</button>
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
@@ -3740,14 +3742,52 @@ function toggleCheatSheetMenu(e) {
   }
 }
 
-async function generateCheatSheet(discussion) {
+async function certCertifyRecommended() {
+  var classId = document.getElementById('certClassSelect').value;
+  if (!classId) { alert('Please select a class first.'); return; }
+  var btn = document.getElementById('certCertifyRecBtn');
+  var label = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Checking…';
+  var url = '/certifications/class/' + classId + '/certify-recommended';
+  try {
+    var dry = await apiCall('POST', url, { dry_run: true });
+    if (!dry || dry.error || !Array.isArray(dry.eligible)) throw new Error((dry && dry.error) || 'No valid response from the server');
+    var list = dry.eligible;
+    if (!list.length) {
+      alert('Nothing to certify. No graded submissions have an AI "certify" recommendation (anything flagged for human review is excluded).');
+      return;
+    }
+    var lines = list.map(function(r) {
+      var sc = r.overall_score != null ? parseFloat(r.overall_score).toFixed(2) : 'N/A';
+      return '• ' + ((r.first_name || '') + ' ' + (r.last_name || '')).trim() + ' — ' + (r.score_band || '') + ' (' + sc + ')';
+    }).join('\n');
+    if (!confirm('Certify these ' + list.length + ' submission' + (list.length !== 1 ? 's' : '') + '?\n\n' + lines +
+        '\n\nThis cannot be undone from the admin panel. No emails are sent — use Send Certificates afterward.')) return;
+    btn.innerHTML = '⏳ Certifying…';
+    var out = await apiCall('POST', url, { ids: list.map(function(r) { return r.id; }) });
+    if (!out || out.error || !Array.isArray(out.certified)) throw new Error((out && out.error) || 'No valid response from the server');
+    alert(out.certified.length + ' certified' + (out.skipped && out.skipped.length ? ', ' + out.skipped.length + ' skipped (no longer eligible)' : '') + '.');
+    loadCertifications(classId);
+  } catch(e) {
+    alert('Certify failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = label;
+  }
+}
+
+async function generateCheatSheet(discussion, preview) {
   document.getElementById('certCheatSheetMenu').style.display = 'none';
   var classId = document.getElementById('certClassSelect').value;
   if (!classId) { alert('Please select a class first.'); return; }
   var btn = document.getElementById('certCheatSheetBtn');
   btn.disabled = true;
   btn.innerHTML = '⏳ Generating…';
-  var qs = (discussion === false) ? '?discussion=false' : '';
+  var params = [];
+  if (discussion === false) params.push('discussion=false');
+  if (preview) params.push('preview=true');
+  var qs = params.length ? '?' + params.join('&') : '';
   try {
     var res = await fetch(API_BASE + '/certifications/class/' + classId + '/facilitator-report' + qs, {
       headers: { 'Authorization': 'Bearer ' + getToken() }
