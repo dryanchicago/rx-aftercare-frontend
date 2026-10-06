@@ -3867,6 +3867,14 @@ function certScoreBandBadge(band, score, facScore) {
   return '<span class="cert-band ' + cls + '">' + escHtml(band) + '</span>' + scoreStr;
 }
 
+function certCertifiedIcon(r) {
+  if (r.is_certified || r.status === 'certified') return '<span style="color:#7fd67f;font-weight:700" title="Certified">✅ Certified</span>';
+  if (r.status === 'resubmission_requested') return '<span style="color:#f0c070;font-weight:700" title="Resubmission requested">↻ Resubmit</span>';
+  if (r.status === 'not_certified') return '<span style="color:#f07070;font-weight:700" title="Not certified">✖ Not certified</span>';
+  if (r.status === 'graded') return '<span style="color:#f0c070;font-weight:700" title="Graded — waiting for your Certify decision">⏳ Awaiting decision</span>';
+  return '<span style="color:#5a7a9a" title="Not graded yet">○ Not graded</span>';
+}
+
 function renderCertTable(rows) {
   // Reset bulk buttons whenever table re-renders
   var bulkBtn = document.getElementById('certBulkDeleteBtn');
@@ -3886,9 +3894,17 @@ function renderCertTable(rows) {
     document.getElementById('certTableWrap').innerHTML = '<div class="cert-empty">No certification submissions yet for this class.</div>';
     return;
   }
-  var html = '<table class="cert-table"><thead><tr>' +
+  var nCertified = rows.filter(function(r) { return r.is_certified || r.status === 'certified'; }).length;
+  var nAwaiting  = rows.filter(function(r) { return r.status === 'graded'; }).length;
+  var nOther     = rows.length - nCertified - nAwaiting;
+  var html = '<div style="margin:0 0 12px;font-size:0.85rem;color:#8a9bb8">' +
+    '<span style="color:#7fd67f;font-weight:700">✅ ' + nCertified + ' certified</span> &nbsp;·&nbsp; ' +
+    '<span style="color:#f0c070;font-weight:700">⏳ ' + nAwaiting + ' awaiting your decision</span>' +
+    (nOther > 0 ? ' &nbsp;·&nbsp; ' + nOther + ' other' : '') +
+    ' &nbsp;·&nbsp; ' + rows.length + ' total</div>' +
+    '<table class="cert-table"><thead><tr>' +
     '<th style="width:36px;text-align:center"><input type="checkbox" id="certSelectAll" title="Select all" onchange="certToggleAll(this.checked)"></th>' +
-    '<th>Student</th><th>Submitted</th><th>Status</th><th>AI Decision</th><th>Confidence</th><th>Human Review</th>' +
+    '<th>Student</th><th>Certified?</th><th>Submitted</th><th>Status</th><th title="The AI\'s suggestion only — nothing is certified until you click Certify">AI Recommends</th><th>Confidence</th><th>Human Review</th>' +
     '</tr></thead><tbody>';
   rows.forEach(function(r) {
     var certLabel  = (r.admin_notes && r.admin_notes.startsWith('[import] ')) ? r.admin_notes.slice(9) : null;
@@ -3900,6 +3916,7 @@ function renderCertTable(rows) {
       '<td>' + escHtml(r.first_name + ' ' + r.last_name) +
       (certLabel ? '<br><span style="color:#c9a84c;font-size:0.75rem;font-style:italic">' + escHtml(certLabel) + '</span>' : '') +
       '<br><span style="color:#5a7a9a;font-size:0.75rem">' + escHtml(r.email||'') + '</span></td>' +
+      '<td style="white-space:nowrap">' + certCertifiedIcon(r) + '</td>' +
       '<td>' + certFmtDate(r.submitted_at) + '</td>' +
       '<td>' + certStatusBadge(r.status) + '</td>' +
       '<td onclick="event.stopPropagation()">' +
@@ -4412,13 +4429,9 @@ async function submitCertDecision(id, decision) {
         if (allBadges[0]) allBadges[0].outerHTML = certStatusBadge(result.status);
       }
 
-      // Update table row in place
-      var tr = document.querySelector('tr[data-cert-id="' + id + '"]');
-      if (tr) {
-        var cells = tr.querySelectorAll('td');
-        if (cells[2]) cells[2].innerHTML = certStatusBadge(result.status);
-        if (cells[3]) cells[3].innerHTML = certDecisionBadge(decision);
-      }
+      // Refresh the table behind the modal (row cells are positional, so re-render instead)
+      var classIdNow = document.getElementById('certClassSelect').value;
+      if (classIdNow) loadCertifications(classIdNow);
 
       // Hide decision panel — decision is final
       var panel = document.getElementById('certDecisionPanel');
