@@ -3841,24 +3841,25 @@ async function loadCertifications(classId) {
 
 function certEffectiveBand(facScore) {
   var s = parseFloat(facScore);
-  if (s >= 4.5) return 'Strong Pass';
-  if (s >= 2.5) return 'Pass';
-  if (s >= 1.5) return 'Borderline';
-  return 'Fail';
+  if (s >= 4.75) return 'Excellent';
+  if (s >= 4.25) return 'Strong';
+  if (s >= 3.75) return 'Above Average';
+  if (s >= 3.0)  return 'Average';
+  return 'Needs Review';
 }
 function certEffectiveDecision(facScore) {
   var s = parseFloat(facScore);
-  if (s >= 2.5) return 'certify';
-  if (s >= 1.5) return 'request_resubmission';
-  return 'do_not_certify';
+  if (s >= 3.0) return 'certify';
+  return 'borderline_human_review';
 }
 
 function certScoreBandBadge(band, score, facScore) {
   if (!band) return '';
-  var cls = band === 'Strong Pass' ? 'cert-band-strong'
-          : band === 'Pass'        ? 'cert-band-pass'
-          : band === 'Borderline'  ? 'cert-band-borderline'
-          :                          'cert-band-fail';
+  // New rubric (rxcp_v2) bands first, then the older Strong Pass/Pass/Borderline/Fail labels
+  var cls = (band === 'Excellent' || band === 'Strong' || band === 'Strong Pass') ? 'cert-band-strong'
+          : (band === 'Above Average' || band === 'Average' || band === 'Pass')   ? 'cert-band-pass'
+          : (band === 'Needs Review' || band === 'Borderline')                    ? 'cert-band-borderline'
+          :                                                                         'cert-band-fail';
   var isOverride   = (facScore !== null && facScore !== undefined);
   var displayScore = isOverride ? facScore : score;
   var scoreStr = (displayScore !== null && displayScore !== undefined)
@@ -4358,6 +4359,7 @@ function certDecisionBadge(decision) {
 
 function certRatingBadge(rating) {
   var map = {
+    'Excellent':'certify','Strong':'certify','Above Average':'graded','Average':'graded','Needs Review':'borderline',
     'Home Run':'certify','Strong Pass':'certify','Pass':'graded',
     'Partial Pass':'request-resub','Fail':'not-certified'
   };
