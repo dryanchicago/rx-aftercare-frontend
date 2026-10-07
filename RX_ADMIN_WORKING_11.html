@@ -4235,7 +4235,7 @@ function renderCertModal(s) {
     var rating = aiEx.overall_rating || '';
     html += '<div class="cert-example-accordion" id="certEx_' + i + '">' +
       '<div class="cert-ex-header" onclick="certToggleEx(' + i + ')">' +
-      '<span>Example ' + (i+1) + (rating ? ' — ' : '') + (rating ? certRatingBadge(rating) : '') + '</span>' +
+      '<span>Story ' + (i+1) + ' of ' + examples.length + (rating ? ' — ' : '') + (rating ? certRatingBadge(rating) : '') + '</span>' +
       '<span style="font-size:0.8rem;color:#5a7a9a">▼</span></div>' +
       '<div class="cert-ex-body">';
 
@@ -4320,8 +4320,8 @@ function renderCertModal(s) {
   }
 
   document.getElementById('certModalContent').innerHTML = html;
-  // Auto-open first example
-  if (examples.length > 0) certToggleEx(0);
+  // Auto-open every example so a second or third story is never hidden
+  examples.forEach(function(_, i) { certToggleEx(i); });
 }
 
 function certToggleEx(i) {
