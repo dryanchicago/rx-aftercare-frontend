@@ -828,7 +828,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <div style="margin-top:4px;font-size:0.78rem">Accepts .xlsx, .xls, or .csv</div>
       </div>
       <div class="bulk-hint">
-        Your file needs three columns: <code>First Name</code>, <code>Last Name</code>, and <code>Email</code> — with headers in row 1.<br>
+        Your file needs three columns: <code>First Name</code>, <code>Last Name</code>, and <code>Email</code> — with headers in row 1.<br>Optional: add coach columns such as <code>Coach 1 Name</code>, <code>Coach 1 Email</code>, <code>Coach 2 Name</code>, <code>Coach 2 Email</code>. Coaches are created (no invite sent) and linked to each student.<br>
         <span style="color:#7ab3f5">Need a template?</span>
         <button class="btn-outline" onclick="downloadTemplate()" style="padding:3px 10px;font-size:0.75rem;margin-left:6px">⬇ Download Template</button>
       </div>
@@ -836,7 +836,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <div class="bulk-stats" id="bulkStats"></div>
         <div style="max-height:240px;overflow-y:auto;border:1px solid #2a4a6e;border-radius:5px">
           <table class="bulk-preview-table">
-            <thead><tr><th>First Name</th><th>Last Name</th><th>Email</th><th style="width:32px"></th></tr></thead>
+            <thead><tr><th>First Name</th><th>Last Name</th><th>Email</th><th>Coaches</th><th style="width:32px"></th></tr></thead>
             <tbody id="bulkTableBody"></tbody>
           </table>
         </div>
@@ -1936,6 +1936,43 @@ async function submitInvite(){
 function resetBulkPanel(){BULK_ROWS=[];document.getElementById("bulkFileInput").value="";document.getElementById("bulkPreview").style.display="none";document.getElementById("bulkSubmitBtn").disabled=true;document.getElementById("bulkTableBody").innerHTML="";document.getElementById("bulkStats").innerHTML="";document.getElementById("bulkSendStatus").textContent="";document.getElementById("bulkProgressWrap").style.display="none";document.getElementById("bulkProgressFill").style.width="0%";var errEl=document.getElementById("bulkError");if(errEl)errEl.style.display="none";var dz=document.getElementById("bulkDropZone");if(dz)dz.classList.remove("dragover");}
 function handleBulkDrop(e){e.preventDefault();document.getElementById("bulkDropZone").classList.remove("dragover");var files=e.dataTransfer&&e.dataTransfer.files;if(files&&files[0])parseBulkFile(files[0]);}
 function handleBulkFile(input){if(input.files&&input.files[0])parseBulkFile(input.files[0]);}
+function parseRosterRows(rows){
+  var emailRe=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  var keys=Object.keys(rows[0]);
+  var firstKey=keys.find(function(k){return/first.?name/i.test(k);});
+  var lastKey=keys.find(function(k){return/last.?name/i.test(k);});
+  var emailKey=keys.find(function(k){return/e-?mail/i.test(k);});
+  var nameKey=!firstKey?keys.find(function(k){return/^(full\s*)?name$|nominee\s*name|participant\s*name|student\s*name/i.test(k.trim());}):null;
+  if((!firstKey||!lastKey)&&!nameKey){return{error:'Could not find name columns. Your file should have "First Name", "Last Name", and "Email" columns.'};}
+  if(!emailKey){return{error:'Could not find an "Email" column.'};}
+  // Coach columns: any other column whose header contains "Email" is a coach email; its name is
+  // the column named the same without "Email" (e.g. "Coach 1 Email" + "Coach 1 Name" or "Coach 1").
+  var coachPairs=[];
+  keys.forEach(function(k){
+    if(k===emailKey||!/e-?mail/i.test(k))return;
+    var prefix=k.replace(/e-?mail/i,"").replace(/[\s:_-]+$/,"").trim().toLowerCase();
+    var nameCol=null;
+    if(prefix){nameCol=keys.find(function(x){var xl=x.trim().toLowerCase();return x!==k&&(xl===prefix||xl===prefix+" name");})||null;}
+    coachPairs.push({emailKey:k,nameKey:nameCol});
+  });
+  var list=rows.map(function(r,i){
+    var firstName,lastName;
+    if(firstKey&&lastKey){firstName=String(r[firstKey]||"").trim();lastName=String(r[lastKey]||"").trim();}
+    else{var parts=String(r[nameKey]||"").trim().split(/\s+/);firstName=parts[0]||"";lastName=parts.slice(1).join(" ")||"";}
+    var email=String(r[emailKey]||"").trim();
+    var valid=firstName.length>0&&lastName.length>0&&emailRe.test(email);
+    var coaches=[],coachWarn=0;
+    coachPairs.forEach(function(cp){
+      var ce=String(r[cp.emailKey]||"").trim();
+      var cn=cp.nameKey?String(r[cp.nameKey]||"").trim():"";
+      if(!ce&&!cn)return;
+      if(!emailRe.test(ce))coachWarn++;
+      coaches.push({name:cn,email:ce,ok:emailRe.test(ce)});
+    });
+    return{index:i,firstName:firstName,lastName:lastName,email:email,valid:valid,coaches:coaches,coachWarn:coachWarn};
+  }).filter(function(r){return r.firstName||r.lastName||r.email;});
+  return{list:list};
+}
 function parseBulkFile(file){
   var errEl=document.getElementById("bulkError"); errEl.style.display="none";
   var reader=new FileReader();
@@ -1946,33 +1983,31 @@ function parseBulkFile(file){
       var sheet=workbook.Sheets[workbook.SheetNames[0]];
       var rows=XLSX.utils.sheet_to_json(sheet,{defval:""});
       if(!rows.length){showBulkError("The file appears to be empty.");return;}
-      var firstRow=rows[0],keys=Object.keys(firstRow);
-      var firstKey=keys.find(function(k){return/first.?name/i.test(k);});
-      var lastKey=keys.find(function(k){return/last.?name/i.test(k);});
-      var emailKey=keys.find(function(k){return/email/i.test(k);});
-      var nameKey=!firstKey?keys.find(function(k){return/^name$/i.test(k);}):null;
-      if((!firstKey||!lastKey)&&!nameKey){showBulkError('Could not find name columns. Your file should have "First Name", "Last Name", and "Email" columns.');return;}
-      if(!emailKey){showBulkError('Could not find an "Email" column.');return;}
-      BULK_ROWS=rows.map(function(r,i){
-        var firstName,lastName;
-        if(firstKey&&lastKey){firstName=String(r[firstKey]||"").trim();lastName=String(r[lastKey]||"").trim();}
-        else{var parts=String(r[nameKey]||"").trim().split(/\s+/);firstName=parts[0]||"";lastName=parts.slice(1).join(" ")||"";}
-        var email=String(r[emailKey]||"").trim();
-        var valid=firstName.length>0&&lastName.length>0&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        return{index:i,firstName:firstName,lastName:lastName,email:email,valid:valid};
-      }).filter(function(r){return r.firstName||r.lastName||r.email;});
+      var parsed=parseRosterRows(rows);
+      if(parsed.error){showBulkError(parsed.error);return;}
+      BULK_ROWS=parsed.list;
       renderBulkPreview();
     }catch(ex){showBulkError("Could not read the file. ("+ex.message+")");}
   };
   reader.readAsArrayBuffer(file);
 }
 function showBulkError(msg){var el=document.getElementById("bulkError");if(el){el.textContent=msg;el.style.display="block";}}
+function coachCellHtml(r){
+  if(!r.coaches||!r.coaches.length)return '<span style="color:#6b7a99">—</span>';
+  return r.coaches.map(function(c){
+    var label=esc(c.name||c.email||"(blank)");
+    return c.ok?label:'<span style="color:#f0a050" title="Coach email missing or invalid">⚠ '+label+'</span>';
+  }).join("<br>");
+}
 function renderBulkPreview(){
   var valid=BULK_ROWS.filter(function(r){return r.valid;}).length;
   var invalid=BULK_ROWS.length-valid;
-  document.getElementById("bulkStats").innerHTML='<span class="ok">✓ '+valid+' valid student'+(valid!==1?'s':'')+'</span>'+(invalid?'<span class="err">⚠ '+invalid+' row'+(invalid!==1?'s':'')+'  with errors (will be skipped)</span>':'');
+  var coachEmails={},coachWarnTotal=0;
+  BULK_ROWS.forEach(function(r){if(!r.valid)return;(r.coaches||[]).forEach(function(c){if(c.ok)coachEmails[c.email.toLowerCase()]=1;else coachWarnTotal++;});});
+  var coachCount=Object.keys(coachEmails).length;
+  document.getElementById("bulkStats").innerHTML='<span class="ok">✓ '+valid+' valid student'+(valid!==1?'s':'')+'</span>'+(coachCount?'<span class="ok">✓ '+coachCount+' coach'+(coachCount!==1?'es':'')+' to link</span>':'')+(coachWarnTotal?'<span class="err">⚠ '+coachWarnTotal+' coach entr'+(coachWarnTotal!==1?'ies':'y')+' with a missing or invalid email (skipped)</span>':'')+(invalid?'<span class="err">⚠ '+invalid+' row'+(invalid!==1?'s':'')+'  with errors (will be skipped)</span>':'');
   var tbody=document.getElementById("bulkTableBody");
-  tbody.innerHTML=BULK_ROWS.map(function(r){return'<tr class="'+(r.valid?'':'row-error')+'" id="brow-'+r.index+'"><td>'+esc(r.firstName||'(blank)')+'</td><td>'+esc(r.lastName||'(blank)')+'</td><td>'+esc(r.email||'(blank)')+'</td><td><button class="row-remove" onclick="removeBulkRow('+r.index+')">✕</button></td></tr>';}).join("");
+  tbody.innerHTML=BULK_ROWS.map(function(r){return'<tr class="'+(r.valid?'':'row-error')+'" id="brow-'+r.index+'"><td>'+esc(r.firstName||'(blank)')+'</td><td>'+esc(r.lastName||'(blank)')+'</td><td>'+esc(r.email||'(blank)')+'</td><td style="font-size:0.78rem">'+coachCellHtml(r)+'</td><td><button class="row-remove" onclick="removeBulkRow('+r.index+')">✕</button></td></tr>';}).join("");
   document.getElementById("bulkPreview").style.display="block";
   document.getElementById("bulkSubmitBtn").disabled=valid===0;
 }
@@ -1987,28 +2022,43 @@ async function submitBulk(){
   document.getElementById("bulkError").style.display="none";
   var progressWrap=document.getElementById("bulkProgressWrap"),progressFill=document.getElementById("bulkProgressFill"),statusEl=document.getElementById("bulkSendStatus");
   progressWrap.style.display="block";
-  var successCount=0,failCount=0;
+  var successCount=0,failCount=0,existingCount=0;
   for(var i=0;i<toSend.length;i++){
     var student=toSend[i];
     statusEl.textContent="Sending "+(i+1)+" of "+toSend.length+": "+student.firstName+"…";
     progressFill.style.width=Math.round(((i+1)/toSend.length)*100)+"%";
     var result=await apiCall("POST","/students",{firstName:student.firstName,lastName:student.lastName,email:student.email,classId:parseInt(classId),sendEmail:sendEmail});
     if(result&&(result.success||result.id||(result.student&&result.student.id))){successCount++;var row=document.getElementById("brow-"+student.index);if(row)row.style.opacity="0.4";}
+    else if(result&&result.error&&/already enrolled/i.test(result.error)){existingCount++;var row2=document.getElementById("brow-"+student.index);if(row2)row2.style.opacity="0.4";}
     else failCount++;
   }
+  var coachNote="";
+  var assignments=toSend.filter(function(r){return r.coaches&&r.coaches.length;}).map(function(r){return{student_email:r.email,coaches:r.coaches.filter(function(c){return c.ok;}).map(function(c){return{name:c.name,email:c.email};})};});
+  if(assignments.length){
+    statusEl.textContent="Linking coaches…";
+    var cres=await apiCall("POST","/coaches/bulk-assign",{class_id:parseInt(classId),assignments:assignments});
+    if(cres&&cres.coaches_created!==undefined){
+      coachNote=" Coaches: "+cres.coaches_created+" new, "+cres.coaches_existing+" already in system, "+cres.assignments_added+" assignment"+(cres.assignments_added!==1?"s":"")+" added.";
+      if(cres.students_not_found&&cres.students_not_found.length)coachNote+=" "+cres.students_not_found.length+" student(s) not found for coach linking.";
+    }else{coachNote=" Coach linking failed — students were still added.";failCount++;}
+  }
   progressFill.style.width="100%";
-  statusEl.textContent="Done — "+successCount+" sent"+(failCount?", "+failCount+" failed":"") +".";
+  statusEl.textContent="Done — "+successCount+" added"+(existingCount?", "+existingCount+" already enrolled":"")+(failCount?", "+failCount+" failed":"")+"."+coachNote;
   btn.textContent="✉️ Send All Invites";
   await loadStudents();
-  if(failCount===0){setTimeout(function(){closeInviteModal();toast("✅ "+successCount+" students invited!");},900);}
+  if(failCount===0){setTimeout(function(){closeInviteModal();toast("✅ "+successCount+" students added."+coachNote);},2200);}
   else{btn.disabled=false;showBulkError(failCount+" invite(s) failed. Successful ones are faded out.");}
 }
 function downloadTemplate(){
   var wb=XLSX.utils.book_new();
-  var ws=XLSX.utils.aoa_to_sheet([["First Name","Last Name","Email"],["Jane","Smith","jsmith@example.com"],["John","Doe","jdoe@example.com"]]);
-  ws["!cols"]=[{wch:18},{wch:18},{wch:32}];
+  var ws=XLSX.utils.aoa_to_sheet([
+    ["First Name","Last Name","Email","Coach 1 Name","Coach 1 Email","Coach 2 Name","Coach 2 Email"],
+    ["Jane","Smith","jsmith@example.com","Pat Lee","plee@example.com","Sam Cruz","scruz@example.com"],
+    ["John","Doe","jdoe@example.com","Pat Lee","plee@example.com","",""]
+  ]);
+  ws["!cols"]=[{wch:16},{wch:16},{wch:28},{wch:20},{wch:28},{wch:20},{wch:28}];
   XLSX.utils.book_append_sheet(wb,ws,"Students");
-  XLSX.writeFile(wb,"Rx_Aftercare_Student_Import_Template.xlsx");
+  XLSX.writeFile(wb,"Rx_Aftercare_Student_Coach_Import_Template.xlsx");
 }
 
 // ============================================================
