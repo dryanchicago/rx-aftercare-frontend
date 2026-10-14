@@ -667,6 +667,9 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <button class="btn-outline" id="previewReminderBtn" onclick="previewReminder()" style="font-size:0.82rem;display:none;">🔍 Preview Email</button>
       <button class="btn-outline" id="remindCombinedBtn" onclick="sendProgressReminder('combined')" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;display:none;">📧 Send Reminders</button>
       <button class="btn-outline" id="generateReportBtn" onclick="generateProgressReport()" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;">📄 Generate Report</button>
+      <button class="btn-outline" id="surveyXlsxBtn" onclick="downloadSurveyReport('xlsx')" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;" title="Before vs after skills, activity benchmark, impact, feedback and comments, as an Excel workbook">📊 Survey Report (Excel)</button>
+      <button class="btn-outline" id="surveyPptxBtn" onclick="downloadSurveyReport('pptx')" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;" title="Capstone-style slides built from the survey results">📽 Survey Slides (PowerPoint)</button>
+      <button class="btn-outline" id="remindPostBtn" onclick="sendPostSurveyReminder()" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;display:none;" title="Email students who have not completed the post-program survey">📧 Post-Survey Reminder</button>
       <span id="progressLastUpdated" style="font-size:0.78rem;color:#5a7a9a;margin-left:4px;"></span>
     </div>
     <div id="progressTableWrap">
@@ -4757,8 +4760,10 @@ async function loadProgressTab() {
     document.getElementById('progressLastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
 
     // Show combined reminder button if anyone is missing goals or survey
+    const _cls = (typeof CLASSES !== 'undefined' ? CLASSES : []).find(c => String(c.id) === String(classId)) || {};
+    const goalsOff = _cls.goal_setting_disabled === true;
     const needsReminder = students.filter(s =>
-      (s.total_activities || 0) === 0 || !surveyMap[s.id]?.pre_submitted_at
+      (!goalsOff && (s.total_activities || 0) === 0) || !surveyMap[s.id]?.pre_submitted_at
     ).length;
     const remindBtn = document.getElementById('remindCombinedBtn');
     remindBtn.style.display  = needsReminder > 0 ? '' : 'none';
@@ -4768,6 +4773,9 @@ async function loadProgressTab() {
     previewBtn.style.display  = needsReminder > 0 ? '' : 'none';
     previewBtn.dataset.classId = classId;
     document.getElementById('generateReportBtn').style.display = '';
+    ['surveyXlsxBtn', 'surveyPptxBtn', 'remindPostBtn'].forEach(function (id) {
+      var b = document.getElementById(id); if (b) { b.style.display = ''; b.dataset.classId = classId; }
+    });
 
     // Build response_id → name map from survey results
     const responseNameMap = {};
@@ -4812,6 +4820,56 @@ async function previewReminder() {
     win.document.close();
   } catch(e) {
     alert('Preview error: ' + e.message);
+  }
+}
+
+async function downloadSurveyReport(format) {
+  var btn = document.getElementById(format === 'pptx' ? 'surveyPptxBtn' : 'surveyXlsxBtn');
+  var classId = btn && btn.dataset.classId;
+  if (!classId) { alert('Select a class first.'); return; }
+  var original = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Building…';
+  try {
+    var res = await fetch(API_BASE + '/surveys/report/' + classId + '?format=' + format, { headers: { Authorization: 'Bearer ' + getToken() } });
+    if (!res.ok) {
+      var msg = 'Report failed';
+      try { var j = await res.json(); msg = j.error || msg; } catch (e) {}
+      throw new Error(msg);
+    }
+    var blob = await res.blob();
+    var disp = res.headers.get('Content-Disposition') || '';
+    var m = /filename="?([^";]+)"?/i.exec(disp);
+    var name = m ? m[1] : ('Rx_Survey_Report.' + format);
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+  } catch (e) {
+    alert('❌ ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = original;
+  }
+}
+
+async function sendPostSurveyReminder() {
+  var btn = document.getElementById('remindPostBtn');
+  var classId = btn && btn.dataset.classId;
+  if (!classId) { alert('Select a class first.'); return; }
+  try {
+    var pv = await fetch(API_BASE + '/surveys/remind-post/' + classId + '?preview=true', { method: 'POST', headers: { Authorization: 'Bearer ' + getToken() } });
+    var pj = await pv.json();
+    if (!pv.ok) throw new Error(pj.error || 'Could not check');
+    if (!pj.would_send) { alert('Everyone in this class has already completed the post-program survey.'); return; }
+    if (!confirm('Send the post-program survey reminder to ' + pj.would_send + ' student(s) who have not completed it yet?\n\nPeople who already completed it will not be emailed.')) return;
+    btn.disabled = true; var original = btn.textContent; btn.textContent = '⏳ Sending…';
+    var res = await fetch(API_BASE + '/surveys/remind-post/' + classId, { method: 'POST', headers: { Authorization: 'Bearer ' + getToken() } });
+    var data = await res.json();
+    btn.disabled = false; btn.textContent = original;
+    if (!res.ok) throw new Error(data.error || 'Send failed');
+    alert('✅ Reminder sent to ' + data.sent + ' student' + (data.sent !== 1 ? 's' : '') + '.' + (data.skipped ? '\n⚠ ' + data.skipped + ' failed.' : ''));
+  } catch (e) {
+    btn.disabled = false;
+    alert('❌ ' + e.message);
   }
 }
 
