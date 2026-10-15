@@ -171,6 +171,12 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 .bulk-stats .ok{color:#7fd67f}
 .bulk-stats .err{color:#f07070}
 .bulk-hint{font-size:0.78rem;color:#8a9bb8;margin-top:10px;line-height:1.55}
+.pg-menu-wrap{position:relative;display:inline-block}
+.pg-menu{position:absolute;top:calc(100% + 6px);left:0;min-width:330px;background:#0f1e36;border:1px solid #2a4a7a;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.55);z-index:500;padding:6px}
+.pg-item{padding:9px 12px;border-radius:6px;cursor:pointer;color:#e8eefc;font-size:0.88rem;line-height:1.35}
+.pg-item:hover{background:#1c3358}
+.pg-item small{display:block;color:#8a9bb8;font-size:0.74rem;margin-top:2px}
+.pg-item.disabled{opacity:.45;cursor:default;pointer-events:none}
 .bulk-hint code{background:#0a1628;padding:1px 5px;border-radius:3px;font-size:0.76rem;color:#c9a227}
 .progress-bar-wrap{background:#0a1628;border-radius:4px;height:8px;margin:10px 0;overflow:hidden;display:none}
 .progress-bar-fill{height:100%;background:#c9a227;border-radius:4px;transition:width .2s;width:0%}
@@ -664,12 +670,30 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <option value="">— Select a class —</option>
       </select>
       <button class="btn-outline" onclick="loadProgressTab()" style="font-size:0.82rem;">↻ Refresh</button>
+      <span id="progressLegacyButtons" style="display:none">
       <button class="btn-outline" id="previewReminderBtn" onclick="previewReminder()" style="font-size:0.82rem;display:none;">🔍 Preview Email</button>
       <button class="btn-outline" id="remindCombinedBtn" onclick="sendProgressReminder('combined')" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;display:none;">📧 Send Reminders</button>
       <button class="btn-outline" id="generateReportBtn" onclick="generateProgressReport()" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;">📄 Generate Report</button>
       <button class="btn-outline" id="surveyXlsxBtn" onclick="downloadSurveyReport('xlsx')" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;" title="Before vs after skills, activity benchmark, impact, feedback and comments, as an Excel workbook">📊 Survey Report (Excel)</button>
       <button class="btn-outline" id="surveyPptxBtn" onclick="downloadSurveyReport('pptx')" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;" title="Capstone-style slides built from the survey results">📽 Survey Slides (PowerPoint)</button>
       <button class="btn-outline" id="remindPostBtn" onclick="sendPostSurveyReminder()" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;display:none;" title="Email students who have not completed the post-program survey">📧 Post-Survey Reminder</button>
+      </span>
+      <div id="reportsMenuWrap" class="pg-menu-wrap" style="display:none">
+        <button class="btn-outline" id="reportsMenuBtn" onclick="toggleProgressMenu('reportsMenu',event)" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;">📑 Reports ▾</button>
+        <div id="reportsMenu" class="pg-menu" style="display:none">
+          <div class="pg-item" onclick="closeProgressMenus();generateProgressReport()">📄 Engagement Report<small>Goals, activity and survey completion per student</small></div>
+          <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('xlsx')">📊 Before/After Excel Report<small>Skills, activity, impact, feedback, comments and a Raw Responses tab</small></div>
+          <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('pptx')">📽 Before/After Survey Slides<small>PowerPoint with click-by-click highlights</small></div>
+        </div>
+      </div>
+      <div id="remindersMenuWrap" class="pg-menu-wrap" style="display:none">
+        <button class="btn-outline" id="remindersMenuBtn" onclick="toggleProgressMenu('remindersMenu',event)" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">📧 Reminders ▾</button>
+        <div id="remindersMenu" class="pg-menu" style="display:none">
+          <div class="pg-item" id="remMenuCombined" onclick="closeProgressMenus();sendProgressReminder('combined')">Send reminder<small></small></div>
+          <div class="pg-item" id="remMenuPreview" onclick="closeProgressMenus();previewReminder()">🔍 Preview reminder email<small>See exactly what a student would receive</small></div>
+          <div class="pg-item" id="remMenuPost" onclick="closeProgressMenus();sendPostSurveyReminder()">Send post-program survey reminder<small></small></div>
+        </div>
+      </div>
       <span id="progressLastUpdated" style="font-size:0.78rem;color:#5a7a9a;margin-left:4px;"></span>
     </div>
     <div id="progressTableWrap">
@@ -4776,6 +4800,24 @@ async function loadProgressTab() {
     ['surveyXlsxBtn', 'surveyPptxBtn', 'remindPostBtn'].forEach(function (id) {
       var b = document.getElementById(id); if (b) { b.style.display = ''; b.dataset.classId = classId; }
     });
+    // Menus: Reports and Reminders (counts shown on the items)
+    document.getElementById('reportsMenuWrap').style.display = 'inline-block';
+    document.getElementById('remindersMenuWrap').style.display = 'inline-block';
+    const needsPost = students.filter(s => !surveyMap[s.id]?.post_submitted_at).length;
+    const setItem = function (id, label, count, noneText) {
+      var el = document.getElementById(id); if (!el) return;
+      var small = el.querySelector('small');
+      el.firstChild.nodeValue = count > 0 ? label + ' (' + count + ' student' + (count !== 1 ? 's' : '') + ')' : label;
+      if (small && noneText) small.textContent = count > 0 ? noneText.have : noneText.none;
+      el.classList.toggle('disabled', count === 0);
+    };
+    setItem('remMenuCombined',
+      goalsOff ? '📧 Send reminder: pre-program survey' : '📧 Send reminder: goals and pre-program survey',
+      needsReminder, { have: goalsOff ? 'Students who have not completed the pre-survey' : 'Students missing goals or the pre-survey', none: 'Nobody needs this reminder right now' });
+    setItem('remMenuPost', '📧 Send post-program survey reminder', needsPost,
+      { have: 'Students who have not completed the post-survey', none: 'Everyone has completed the post-survey' });
+    document.getElementById('remMenuPreview').classList.toggle('disabled', needsReminder === 0);
+    document.getElementById('reportsMenuBtn').dataset.classId = classId;
 
     // Build response_id → name map from survey results
     const responseNameMap = {};
@@ -4823,9 +4865,21 @@ async function previewReminder() {
   }
 }
 
+function closeProgressMenus() {
+  ['reportsMenu', 'remindersMenu'].forEach(function (id) { var m = document.getElementById(id); if (m) m.style.display = 'none'; });
+}
+function toggleProgressMenu(id, ev) {
+  if (ev) ev.stopPropagation();
+  var m = document.getElementById(id); if (!m) return;
+  var open = m.style.display !== 'none';
+  closeProgressMenus();
+  m.style.display = open ? 'none' : 'block';
+}
+document.addEventListener('click', function () { closeProgressMenus(); });
+
 async function downloadSurveyReport(format) {
-  var btn = document.getElementById(format === 'pptx' ? 'surveyPptxBtn' : 'surveyXlsxBtn');
-  var classId = btn && btn.dataset.classId;
+  var btn = document.getElementById('reportsMenuBtn');
+  var classId = document.getElementById('progressClassSelect').value;
   if (!classId) { alert('Select a class first.'); return; }
   var original = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ Building…';
@@ -4863,14 +4917,14 @@ async function sendPostSurveyReminder() {
     if (!pv.ok) throw new Error(pj.error || 'Could not check');
     if (!pj.would_send) { alert('Everyone in this class has already completed the post-program survey.'); return; }
     if (!confirm('Send the post-program survey reminder to ' + pj.would_send + ' student(s) who have not completed it yet?\n\nPeople who already completed it will not be emailed.')) return;
-    btn.disabled = true; var original = btn.textContent; btn.textContent = '⏳ Sending…';
+    var vbtn = document.getElementById('remindersMenuBtn'); var vOriginal = vbtn.textContent; vbtn.disabled = true; vbtn.textContent = '⏳ Sending…';
     var res = await fetch(API_BASE + '/surveys/remind-post/' + classId, { method: 'POST', headers: { Authorization: 'Bearer ' + getToken() } });
     var data = await res.json();
-    btn.disabled = false; btn.textContent = original;
+    vbtn.disabled = false; vbtn.textContent = vOriginal;
     if (!res.ok) throw new Error(data.error || 'Send failed');
     alert('✅ Reminder sent to ' + data.sent + ' student' + (data.sent !== 1 ? 's' : '') + '.' + (data.skipped ? '\n⚠ ' + data.skipped + ' failed.' : ''));
   } catch (e) {
-    btn.disabled = false;
+    var vb = document.getElementById('remindersMenuBtn'); if (vb) { vb.disabled = false; vb.textContent = '📧 Reminders ▾'; }
     alert('❌ ' + e.message);
   }
 }
