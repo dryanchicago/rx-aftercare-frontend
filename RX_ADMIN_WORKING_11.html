@@ -669,7 +669,6 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <button class="btn-outline" id="generateReportBtn" onclick="generateProgressReport()" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;">📄 Generate Report</button>
       <button class="btn-outline" id="surveyXlsxBtn" onclick="downloadSurveyReport('xlsx')" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;" title="Before vs after skills, activity benchmark, impact, feedback and comments, as an Excel workbook">📊 Survey Report (Excel)</button>
       <button class="btn-outline" id="surveyPptxBtn" onclick="downloadSurveyReport('pptx')" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;" title="Capstone-style slides built from the survey results">📽 Survey Slides (PowerPoint)</button>
-      <button class="btn-outline" id="surveyRawBtn" onclick="downloadSurveyReport('raw')" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;display:none;" title="Every individual response, one row each, with all answers">🗂 Raw Data (Excel)</button>
       <button class="btn-outline" id="remindPostBtn" onclick="sendPostSurveyReminder()" style="font-size:0.82rem;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;display:none;" title="Email students who have not completed the post-program survey">📧 Post-Survey Reminder</button>
       <span id="progressLastUpdated" style="font-size:0.78rem;color:#5a7a9a;margin-left:4px;"></span>
     </div>
@@ -4774,7 +4773,7 @@ async function loadProgressTab() {
     previewBtn.style.display  = needsReminder > 0 ? '' : 'none';
     previewBtn.dataset.classId = classId;
     document.getElementById('generateReportBtn').style.display = '';
-    ['surveyXlsxBtn', 'surveyPptxBtn', 'surveyRawBtn', 'remindPostBtn'].forEach(function (id) {
+    ['surveyXlsxBtn', 'surveyPptxBtn', 'remindPostBtn'].forEach(function (id) {
       var b = document.getElementById(id); if (b) { b.style.display = ''; b.dataset.classId = classId; }
     });
 
@@ -4825,7 +4824,7 @@ async function previewReminder() {
 }
 
 async function downloadSurveyReport(format) {
-  var btn = document.getElementById(format === 'pptx' ? 'surveyPptxBtn' : format === 'raw' ? 'surveyRawBtn' : 'surveyXlsxBtn');
+  var btn = document.getElementById(format === 'pptx' ? 'surveyPptxBtn' : 'surveyXlsxBtn');
   var classId = btn && btn.dataset.classId;
   if (!classId) { alert('Select a class first.'); return; }
   var original = btn.textContent;
@@ -4838,9 +4837,11 @@ async function downloadSurveyReport(format) {
       throw new Error(msg);
     }
     var blob = await res.blob();
-    var disp = res.headers.get('Content-Disposition') || '';
-    var m = /filename="?([^";]+)"?/i.exec(disp);
-    var name = m ? m[1] : ('Rx_Survey_Report.' + format);
+    var sel = document.getElementById('progressClassSelect');
+    var clsName = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : 'class';
+    var safeName = clsName.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 60);
+    var day = new Date().toISOString().slice(0, 10);
+    var name = (format === 'pptx' ? 'Rx_Survey_Slides_' : 'Rx_Survey_Report_') + safeName + '_' + day + (format === 'pptx' ? '.pptx' : '.xlsx');
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
