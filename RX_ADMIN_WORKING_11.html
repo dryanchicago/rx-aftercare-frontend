@@ -683,8 +683,16 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <div id="reportsMenu" class="pg-menu" style="display:none">
           <div class="pg-item" style="cursor:default" onclick="event.stopPropagation()">
             Highlight changes of
-            <input id="hlThreshold" type="number" min="1" max="500" step="1" value="25" onchange="saveHlThreshold()" onclick="event.stopPropagation()" style="width:62px;background:#0a1628;color:#fff;border:1px solid #2a4a7a;border-radius:5px;padding:3px 6px;margin:0 4px;font-size:0.88rem">% or more
+            <input id="hlThreshold" type="number" min="1" max="500" step="1" value="25" onchange="saveHlThreshold()" oninput="updateHlPreview()" onclick="event.stopPropagation()" style="width:62px;background:#0a1628;color:#fff;border:1px solid #2a4a7a;border-radius:5px;padding:3px 6px;margin:0 4px;font-size:0.88rem">% or more
             <small>Applies to the highlighted cells in the Excel report and the slide builds</small>
+            <div id="hlPreview" style="font-size:0.8rem;color:#c9a227;margin-top:6px">Loading preview…</div>
+            <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <span style="font-size:0.74rem;color:#8a9bb8">Quick pick:</span>
+              <button class="btn-outline" onclick="setHlTop(6,event)" style="font-size:0.74rem;padding:2px 8px">Top 6</button>
+              <button class="btn-outline" onclick="setHlTop(8,event)" style="font-size:0.74rem;padding:2px 8px">Top 8</button>
+              <button class="btn-outline" onclick="setHlTop(10,event)" style="font-size:0.74rem;padding:2px 8px">Top 10</button>
+              <button class="btn-outline" onclick="setHlTop(12,event)" style="font-size:0.74rem;padding:2px 8px">Top 12</button>
+            </div>
           </div>
           <div class="pg-item" onclick="closeProgressMenus();generateProgressReport()">📄 Engagement Report<small>Goals, activity and survey completion per student</small></div>
           <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('xlsx')">📊 Before/After Excel Report<small>Skills, activity, impact, feedback, comments and a Raw Responses tab</small></div>
@@ -4870,6 +4878,54 @@ async function previewReminder() {
   }
 }
 
+var _hlData = { classId: null, pcts: null, at: 0 };
+async function loadHlPreview() {
+  var classId = document.getElementById('progressClassSelect').value;
+  if (!classId) return;
+  if (_hlData.classId === classId && _hlData.pcts && (Date.now() - _hlData.at) < 120000) { updateHlPreview(); return; }
+  _hlData = { classId: classId, pcts: null, at: 0 };
+  var box = document.getElementById('hlPreview'); if (box) box.textContent = 'Loading preview…';
+  try {
+    var r = await fetch(API_BASE + '/surveys/report/' + classId + '?format=summary', { headers: { Authorization: 'Bearer ' + getToken() } });
+    var j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'failed');
+    _hlData = { classId: classId, pcts: j.pcts || [], at: Date.now(), counts: j.counts };
+  } catch (e) {
+    _hlData = { classId: classId, pcts: [], at: 0, failed: true };
+  }
+  updateHlPreview();
+}
+function updateHlPreview() {
+  var box = document.getElementById('hlPreview'); if (!box) return;
+  var pcts = _hlData.pcts;
+  if (!pcts) { box.textContent = 'Loading preview…'; return; }
+  if (!pcts.length) { box.textContent = _hlData.failed ? 'Preview unavailable' : 'No before/after results to preview yet'; return; }
+  var th = parseFloat(document.getElementById('hlThreshold').value);
+  if (!isFinite(th)) th = 25;
+  var n = pcts.filter(function (v) { return v >= th; }).length;
+  var max = Math.max.apply(null, pcts), min = Math.min.apply(null, pcts);
+  box.textContent = '→ ' + n + ' of ' + pcts.length + ' cells highlighted  (biggest ' + Math.round(max) + '%, smallest ' + Math.round(min) + '%)';
+}
+function setHlTop(n, ev) {
+  if (ev) ev.stopPropagation();
+  var pcts = _hlData.pcts;
+  if (!pcts || !pcts.length) return;
+  var sorted = pcts.slice().sort(function (a, b) { return b - a; });
+  var idx = Math.min(n, sorted.length) - 1;
+  // whole-number threshold that highlights the number of cells closest to n
+  var v = sorted[idx];
+  var cands = [Math.max(1, Math.floor(v)), Math.max(1, Math.ceil(v))];
+  var th = cands[0], bestDiff = Infinity;
+  cands.forEach(function (c) {
+    var cnt = pcts.filter(function (x) { return x >= c; }).length;
+    var d = Math.abs(cnt - n);
+    if (d < bestDiff || (d === bestDiff && c > th)) { bestDiff = d; th = c; }
+  });
+  var el = document.getElementById('hlThreshold');
+  el.value = th;
+  saveHlThreshold();
+  updateHlPreview();
+}
 function saveHlThreshold() {
   var el = document.getElementById('hlThreshold');
   if (!el) return;
@@ -4892,7 +4948,7 @@ function toggleProgressMenu(id, ev) {
   var m = document.getElementById(id); if (!m) return;
   var open = m.style.display !== 'none';
   closeProgressMenus();
-  if (!open && id === 'reportsMenu') restoreHlThreshold();
+  if (!open && id === 'reportsMenu') { restoreHlThreshold(); loadHlPreview(); }
   m.style.display = open ? 'none' : 'block';
 }
 document.addEventListener('click', function () { closeProgressMenus(); });
