@@ -681,6 +681,11 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
       <div id="reportsMenuWrap" class="pg-menu-wrap" style="display:none">
         <button class="btn-outline" id="reportsMenuBtn" onclick="toggleProgressMenu('reportsMenu',event)" style="font-size:0.82rem;background:#1a2744;color:#c9a227;border-color:#c9a227;">📑 Reports ▾</button>
         <div id="reportsMenu" class="pg-menu" style="display:none">
+          <div class="pg-item" style="cursor:default" onclick="event.stopPropagation()">
+            Highlight changes of
+            <input id="hlThreshold" type="number" min="1" max="500" step="1" value="25" onchange="saveHlThreshold()" onclick="event.stopPropagation()" style="width:62px;background:#0a1628;color:#fff;border:1px solid #2a4a7a;border-radius:5px;padding:3px 6px;margin:0 4px;font-size:0.88rem">% or more
+            <small>Applies to the highlighted cells in the Excel report and the slide builds</small>
+          </div>
           <div class="pg-item" onclick="closeProgressMenus();generateProgressReport()">📄 Engagement Report<small>Goals, activity and survey completion per student</small></div>
           <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('xlsx')">📊 Before/After Excel Report<small>Skills, activity, impact, feedback, comments and a Raw Responses tab</small></div>
           <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('pptx')">📽 Before/After Survey Slides<small>PowerPoint with click-by-click highlights</small></div>
@@ -4865,6 +4870,20 @@ async function previewReminder() {
   }
 }
 
+function saveHlThreshold() {
+  var el = document.getElementById('hlThreshold');
+  if (!el) return;
+  var v = parseFloat(el.value);
+  if (!isFinite(v) || v < 1) { el.value = 25; v = 25; }
+  try { localStorage.setItem('rxHighlightThreshold', String(v)); } catch (e) {}
+}
+function restoreHlThreshold() {
+  try {
+    var v = localStorage.getItem('rxHighlightThreshold');
+    var el = document.getElementById('hlThreshold');
+    if (el && v && isFinite(parseFloat(v))) el.value = v;
+  } catch (e) {}
+}
 function closeProgressMenus() {
   ['reportsMenu', 'remindersMenu'].forEach(function (id) { var m = document.getElementById(id); if (m) m.style.display = 'none'; });
 }
@@ -4873,6 +4892,7 @@ function toggleProgressMenu(id, ev) {
   var m = document.getElementById(id); if (!m) return;
   var open = m.style.display !== 'none';
   closeProgressMenus();
+  if (!open && id === 'reportsMenu') restoreHlThreshold();
   m.style.display = open ? 'none' : 'block';
 }
 document.addEventListener('click', function () { closeProgressMenus(); });
@@ -4884,7 +4904,10 @@ async function downloadSurveyReport(format) {
   var original = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ Building…';
   try {
-    var res = await fetch(API_BASE + '/surveys/report/' + classId + '?format=' + format, { headers: { Authorization: 'Bearer ' + getToken() } });
+    var thInput = document.getElementById('hlThreshold');
+    var th = thInput ? parseFloat(thInput.value) : NaN;
+    var thParam = (isFinite(th) && th >= 0) ? '&threshold=' + encodeURIComponent(th) : '';
+    var res = await fetch(API_BASE + '/surveys/report/' + classId + '?format=' + format + thParam, { headers: { Authorization: 'Bearer ' + getToken() } });
     if (!res.ok) {
       var msg = 'Report failed';
       try { var j = await res.json(); msg = j.error || msg; } catch (e) {}
