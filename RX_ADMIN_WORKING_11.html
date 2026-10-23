@@ -644,13 +644,31 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
           <div onclick="generateCheatSheet(true, true)" style="padding:10px 16px;font-size:0.85rem;color:#f0c070;cursor:pointer;border-radius:0 0 6px 6px" onmouseover="this.style.background='#1a0a30'" onmouseout="this.style.background='transparent'">👁 Preview (before certifying)</div>
         </div>
       </div>
+      <div class="pg-menu-wrap">
+        <button class="btn-outline" id="certDecisionsBtn" onclick="toggleCertMenu('certDecisionsMenu',event)" style="background:#1a4a1a;color:#7fd67f;border-color:#2a6a2a;">✔ Decisions ▾</button>
+        <div id="certDecisionsMenu" class="pg-menu" style="display:none">
+          <div class="pg-item" id="cmCertify" onclick="closeCertMenus();certCertifyRecommended()"><span class="cm-label">✔ Certify AI-recommended</span><small>Every graded submission the AI recommends certifying</small></div>
+          <div class="pg-item" id="cmRegrade" onclick="closeCertMenus();certBulkRegrade()"><span class="cm-label">♻ Re-grade selected</span><small>Tick rows in the table first</small></div>
+          <div class="pg-item" id="cmDelete" onclick="closeCertMenus();certBulkDelete()" style="color:#f09a9a"><span class="cm-label">🗑 Delete selected</span><small>Tick rows in the table first</small></div>
+        </div>
+      </div>
+      <div class="pg-menu-wrap">
+        <button class="btn-outline" id="certCertsBtn" onclick="toggleCertMenu('certCertsMenu',event)" style="background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">🎓 Certificates ▾</button>
+        <div id="certCertsMenu" class="pg-menu" style="display:none">
+          <div class="pg-item" id="cmSend" onclick="closeCertMenus();certBulkSend()"><span class="cm-label">📄 Send certificates</span><small>Tick certified rows in the table first</small></div>
+          <div class="pg-item" id="cmNotify" onclick="closeCertMenus();certNotifyCoaches()"><span class="cm-label">🎓 Notify coaches</span><small>One summary email per coach about their certified students</small></div>
+          <div class="pg-item" id="cmLinkedIn" onclick="closeCertMenus();sendLinkedInReminder()"><span class="cm-label">🔗 LinkedIn reminder</span><small>Test send to you first, then all certified students</small></div>
+          <div class="pg-item" id="cmHonorary" onclick="closeCertMenus();openHonoraryModal()"><span class="cm-label">🎖 Send honorary certificate</span><small>For someone outside the graded process</small></div>
+        </div>
+      </div>
+      <span id="certLegacyButtons" style="display:none">
       <button class="btn-outline" id="certCertifyRecBtn" onclick="certCertifyRecommended()" style="background:#1a4a1a;color:#7fd67f;border-color:#2a6a2a;">✔ Certify AI-Recommended</button>
       <button class="btn-outline" id="certNotifyCoachesBtn" onclick="certNotifyCoaches()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">🎓 Notify Coaches</button>
       <button class="btn-outline" id="certLinkedInReminderBtn" onclick="sendLinkedInReminder()" style="display:none;background:#1a2a4a;color:#7ab3f5;border-color:#2a5a8c;">🔗 LinkedIn Reminder</button>
       <button class="btn-outline" id="certBulkSendBtn" onclick="certBulkSend()" style="display:none;background:#1a3a5c;color:#7ab3f5;border-color:#2a5a8c;">📄 Send Certificates (<span id="certSendSelectedCount">0</span>)</button>
       <button class="btn-outline" id="certBulkRegradeBtn" onclick="certBulkRegrade()" style="display:none;background:#1a3a22;color:#7fd67f;border-color:#2a6a32;">♻ Re-grade Selected (<span id="certRegradeCount">0</span>)</button>
       <button class="btn-outline" id="certBulkDeleteBtn" onclick="certBulkDelete()" style="display:none;background:#5c1a1a;color:#fff;border-color:#8b2020;">🗑 Delete Selected (<span id="certSelectedCount">0</span>)</button>
-      <button class="btn-outline" onclick="openHonoraryModal()" style="background:#3a1a5c;color:#c9a0f5;border-color:#6a3a9c;">🎖 Send Honorary Cert</button>
+      </span>
       <span class="cert-last-updated" id="certLastUpdated"></span>
     </div>
     <div id="certTableWrap">
@@ -3859,6 +3877,7 @@ function toggleCheatSheetMenu(e) {
   if (e) e.stopPropagation();
   var menu = document.getElementById('certCheatSheetMenu');
   var open = menu.style.display !== 'none';
+  closeCertMenus('certCheatSheetMenu');
   menu.style.display = open ? 'none' : 'block';
   if (!open) {
     // close when clicking anywhere outside
@@ -3869,6 +3888,80 @@ function toggleCheatSheetMenu(e) {
       });
     }, 0);
   }
+}
+
+// ── Certifications toolbar menus ──────────────────────────────────────────────
+var CERT_MENUS = ['certDecisionsMenu', 'certCertsMenu', 'certCheatSheetMenu'];
+function closeCertMenus(exceptId) {
+  CERT_MENUS.forEach(function (id) {
+    if (id === exceptId) return;
+    var m = document.getElementById(id);
+    if (m) m.style.display = 'none';
+  });
+}
+function toggleCertMenu(id, ev) {
+  if (ev) ev.stopPropagation();
+  var m = document.getElementById(id);
+  if (!m) return;
+  var open = m.style.display !== 'none';
+  closeCertMenus();
+  if (!open) certSyncMenus();
+  m.style.display = open ? 'none' : 'block';
+}
+document.addEventListener('click', function () { closeCertMenus(); });
+
+// Greys out / relabels the menu items from the current table selection and the (hidden) original buttons
+function certSyncMenus() {
+  var checked = document.querySelectorAll('.cert-row-check:checked');
+  var n = checked.length;
+  var certifiedChecked = 0;
+  checked.forEach(function (cb) {
+    var tr = cb.closest('tr');
+    if (tr && tr.getAttribute('data-cert-status') === 'certified') certifiedChecked++;
+  });
+  function busy(id) { var b = document.getElementById(id); return !!(b && b.disabled); }
+  function setItem(id, o) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('disabled', !!o.disabled);
+    var t = el.querySelector('.cm-label');
+    if (t && o.label != null) t.textContent = o.label;
+    var sm = el.querySelector('small');
+    if (sm && o.hint != null) sm.textContent = o.hint;
+  }
+  setItem('cmCertify', {
+    disabled: busy('certCertifyRecBtn'),
+    label: n ? '\u2714 Certify selected (' + n + ')' : '\u2714 Certify AI-recommended',
+    hint: n ? 'Only the ticked rows, and only if the AI recommends certify' : 'Every graded submission the AI recommends certifying'
+  });
+  setItem('cmRegrade', {
+    disabled: !n || busy('certBulkRegradeBtn'),
+    label: n ? '\u267B Re-grade selected (' + n + ')' : '\u267B Re-grade selected',
+    hint: n ? 'Scores are recalculated; your decisions are not changed' : 'Tick rows in the table first'
+  });
+  setItem('cmDelete', {
+    disabled: !n || busy('certBulkDeleteBtn'),
+    label: n ? '\uD83D\uDDD1 Delete selected (' + n + ')' : '\uD83D\uDDD1 Delete selected',
+    hint: n ? 'Certified submissions are protected and cannot be deleted' : 'Tick rows in the table first'
+  });
+  setItem('cmSend', {
+    disabled: !certifiedChecked || busy('certBulkSendBtn'),
+    label: certifiedChecked ? '\uD83D\uDCC4 Send certificates (' + certifiedChecked + ')' : '\uD83D\uDCC4 Send certificates',
+    hint: certifiedChecked ? 'Each student gets an email with the PDF certificate' : 'Tick certified rows in the table first'
+  });
+  var notify = document.getElementById('certNotifyCoachesBtn');
+  var hasCertified = !!(notify && notify.style.display !== 'none');
+  setItem('cmNotify', {
+    disabled: !hasCertified || busy('certNotifyCoachesBtn'),
+    label: notify ? notify.textContent : null,
+    hint: hasCertified ? 'One summary email per coach about their certified students' : 'Available once someone is certified'
+  });
+  var li = document.getElementById('certLinkedInReminderBtn');
+  setItem('cmLinkedIn', {
+    disabled: !hasCertified || busy('certLinkedInReminderBtn'),
+    label: li ? li.textContent : null,
+    hint: hasCertified ? 'Test send to you first, then all certified students' : 'Available once someone is certified'
+  });
 }
 
 async function certCertifyRecommended() {
@@ -4012,6 +4105,8 @@ function renderCertTable(rows) {
   if (bulkSendBtn) bulkSendBtn.style.display = 'none';
   var bulkRegradeBtn = document.getElementById('certBulkRegradeBtn');
   if (bulkRegradeBtn) bulkRegradeBtn.style.display = 'none';
+  var decBtnReset = document.getElementById('certDecisionsBtn');
+  if (decBtnReset) decBtnReset.textContent = '\u2714 Decisions \u25BE';
   // Show Notify Coaches + LinkedIn Reminder whenever there are any certified rows in this class
   var hasCertified = rows.some(function(r) { return r.status === 'certified'; });
   var notifyBtn = document.getElementById('certNotifyCoachesBtn');
@@ -4111,12 +4206,8 @@ function certUpdateBulkBtn() {
 
   var regradeBtn    = document.getElementById('certBulkRegradeBtn');
   var regradeCntEl  = document.getElementById('certRegradeCount');
-  var certRecBtn    = document.getElementById('certCertifyRecBtn');
-  if (certRecBtn && !certRecBtn.disabled) {
-    certRecBtn.innerHTML = checked.length > 0
-      ? '\u2714 Certify Selected (' + checked.length + ')'
-      : '\u2714 Certify AI-Recommended';
-  }
+  var decBtn        = document.getElementById('certDecisionsBtn');
+  if (decBtn) decBtn.textContent = '\u2714 Decisions' + (checked.length > 0 ? ' (' + checked.length + ' selected)' : '') + ' \u25BE';
 
   if (countEl)      countEl.textContent    = checked.length;
   if (sendCntEl)    sendCntEl.textContent  = certifiedCount;
