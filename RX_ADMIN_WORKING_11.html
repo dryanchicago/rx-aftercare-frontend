@@ -795,6 +795,10 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         </table>
       </div>
     </div>
+    <label style="display:flex;align-items:flex-start;gap:8px;margin:0 0 12px;font-size:0.82rem;color:#c8d8f0;cursor:pointer">
+      <input type="checkbox" id="certUploadAllowIncomplete" style="margin-top:3px;accent-color:#c9a227">
+      <span>Import incomplete stories anyway <span style="color:#8a9bb8">(a story with an empty Situation or Actions section is normally rejected; with this on it is imported and graded on what is there)</span></span>
+    </label>
     <div style="display:flex;gap:10px;align-items:center">
       <button id="certUploadSubmitBtn" onclick="importAllPdfs()" style="display:none;background:#1a3a5c;color:#7ab3f5;border:1px solid #2a5a8c;padding:9px 22px;border-radius:6px;font-size:0.88rem;font-weight:700;cursor:pointer">⬆ Import All</button>
       <span id="certUploadSummary" style="font-size:0.82rem;color:#8a9bb8"></span>
@@ -3702,6 +3706,7 @@ async function openUploadPdfModal() {
   var classId = document.getElementById('certClassSelect').value;
   if (!classId) { alert('Please select a class first.'); return; }
   document.getElementById('certUploadFiles').value = '';
+  var _ai = document.getElementById('certUploadAllowIncomplete'); if (_ai) _ai.checked = false;
   document.getElementById('certUploadGrid').style.display = 'none';
   document.getElementById('certUploadRows').innerHTML = '';
   var btn = document.getElementById('certUploadSubmitBtn');
@@ -3805,6 +3810,8 @@ async function importAllPdfs() {
     form.append('file', files[i]);
     if (email) form.append('email', email);
     form.append('class_id', classId);
+    var allowEl = document.getElementById('certUploadAllowIncomplete');
+    if (allowEl && allowEl.checked) form.append('allow_incomplete', 'true');
 
     try {
       var res = await fetch(API_BASE + '/certifications/upload-pdf', {
