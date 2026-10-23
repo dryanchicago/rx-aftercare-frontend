@@ -3883,6 +3883,16 @@ async function certCertifyRecommended() {
     var dry = await apiCall('POST', url, { dry_run: true });
     if (!dry || dry.error || !Array.isArray(dry.eligible)) throw new Error((dry && dry.error) || 'No valid response from the server');
     var list = dry.eligible;
+    // If rows are ticked, only those rows are certified (and only if they are eligible)
+    var selectedIds = Array.from(document.querySelectorAll('.cert-row-check:checked')).map(function(cb) { return String(cb.value); });
+    var onlySelected = selectedIds.length > 0;
+    if (onlySelected) {
+      list = list.filter(function(r) { return selectedIds.indexOf(String(r.id)) !== -1; });
+      if (!list.length) {
+        alert('None of the selected submissions can be certified this way. A submission must be graded, recommended "certify" by the AI, not flagged for review, and not already certified. Open the submission and use its own Certify button instead.');
+        return;
+      }
+    }
     if (!list.length) {
       alert('Nothing to certify. No graded submissions have an AI "certify" recommendation (anything flagged for human review is excluded).');
       return;
@@ -3891,7 +3901,7 @@ async function certCertifyRecommended() {
       var sc = r.overall_score != null ? parseFloat(r.overall_score).toFixed(2) : 'N/A';
       return '• ' + ((r.first_name || '') + ' ' + (r.last_name || '')).trim() + ' — ' + (r.score_band || '') + ' (' + sc + ')';
     }).join('\n');
-    if (!confirm('Certify these ' + list.length + ' submission' + (list.length !== 1 ? 's' : '') + '?\n\n' + lines +
+    if (!confirm((onlySelected ? 'Certify ONLY the ' : 'Certify these ') + list.length + ' submission' + (list.length !== 1 ? 's' : '') + (onlySelected ? ' you selected' : '') + '?\n\n' + lines +
         '\n\nThis cannot be undone from the admin panel. No emails are sent — use Send Certificates afterward.')) return;
     btn.innerHTML = '⏳ Certifying…';
     var out = await apiCall('POST', url, { ids: list.map(function(r) { return r.id; }) });
@@ -3903,6 +3913,7 @@ async function certCertifyRecommended() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = label;
+    certUpdateBulkBtn();
   }
 }
 
@@ -4100,6 +4111,12 @@ function certUpdateBulkBtn() {
 
   var regradeBtn    = document.getElementById('certBulkRegradeBtn');
   var regradeCntEl  = document.getElementById('certRegradeCount');
+  var certRecBtn    = document.getElementById('certCertifyRecBtn');
+  if (certRecBtn && !certRecBtn.disabled) {
+    certRecBtn.innerHTML = checked.length > 0
+      ? '\u2714 Certify Selected (' + checked.length + ')'
+      : '\u2714 Certify AI-Recommended';
+  }
 
   if (countEl)      countEl.textContent    = checked.length;
   if (sendCntEl)    sendCntEl.textContent  = certifiedCount;
