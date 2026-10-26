@@ -712,6 +712,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
               <button class="btn-outline" onclick="setHlTop(12,event)" style="font-size:0.74rem;padding:2px 8px">Top 12</button>
             </div>
           </div>
+          <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('baseline')">📝 Baseline Snapshot (Word)<small>Executive summary of the before results: skills, activity, course evaluation. Use before the post-survey is in</small></div>
           <div class="pg-item" onclick="closeProgressMenus();generateProgressReport()">📄 Engagement Report<small>Goals, activity and survey completion per student</small></div>
           <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('xlsx')">📊 Before/After Excel Report<small>Skills, activity, impact, feedback, comments and a Raw Responses tab</small></div>
           <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('pptx')">📽 Before/After Survey Slides<small>PowerPoint with click-by-click highlights</small></div>
@@ -5089,7 +5090,8 @@ async function downloadSurveyReport(format) {
     var clsName = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : 'class';
     var safeName = clsName.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 60);
     var day = new Date().toISOString().slice(0, 10);
-    var name = (format === 'pptx' ? 'Rx_Survey_Slides_' : 'Rx_Survey_Report_') + safeName + '_' + day + (format === 'pptx' ? '.pptx' : '.xlsx');
+    var name = format === 'baseline' ? 'Rx_Baseline_Snapshot_' + safeName + '_' + day + '.docx'
+      : (format === 'pptx' ? 'Rx_Survey_Slides_' : 'Rx_Survey_Report_') + safeName + '_' + day + (format === 'pptx' ? '.pptx' : '.xlsx');
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name;
     document.body.appendChild(a); a.click(); a.remove();
