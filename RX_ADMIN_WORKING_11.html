@@ -713,6 +713,8 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
             </div>
           </div>
           <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('baseline')">📝 Baseline Snapshot (Word)<small>Executive summary of the before results: skills, activity, course evaluation. Use before the post-survey is in</small></div>
+          <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('impact')">📈 Results &amp; Impact Summary (Word)<small>Board-style summary: before/after results, outcomes, insights. Narrative is drafted once and saved; edit it in Word</small></div>
+          <div class="pg-item" onclick="closeProgressMenus();if(confirm('Draft a fresh narrative for the Impact Summary? It replaces the saved draft.'))downloadSurveyReport('impact&amp;redraft=true')">↻ Redraft Impact Summary narrative<small>Asks Claude to rewrite the outcomes and insights from the latest survey comments and stories</small></div>
           <div class="pg-item" onclick="closeProgressMenus();openReportSettings()">🖼 Baseline Report: Title &amp; Logos…<small>Rx or client logos, report title, and whether comments show names</small></div>
           <div class="pg-item" onclick="closeProgressMenus();generateProgressReport()">📄 Engagement Report<small>Goals, activity and survey completion per student</small></div>
           <div class="pg-item" onclick="closeProgressMenus();downloadSurveyReport('xlsx')">📊 Before/After Excel Report<small>Skills, activity, impact, feedback, comments and a Raw Responses tab</small></div>
@@ -837,6 +839,14 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
     <div style="margin-bottom:14px">
       <label style="display:block;color:#8a9bb8;font-size:0.82rem;margin-bottom:4px">Report title (leave blank to use the class name)</label>
       <input id="rsTitle" type="text" style="width:100%;box-sizing:border-box;background:#0d1f3c;border:1px solid #2a4a7f;color:#e8e8e8;padding:8px 10px;border-radius:5px;font-size:0.92rem">
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;color:#8a9bb8;font-size:0.82rem;margin-bottom:4px">Program purpose, for the Impact Summary (blank = standard wording; separate paragraphs with a blank line)</label>
+      <textarea id="rsPurpose" rows="4" style="width:100%;box-sizing:border-box;background:#0d1f3c;border:1px solid #2a4a7f;color:#e8e8e8;padding:8px 10px;border-radius:5px;font-size:0.88rem;font-family:inherit"></textarea>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;color:#8a9bb8;font-size:0.82rem;margin-bottom:4px">Core focus areas, for the Impact Summary (blank = standard wording)</label>
+      <input id="rsFocus" type="text" style="width:100%;box-sizing:border-box;background:#0d1f3c;border:1px solid #2a4a7f;color:#e8e8e8;padding:8px 10px;border-radius:5px;font-size:0.92rem">
     </div>
     <div style="margin-bottom:14px;color:#c8d8f0;font-size:0.9rem">
       <label style="display:block;cursor:pointer"><input type="checkbox" id="rsShowNames"> Show each person's name with their typed comments</label>
@@ -5131,6 +5141,8 @@ async function openReportSettings() {
     document.getElementById('rsTitle').value = j.title || '';
     document.getElementById('rsTitle').placeholder = j.class_name || '';
     document.getElementById('rsShowNames').checked = j.show_names === true;
+    document.getElementById('rsPurpose').value = j.purpose || '';
+    document.getElementById('rsFocus').value = j.focus || '';
     var radios = document.getElementsByName('rsMode');
     for (var i = 0; i < radios.length; i++) radios[i].checked = (radios[i].value === j.logo_mode);
     rsSaved = { center: j.center, right: j.right };
@@ -5187,7 +5199,8 @@ function rsPickLogo(slot, input) {
 }
 async function saveReportSettings() {
   var btn = document.getElementById('rsSaveBtn'), st = document.getElementById('rsStatus');
-  var body = { title: document.getElementById('rsTitle').value, logo_mode: rsMode(), show_names: document.getElementById('rsShowNames').checked };
+  var body = { title: document.getElementById('rsTitle').value, logo_mode: rsMode(), show_names: document.getElementById('rsShowNames').checked,
+    purpose: document.getElementById('rsPurpose').value, focus: document.getElementById('rsFocus').value };
   if (rsLogos.center !== undefined) body.center = rsLogos.center;
   if (rsLogos.right !== undefined) body.right = rsLogos.right;
   if (body.logo_mode === 'client' && !(rsLogos.center || (rsLogos.center === undefined && rsSaved.center)) && !(rsLogos.right || (rsLogos.right === undefined && rsSaved.right))) {
@@ -5228,7 +5241,8 @@ async function downloadSurveyReport(format) {
     var clsName = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : 'class';
     var safeName = clsName.replace(/[^a-z0-9]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 60);
     var day = new Date().toISOString().slice(0, 10);
-    var name = format === 'baseline' ? 'Rx_Baseline_Snapshot_' + safeName + '_' + day + '.docx'
+    var name = format.indexOf('impact') === 0 ? 'Rx_Results_Impact_Summary_' + safeName + '_' + day + '.docx'
+      : format === 'baseline' ? 'Rx_Baseline_Snapshot_' + safeName + '_' + day + '.docx'
       : (format === 'pptx' ? 'Rx_Survey_Slides_' : 'Rx_Survey_Report_') + safeName + '_' + day + (format === 'pptx' ? '.pptx' : '.xlsx');
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = name;
