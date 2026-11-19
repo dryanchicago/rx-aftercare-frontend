@@ -2858,7 +2858,7 @@ function renderAutoBar(){
   if(!_scAuto){ bar.innerHTML=""; return; }
   var plan=_scAuto.custom_checkins
     ? 'Custom for this class: '+_scAuto.checkins.length+' check-in'+(_scAuto.checkins.length===1?'':'s')
-    : 'Standard: day 45 and day 80';
+    : 'Standard: one check-in on day 60';
   bar.innerHTML='<div class="sc-auto-bar">'
     +'<div><strong>⚙ Automatic emails</strong> are shown in gray between your scheduled emails. They are read-only here. '
     +'<span style="color:#c9a227">Goal check-ins — '+esc(plan)+'</span>'
@@ -2937,10 +2937,10 @@ function renderCheckinEditor(){
     +'<button class="sc-close" onclick="document.getElementById(\'checkinEditorModal\').style.display=\'none\'">✕</button></div>'
     +'<p style="font-size:0.82rem;color:#b8c4d8;line-height:1.5;margin:10px 0 14px">On each check-in day, students who have committed goals get an email asking them to update their progress. '
     +'A few days later each invited coach gets one email with their own students\' progress. Untick <em>System emails students</em> when one of your scheduled emails already asks students (only the coach follow-up is then automatic). '
-    +'Leave the coach day blank for '+delay+' days later. No rows = the standard plan (day 45 and day 80).</p>'
+    +'Leave the coach day blank for '+delay+' days later. No rows = the standard plan (one check-in on day 60).</p>'
     +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
     +'<th style="'+th+'">Check-in day</th><th style="'+th+'">Date</th><th style="'+th+';text-align:center">System emails students</th><th style="'+th+'">Coach day</th><th style="'+th+'">Coach date</th><th></th></tr></thead>'
-    +'<tbody>'+(rows||'<tr><td colspan="6" style="padding:10px 6px;color:#8a9bb8;font-size:0.82rem">No custom check-ins: this class uses the standard plan (day 45 and day 80).</td></tr>')+'</tbody></table>'
+    +'<tbody>'+(rows||'<tr><td colspan="6" style="padding:10px 6px;color:#8a9bb8;font-size:0.82rem">No custom check-ins: this class uses the standard plan (one check-in on day 60).</td></tr>')+'</tbody></table>'
     +'<div id="ci-msg" style="font-size:0.8rem;margin-top:10px;min-height:1em"></div>'
     +'<div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px">'
     +'<div style="display:flex;gap:8px"><button class="sc-btn-sm" onclick="_ciRows.push({day:\'\',students:true,coach_day:\'\'});renderCheckinEditor()">+ Add Check-in</button>'
