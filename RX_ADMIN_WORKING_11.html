@@ -2649,6 +2649,7 @@ async function previewFindReplace(){
   if(!data||!data.success){msgEl.style.color="#f07070";msgEl.textContent="Could not load templates.";return;}
   var templates=data.templates||[];
   var matches=templates.filter(function(t){
+    if(/^ZZ-RETIRED/i.test(t.name||"")) return false; // retired emails are kept unchanged for reference
     return (t.html_body||"").includes(find)||(t.subject||"").includes(find)||(t.name||"").includes(find);
   });
   if(!matches.length){msgEl.style.color="#f07070";msgEl.textContent='No matches found for "'+find+'" across '+templates.length+' templates.';}
@@ -2665,6 +2666,7 @@ async function executeFindReplace(){
   if(!data||!data.success){msgEl.style.color="#f07070";msgEl.textContent="Could not load templates.";return;}
   var templates=data.templates||[];
   var toUpdate=templates.filter(function(t){
+    if(/^ZZ-RETIRED/i.test(t.name||"")) return false; // retired emails are kept unchanged for reference
     return (t.html_body||"").includes(find)||(t.subject||"").includes(find)||(t.name||"").includes(find);
   });
   if(!toUpdate.length){msgEl.style.color="#f07070";msgEl.textContent='No matches found for "'+find+'".';return;}
@@ -2993,7 +2995,8 @@ async function populateTemplateDropdown(){
   var data=await apiCall("GET","/email-templates");
   var sel=document.getElementById("sc-add-template");
   sel.innerHTML='<option value="">— select a template —</option>';
-  if(data&&data.success)(data.templates||[]).forEach(function(t){var opt=document.createElement("option");opt.value=t.id;opt.textContent=t.name;sel.appendChild(opt);});
+  // Retired emails (name starts "ZZ-RETIRED") stay in the library for reference but are not offered here.
+  if(data&&data.success)(data.templates||[]).forEach(function(t){if(/^ZZ-RETIRED/i.test(t.name||""))return;var opt=document.createElement("option");opt.value=t.id;opt.textContent=t.name;sel.appendChild(opt);});
 }
 
 async function populateCopySource(excludeClassId){
