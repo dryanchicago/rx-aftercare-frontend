@@ -297,6 +297,8 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 .sc-slot.is-suppressed{opacity:0.45;border-color:#3a4a60}
 .sc-slot.is-suppressed .sc-slot-day{background:#1a2535}
 .sc-suppressed-badge{font-size:0.62rem;font-weight:700;background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.4);color:#c9a227;border-radius:4px;padding:2px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:0.5px}
+.sc-auto-warn{margin-top:6px;color:#e0b83a;font-weight:700}
+.sc-auto-warn code{background:#24344d;padding:1px 5px;border-radius:3px;font-weight:400;color:#e8e8e8}
 .sc-auto-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#0d1a2e;border:1px dashed #3a4f70;border-radius:7px;padding:10px 14px;margin-bottom:10px;font-size:0.8rem;color:#b8c4d8;line-height:1.45}
 .sc-slot.sc-auto{background:#0d1522;border:1px dashed #3a4f70}
 .sc-slot.sc-auto .sc-slot-day{background:#1a2535}
@@ -2863,6 +2865,10 @@ function renderAutoBar(){
     +'<div><strong>⚙ Automatic emails</strong> are shown in gray between your scheduled emails. They are read-only here. '
     +'<span style="color:#c9a227">Goal check-ins — '+esc(plan)+'</span>'
     +(_scAuto.off_reason?' · <span style="color:#f07070">'+esc(_scAuto.off_reason)+'</span>':'')
+    +(function(){var ps=_scAuto.post_survey||{};
+      if(ps.status==='missing') return '<div class="sc-auto-warn">⚠ No post-program assessment email scheduled. Add an email that uses the <code>{{post_survey_url}}</code> link (e.g. template 15-Rx Final Steps) so students retake the skills assessment.</div>';
+      if(ps.status==='suppressed') return '<div class="sc-auto-warn">⚠ The post-program assessment email in this schedule is suppressed, so it will not send and there will be no automatic reminder.</div>';
+      return '';})()
     +'<div style="color:#6f8099;margin-top:3px">Also automatic, to you only: '+esc((_scAuto.admin_reports||[]).join(' · '))+'</div></div>'
     +'<div style="display:flex;gap:6px;flex-shrink:0">'
     +'<button class="sc-btn-sm" onclick="openCheckinEditor()">⚙ Edit Check-ins</button>'
