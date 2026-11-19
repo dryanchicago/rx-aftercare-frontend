@@ -297,6 +297,8 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 .sc-slot.is-suppressed{opacity:0.45;border-color:#3a4a60}
 .sc-slot.is-suppressed .sc-slot-day{background:#1a2535}
 .sc-suppressed-badge{font-size:0.62rem;font-weight:700;background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.4);color:#c9a227;border-radius:4px;padding:2px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:0.5px}
+.class-card.is-master{border:1px solid #c9a227}
+.master-badge{font-size:0.66rem;font-weight:800;letter-spacing:0.5px;background:rgba(201,162,39,0.18);border:1px solid #c9a227;color:#e0b83a;border-radius:4px;padding:2px 7px;margin-left:8px;vertical-align:middle}
 .sc-auto-warn{margin-top:6px;color:#e0b83a;font-weight:700}
 .sc-auto-warn code{background:#24344d;padding:1px 5px;border-radius:3px;font-weight:400;color:#e8e8e8}
 .sc-auto-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#0d1a2e;border:1px dashed #3a4f70;border-radius:7px;padding:10px 14px;margin-bottom:10px;font-size:0.8rem;color:#b8c4d8;line-height:1.45}
@@ -1431,7 +1433,7 @@ async function refreshGoals() {
 // ============================================================
 function normalizeClasses(apiClasses) {
   var list=Array.isArray(apiClasses)?apiClasses:(apiClasses&&(apiClasses.classes||apiClasses.data))||[];
-  return list.map(function(c){return{id:c.id,name:c.name||"",client:c.client||"",duration_days:c.duration_days||90,goal_ids:c.goal_ids||[],goal_count:c.goal_count!=null?c.goal_count:(c.goal_ids?c.goal_ids.length:0),bcc_emails:c.bcc_emails||"",send_welcome_email:c.send_welcome_email!==false,coach_auto_invite:c.coach_auto_invite===true,nudges_paused:c.nudges_paused===true,goal_setting_disabled:c.goal_setting_disabled===true,copy_coaches_on_sends:c.copy_coaches_on_sends===true};});
+  return list.map(function(c){return{is_master:!!(c.report_settings&&c.report_settings.is_master===true),id:c.id,name:c.name||"",client:c.client||"",duration_days:c.duration_days||90,goal_ids:c.goal_ids||[],goal_count:c.goal_count!=null?c.goal_count:(c.goal_ids?c.goal_ids.length:0),bcc_emails:c.bcc_emails||"",send_welcome_email:c.send_welcome_email!==false,coach_auto_invite:c.coach_auto_invite===true,nudges_paused:c.nudges_paused===true,goal_setting_disabled:c.goal_setting_disabled===true,copy_coaches_on_sends:c.copy_coaches_on_sends===true};});
 }
 function renderClasses() {
   var loading=document.getElementById("classesLoading"); if(loading) loading.style.display="none";
@@ -1439,16 +1441,18 @@ function renderClasses() {
   if (!CLASSES.length) { el.innerHTML='<p class="empty-msg">No classes yet. Use <strong>Create Class</strong> to add one.</p>'; return; }
   el.innerHTML=CLASSES.map(function(c){
     var safeName=esc(c.name).replace(/'/g,"&#39;");
-    return '<div class="class-card"><div class="class-card-inner"><div>'
-      +'<div class="class-name">'+esc(c.name)+'</div>'
+    var m=!!c.is_master;
+    return '<div class="class-card'+(m?' is-master':'')+'"><div class="class-card-inner"><div>'
+      +'<div class="class-name">'+esc(c.name)+(m?' <span class="master-badge" title="Template class: no start date, no students. Copy it to start a real class.">🔒 MASTER TEMPLATE</span>':'')+'</div>'
       +'<div class="class-meta"><span>📍 '+esc(c.client||"No client")+'</span><span>🎯 '+c.goal_count+' goal'+(c.goal_count!==1?'s':'')+'</span><span>📅 '+c.duration_days+' days</span>'+(c.bcc_emails?'<span title="BCC Recipients">📧 '+esc(c.bcc_emails)+'</span>':'')+(c.send_welcome_email===false?'<span title="Welcome email disabled" style="color:#f07070">✉️ No welcome email</span>':'')+'</div>'
       +'</div><div class="class-actions">'
       +'<button class="btn-sm btn-edit" onclick="editClass('+c.id+')">✏️ Edit</button>'
-      +'<button class="btn-sm btn-outline" onclick="duplicateClass('+c.id+')">⧉ Duplicate</button>'
-      +'<button class="btn-sm btn-primary" onclick="generateDashboard('+c.id+')">📄 Generate Dashboard</button>'
-      +'<button class="btn-sm btn-outline" onclick="viewClassStudents('+c.id+')">👥 Students</button>'
+      +(m?'<button class="btn-sm btn-primary" onclick="duplicateClass('+c.id+')" title="Creates a new class with this schedule and settings">＋ Start a new class from this</button>'
+         :'<button class="btn-sm btn-outline" onclick="duplicateClass('+c.id+')">⧉ Duplicate</button>')
+      +(m?'':'<button class="btn-sm btn-primary" onclick="generateDashboard('+c.id+')">📄 Generate Dashboard</button>')
+      +(m?'':'<button class="btn-sm btn-outline" onclick="viewClassStudents('+c.id+')">👥 Students</button>')
       +'<button class="btn-schedule" onclick="openSchedule('+c.id+')">📅 Schedule</button>'
-      +'<button class="btn-sm btn-del" onclick="deleteClass('+c.id+')">🗑</button>'
+      +(m?'':'<button class="btn-sm btn-del" onclick="deleteClass('+c.id+')">🗑</button>')
       +'</div></div></div>';
   }).join("");
 }
@@ -1516,6 +1520,7 @@ async function saveClass(){
   var result;
   if(editingClassId){
     result=await apiCall("PUT","/classes/"+editingClassId,payload);
+    if(result&&result.error){alert(result.error);return;}
     if(result) toast("✅ Class updated!"); else return;
   } else {
     result=await apiCall("POST","/classes",payload);
@@ -1591,9 +1596,9 @@ async function duplicateClass(classId){
   var result=await apiCall("POST","/classes/"+classId+"/duplicate");
   var created=unwrapResult(result);
   if(created&&created.id){
-    toast("✅ Class duplicated!");await refreshClasses();
+    toast("✅ New class created!");await refreshClasses();
     if(result&&result.review&&result.review.length)
-      alert("Class duplicated. Review these before you use it:\n\n• "+result.review.join("\n• "));
+      alert("New class created. Review these before you use it:\n\n• "+result.review.join("\n• "));
   }
 }
 async function editClass(classId){
@@ -1610,6 +1615,8 @@ async function editClass(classId){
   document.getElementById("classGoalSettingDisabled").checked=cls.goal_setting_disabled===true;
   document.getElementById("classCopyCoaches").checked=cls.copy_coaches_on_sends===true;
   document.getElementById("createTitle").textContent="Editing: "+cls.name;
+  var _isM=!!((CLASSES.find(function(x){return x.id===classId;})||{}).is_master);
+  var _nm=document.getElementById("className"); _nm.readOnly=_isM; _nm.title=_isM?"The MASTER template's name cannot be changed. Use 'Start a new class from this' instead.":"";
   document.getElementById("saveBtn").textContent="💾 Update Class";
   document.getElementById("cancelBtn").style.display="inline-block";
   var sId=String(cls.id);
@@ -1638,6 +1645,7 @@ function cancelEdit(){
   document.getElementById("classGoalSettingDisabled").checked=false;
   document.getElementById("classCopyCoaches").checked=false;
   document.getElementById("createTitle").textContent="Create New Class";
+  document.getElementById("className").readOnly=false; document.getElementById("className").title="";
   document.getElementById("saveBtn").textContent="💾 Save Class";
   document.getElementById("cancelBtn").style.display="none";
   clearLogo();renderCreate(null);
@@ -2702,7 +2710,10 @@ async function openSchedule(classId){
   var durationDays=cls?cls.duration_days:null;
   _scClassId=classId; _scClassName=className;
   document.getElementById("sc-class-name").textContent="Schedule — "+className;
-  document.getElementById("sc-class-meta").textContent=durationDays?durationDays+"-day program":"";
+  document.getElementById("sc-class-meta").textContent=(durationDays?durationDays+"-day program":"")+(cls&&cls.is_master?"  ·  🔒 MASTER TEMPLATE: no start date, never sends. Edit emails one by one; changes apply to classes created from it afterwards.":"");
+  var _m=!!(cls&&cls.is_master);
+  document.getElementById("sc-start-input").disabled=_m;
+  document.querySelectorAll('#scheduleModal button[onclick="saveScheduleStartDate()"], #scheduleModal button[onclick="duplicateSchedule()"]').forEach(function(b){b.disabled=_m;b.style.opacity=_m?"0.4":"";b.title=_m?"Not available on the MASTER template":"";});
   document.getElementById("sc-add-msg").textContent="";
   await populateCopySource(classId);
   await populateTemplateDropdown();
