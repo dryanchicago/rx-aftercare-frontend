@@ -297,6 +297,15 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
 .sc-slot.is-suppressed{opacity:0.45;border-color:#3a4a60}
 .sc-slot.is-suppressed .sc-slot-day{background:#1a2535}
 .sc-suppressed-badge{font-size:0.62rem;font-weight:700;background:rgba(201,162,39,0.15);border:1px solid rgba(201,162,39,0.4);color:#c9a227;border-radius:4px;padding:2px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:0.5px}
+.sc-auto-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#0d1a2e;border:1px dashed #3a4f70;border-radius:7px;padding:10px 14px;margin-bottom:10px;font-size:0.8rem;color:#b8c4d8;line-height:1.45}
+.sc-slot.sc-auto{background:#0d1522;border:1px dashed #3a4f70}
+.sc-slot.sc-auto .sc-slot-day{background:#1a2535}
+.sc-slot.sc-auto .sc-slot-day strong{color:#9fb3cf}
+.sc-slot.sc-auto .sc-slot-name{color:#c8d2e2;font-weight:600}
+.sc-slot.sc-auto-off{opacity:0.5}
+.sc-slot.sc-auto-off .sc-slot-name{text-decoration:line-through}
+.sc-auto-badge{font-size:0.62rem;font-weight:800;background:#24344d;border:1px solid #3a4f70;color:#9fb3cf;border-radius:4px;padding:2px 6px;margin-right:7px;letter-spacing:0.5px;text-decoration:none;display:inline-block}
+.sc-auto-status{font-size:0.62rem;font-weight:700;border:1px solid;border-radius:4px;padding:2px 6px;margin-left:7px;text-transform:uppercase;letter-spacing:0.4px;text-decoration:none;display:inline-block}
 .sc-stats-detail{background:#0a1628;border:1px solid #1e3a5f;border-radius:5px;padding:12px 14px;margin-top:10px;font-size:0.82rem}
 .sc-stats-table{width:100%;border-collapse:collapse}
 .sc-stats-table th{background:#1f3358;color:#8a9bb8;font-size:0.72rem;padding:6px 10px;text-align:left;font-weight:700;text-transform:uppercase;letter-spacing:0.3px}
@@ -1117,6 +1126,7 @@ a.tab{text-decoration:none;display:inline-flex;align-items:center}
         <input type="number" id="sc-shift-days" style="width:65px;text-align:center;background:#111827;border:1px solid #2a4570;color:#e8e8e8;padding:5px 8px;border-radius:4px;font-size:0.82rem" placeholder="±days">
         <button class="sc-btn-sm" onclick="shiftSchedule()">↕ Shift</button>
       </div>
+      <div id="sc-auto-bar"></div>
       <div class="sc-slot-list" id="sc-slot-list">
         <div class="sc-empty">No emails scheduled yet. Add your first one below.</div>
       </div>
@@ -2747,7 +2757,11 @@ async function downloadScheduleXlsx() {
 }
 
 async function loadSchedule(){
+  var autoP=apiCall("GET","/classes/"+_scClassId+"/auto-emails");
   var data=await apiCall("GET","/classes/"+_scClassId+"/schedule");
+  var auto=await autoP;
+  _scAuto=(auto&&auto.success)?auto:null;
+  renderAutoBar();
   if(!data||!data.success){document.getElementById("sc-slot-list").innerHTML='<p style="color:#f07070">Could not load schedule.</p>';return;}
   document.getElementById("sc-start-input").value=data.start_date?data.start_date.slice(0,10):"";
   _scStartDate=data.start_date||null;
@@ -2761,9 +2775,17 @@ function renderSlotList(slots, startDateStr){
   // Store all slot data in a map so onclick only needs the id
   _scSlotMap={};
   slots.forEach(function(s){ _scSlotMap[s.id]=s; });
-  if(!slots.length){list.innerHTML='<div class="sc-empty">No emails scheduled yet. Add your first one below.</div>';return;}
+  var autoItems=(_scShowAuto&&_scAuto)?(_scAuto.items||[]):[];
+  if(!slots.length&&!autoItems.length){list.innerHTML='<div class="sc-empty">No emails scheduled yet. Add your first one below.</div>';return;}
   var startDate = startDateStr ? parseLocalDate(startDateStr) : null;
-  list.innerHTML=slots.map(function(s){
+  // Merge scheduled slots and ⚙ AUTO rows by send day (a scheduled slot comes first on the same day).
+  var merged=[];
+  slots.forEach(function(s){ merged.push({day:(s.day_override?s.day_override:(s.week_number*7+1)),order:0,slot:s}); });
+  autoItems.forEach(function(it){ merged.push({day:it.day,order:1,auto:it}); });
+  merged.sort(function(a,b){ return (a.day-b.day)||(a.order-b.order); });
+  list.innerHTML=merged.map(function(m){
+    if(m.auto) return autoRowHtml(m.auto, startDate);
+    var s=m.slot;
     var dayLabel=s.day_override?"Day "+s.day_override:"Week "+s.week_number;
     var dayNum=s.day_override?s.day_override:(s.week_number*7+1);
     var sendDateStr="";
@@ -2795,6 +2817,156 @@ function renderSlotList(slots, startDateStr){
       +'<button class="sc-btn-icon del" title="Remove" onclick="deleteSlot('+s.id+')">✕</button>'
       +'</div></div></div>';
   }).join("");
+}
+
+// ── ⚙ AUTOMATIC EMAILS in the schedule panel (Nov 19 2026) ───────────────────
+// Read-only rows from GET /classes/:id/auto-emails (same plan the daily nudge job uses).
+var _scAuto=null;
+var _scShowAuto=true;
+try{ if(localStorage.getItem("scShowAuto")==="0") _scShowAuto=false; }catch(e){}
+
+function autoStatusBadge(it){
+  var map={
+    sent:['Sent','#27ae60'], active:['Running','#27ae60'], planned:['Planned','#7ab3f5'],
+    due:['Sending this week','#c9a227'], passed:['Date passed — not sent','#8a9bb8'],
+    off:['Off','#f07070'], manual:['Manual','#c9a227']
+  };
+  var m=map[it.status]||[it.status,'#8a9bb8'];
+  return '<span class="sc-auto-status" style="color:'+m[1]+';border-color:'+m[1]+'">'+m[0]+'</span>';
+}
+
+function autoRowHtml(it, startDate){
+  var dateStr="";
+  if(it.date){
+    var d=parseLocalDate(it.date);
+    dateStr=d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
+  }
+  var dayLabel="Day "+it.day+(it.end_day?"–"+it.end_day:"");
+  var off=it.status==="off";
+  return '<div class="sc-slot sc-auto'+(off?' sc-auto-off':'')+'"><div class="sc-slot-row">'
+    +'<div class="sc-slot-day"><strong>'+dayLabel+'</strong><span>'+(dateStr||"no start date")+'</span></div>'
+    +'<div class="sc-slot-info"><div class="sc-slot-name"><span class="sc-auto-badge">⚙ AUTO</span>'+esc(it.title)+autoStatusBadge(it)+'</div>'
+    +'<div class="sc-slot-subject"><strong style="color:#b8c4d8">To: '+esc(it.audience)+'</strong> · '+esc(it.detail||"")+'</div>'
+    +'<div class="sc-slot-subject" style="color:#6f8099">'+esc(it.sent_label||"")+(off&&_scAuto&&_scAuto.off_reason?' · '+esc(_scAuto.off_reason):'')+'</div></div>'
+    +'<div class="sc-slot-actions">'
+    +(it.preview?'<button class="sc-btn-icon" title="Preview this automatic email" onclick="previewAutoEmail(\''+it.preview+'\')">👁</button>':'')
+    +'</div></div></div>';
+}
+
+function renderAutoBar(){
+  var bar=document.getElementById("sc-auto-bar"); if(!bar) return;
+  if(!_scAuto){ bar.innerHTML=""; return; }
+  var plan=_scAuto.custom_checkins
+    ? 'Custom for this class: '+_scAuto.checkins.length+' check-in'+(_scAuto.checkins.length===1?'':'s')
+    : 'Standard: day 45 and day 80';
+  bar.innerHTML='<div class="sc-auto-bar">'
+    +'<div><strong>⚙ Automatic emails</strong> are shown in gray between your scheduled emails. They are read-only here. '
+    +'<span style="color:#c9a227">Goal check-ins — '+esc(plan)+'</span>'
+    +(_scAuto.off_reason?' · <span style="color:#f07070">'+esc(_scAuto.off_reason)+'</span>':'')
+    +'<div style="color:#6f8099;margin-top:3px">Also automatic, to you only: '+esc((_scAuto.admin_reports||[]).join(' · '))+'</div></div>'
+    +'<div style="display:flex;gap:6px;flex-shrink:0">'
+    +'<button class="sc-btn-sm" onclick="openCheckinEditor()">⚙ Edit Check-ins</button>'
+    +'<button class="sc-btn-sm" onclick="toggleShowAuto()">'+(_scShowAuto?'Hide Automatic':'Show Automatic')+'</button>'
+    +'</div></div>';
+}
+
+function toggleShowAuto(){
+  _scShowAuto=!_scShowAuto;
+  try{ localStorage.setItem("scShowAuto",_scShowAuto?"1":"0"); }catch(e){}
+  loadSchedule();
+}
+
+async function previewAutoEmail(which){
+  var r=await apiCall("GET","/classes/"+_scClassId+"/auto-emails/preview?which="+encodeURIComponent(which));
+  if(!r||!r.success){ toast("❌ "+((r&&r.error)||"Could not load preview")); return; }
+  var m=document.getElementById("autoPreviewModal");
+  if(!m){
+    m=document.createElement("div"); m.id="autoPreviewModal";
+    m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:3000;display:flex;align-items:center;justify-content:center";
+    m.addEventListener("click",function(e){ if(e.target===m) m.style.display="none"; });
+    document.body.appendChild(m);
+  }
+  m.innerHTML='<div style="background:#0f1d33;border:1px solid #2a4570;border-radius:8px;width:760px;max-width:95vw;max-height:92vh;display:flex;flex-direction:column">'
+    +'<div style="padding:12px 16px;border-bottom:1px solid #2a4570;display:flex;justify-content:space-between;align-items:center;gap:12px">'
+    +'<div><div style="font-size:0.7rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:0.5px">⚙ Automatic email preview'+(r.note?' · '+esc(r.note):'')+'</div>'
+    +'<div style="color:#e8e8e8;font-weight:700;margin-top:3px">Subject: '+esc(r.subject||"")+'</div></div>'
+    +'<button class="sc-close" onclick="document.getElementById(\'autoPreviewModal\').style.display=\'none\'">✕</button></div>'
+    +'<iframe id="autoPreviewFrame" style="border:0;width:100%;height:70vh;background:#fff;border-radius:0 0 8px 8px"></iframe></div>';
+  m.style.display="flex";
+  document.getElementById("autoPreviewFrame").srcdoc=r.html||"";
+}
+
+// ── Check-in editor ───────────────────────────────────────────────────────────
+var _ciRows=[];
+function openCheckinEditor(){
+  if(!_scAuto) return;
+  _ciRows=(_scAuto.checkins||[]).map(function(c){
+    return {day:c.day, students:c.students!==false, coach_day:(c.coach_day&&c.coach_day!==c.day+(_scAuto.coach_delay_days||3))?c.coach_day:""};
+  });
+  var m=document.getElementById("checkinEditorModal");
+  if(!m){
+    m=document.createElement("div"); m.id="checkinEditorModal";
+    m.style.cssText="position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:3000;display:flex;align-items:center;justify-content:center";
+    document.body.appendChild(m);
+  }
+  m.style.display="flex";
+  renderCheckinEditor();
+}
+function ciDate(day){
+  if(!_scStartDate||!day) return "";
+  var d=parseLocalDate(_scStartDate); d.setDate(d.getDate()+parseInt(day,10)-1);
+  return d.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric",year:"numeric"});
+}
+function renderCheckinEditor(){
+  var m=document.getElementById("checkinEditorModal"); if(!m) return;
+  var delay=(_scAuto&&_scAuto.coach_delay_days)||3;
+  var inp="background:#111827;border:1px solid #2a4570;color:#e8e8e8;padding:5px 8px;border-radius:4px;font-size:0.82rem;width:70px;text-align:center";
+  var rows=_ciRows.map(function(r,i){
+    var cd=r.coach_day||(r.day?parseInt(r.day,10)+delay:"");
+    return '<tr>'
+      +'<td><input type="number" min="1" style="'+inp+'" value="'+(r.day||"")+'" oninput="_ciRows['+i+'].day=this.value;renderCheckinDates()"></td>'
+      +'<td class="ci-date" data-i="'+i+'" data-k="day" style="color:#8a9bb8;font-size:0.8rem">'+ciDate(r.day)+'</td>'
+      +'<td style="text-align:center"><input type="checkbox" '+(r.students?'checked':'')+' onchange="_ciRows['+i+'].students=this.checked" style="accent-color:#c9a227;width:15px;height:15px"></td>'
+      +'<td><input type="number" min="1" style="'+inp+'" placeholder="'+(r.day?parseInt(r.day,10)+delay:"")+'" value="'+(r.coach_day||"")+'" oninput="_ciRows['+i+'].coach_day=this.value;renderCheckinDates()"></td>'
+      +'<td class="ci-date" data-i="'+i+'" data-k="coach" style="color:#8a9bb8;font-size:0.8rem">'+ciDate(cd)+'</td>'
+      +'<td><button class="sc-btn-icon del" title="Remove" onclick="_ciRows.splice('+i+',1);renderCheckinEditor()">✕</button></td></tr>';
+  }).join("");
+  var th="text-align:left;font-size:0.68rem;color:#8a9bb8;text-transform:uppercase;letter-spacing:0.4px;padding:4px 6px";
+  m.innerHTML='<div style="background:#0f1d33;border:1px solid #2a4570;border-radius:8px;width:760px;max-width:95vw;max-height:90vh;overflow:auto;padding:18px 20px;color:#e8e8e8">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:0;color:#c9a227">⚙ Goal Check-ins — '+esc(_scClassName||"")+'</h3>'
+    +'<button class="sc-close" onclick="document.getElementById(\'checkinEditorModal\').style.display=\'none\'">✕</button></div>'
+    +'<p style="font-size:0.82rem;color:#b8c4d8;line-height:1.5;margin:10px 0 14px">On each check-in day, students who have committed goals get an email asking them to update their progress. '
+    +'A few days later each invited coach gets one email with their own students\' progress. Untick <em>System emails students</em> when one of your scheduled emails already asks students (only the coach follow-up is then automatic). '
+    +'Leave the coach day blank for '+delay+' days later. No rows = the standard plan (day 45 and day 80).</p>'
+    +'<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="'+th+'">Check-in day</th><th style="'+th+'">Date</th><th style="'+th+';text-align:center">System emails students</th><th style="'+th+'">Coach day</th><th style="'+th+'">Coach date</th><th></th></tr></thead>'
+    +'<tbody>'+(rows||'<tr><td colspan="6" style="padding:10px 6px;color:#8a9bb8;font-size:0.82rem">No custom check-ins: this class uses the standard plan (day 45 and day 80).</td></tr>')+'</tbody></table>'
+    +'<div id="ci-msg" style="font-size:0.8rem;margin-top:10px;min-height:1em"></div>'
+    +'<div style="display:flex;justify-content:space-between;gap:8px;margin-top:12px">'
+    +'<div style="display:flex;gap:8px"><button class="sc-btn-sm" onclick="_ciRows.push({day:\'\',students:true,coach_day:\'\'});renderCheckinEditor()">+ Add Check-in</button>'
+    +'<button class="sc-btn-sm" onclick="_ciRows=[];renderCheckinEditor()">Use Standard Plan</button></div>'
+    +'<button class="sc-btn-sm gold" onclick="saveCheckins()">Save Check-ins</button></div></div>';
+}
+function renderCheckinDates(){
+  var delay=(_scAuto&&_scAuto.coach_delay_days)||3;
+  document.querySelectorAll("#checkinEditorModal .ci-date").forEach(function(td){
+    var r=_ciRows[parseInt(td.getAttribute("data-i"),10)]; if(!r) return;
+    td.textContent=td.getAttribute("data-k")==="day"?ciDate(r.day):ciDate(r.coach_day||(r.day?parseInt(r.day,10)+delay:""));
+  });
+}
+async function saveCheckins(){
+  var msg=document.getElementById("ci-msg");
+  var list=_ciRows.filter(function(r){return String(r.day).trim()!=="";}).map(function(r){
+    var o={day:parseInt(r.day,10),students:!!r.students};
+    if(String(r.coach_day||"").trim()!=="") o.coach_day=parseInt(r.coach_day,10);
+    return o;
+  });
+  var res=await apiCall("PUT","/classes/"+_scClassId+"/goal-checkins",{checkins:list.length?list:null});
+  if(res&&res.success){
+    document.getElementById("checkinEditorModal").style.display="none";
+    toast(list.length?"✅ Check-ins saved":"✅ Standard check-ins restored");
+    await loadSchedule();
+  } else { msg.style.color="#f07070"; msg.textContent="❌ "+((res&&res.error)||"Could not save"); }
 }
 
 async function saveScheduleStartDate(){
